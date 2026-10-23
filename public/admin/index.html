@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#120D17">
+  <meta name="robots" content="noindex">
+  <title>Project V — Admin</title>
+  <link rel="stylesheet" href="/comum/base.css">
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+  <div class="ambiente"></div>
+
+  <main id="tela-login" class="bloqueio oculto">
+    <form id="form-login" class="cartao" style="width:100%;max-width:360px;text-align:left">
+      <h1 class="marca" style="font-size:2.4rem;text-align:center">Project V</h1>
+      <p class="mudo" style="text-align:center;margin:4px 0 0">Painel do organizador</p>
+      <label for="senha">Senha</label>
+      <input id="senha" type="password" autocomplete="current-password" required>
+      <button class="botao largo" style="margin-top:16px">Entrar</button>
+    </form>
+  </main>
+
+  <div id="tela-painel" class="oculto">
+    <header class="topo">
+      <span class="marca" style="font-size:1.6rem">Project V</span>
+      <span class="fraco" id="info-banco"></span>
+      <button class="botao secundario pequeno" id="sair">Sair</button>
+    </header>
+    <nav class="abas" role="tablist">
+      <button data-aba="convidados" class="ativa">Convidados</button>
+      <button data-aba="atividades">Atividades</button>
+      <button data-aba="telao">Telão</button>
+      <button data-aba="festa">Festa</button>
+      <button data-aba="backup">Backup</button>
+    </nav>
+
+    <main class="conteudo">
+      <!-- CONVIDADOS -->
+      <section data-painel="convidados">
+        <div class="resumo" id="resumo-convidados"></div>
+        <form id="form-novos" class="cartao">
+          <label for="novos" style="margin-top:0">Adicionar quem já pagou (um nome por linha)</label>
+          <textarea id="novos" rows="3" placeholder="Maria Silva&#10;João Souza"></textarea>
+          <button class="botao largo" style="margin-top:10px">Adicionar</button>
+        </form>
+        <input id="busca" type="search" placeholder="Buscar convidado…" style="margin:16px 0 10px">
+        <div id="lista-convidados" class="lista"></div>
+      </section>
+
+      <!-- ATIVIDADES -->
+      <section data-painel="atividades" class="oculto">
+        <p class="mudo">Bloqueada: ninguém vê. Agendada: abre sozinha no horário. Liberada: aberta agora.</p>
+        <div id="lista-atividades" class="lista"></div>
+      </section>
+
+      <!-- TELÃO -->
+      <section data-painel="telao" class="oculto">
+        <div class="cartao">
+          <h3>O que o telão mostra agora</h3>
+          <div class="grade-modos" id="modos-telao">
+            <button data-modo="contagem">⏳ Contagem</button>
+            <button data-modo="confirmados">👥 Confirmados</button>
+            <button data-modo="atividades">🔒 Atividades</button>
+            <button data-modo="mensagem">💬 Mensagem</button>
+          </div>
+          <label for="msg-telao">Mensagem (modo Mensagem)</label>
+          <input id="msg-telao" maxlength="140" placeholder="Ex.: A pizza chegou!">
+          <button class="botao secundario largo" id="salvar-msg" style="margin-top:10px">Mostrar mensagem</button>
+        </div>
+        <p class="mudo" style="margin-top:16px">Abra <b>/telao</b> no notebook ligado à TV e entre com a mesma senha.</p>
+        <a class="botao secundario largo" href="/telao" target="_blank" rel="noopener">Abrir telão nesta aba nova</a>
+      </section>
+
+      <!-- FESTA -->
+      <section data-painel="festa" class="oculto">
+        <form id="form-festa" class="cartao">
+          <label for="f-nome" style="margin-top:0">Nome</label>
+          <input id="f-nome" maxlength="80">
+          <label for="f-inicio">Início (horário de Manaus)</label>
+          <input id="f-inicio" type="datetime-local">
+          <label for="f-local">Local</label>
+          <input id="f-local" maxlength="160">
+          <label for="f-dress">Dress code</label>
+          <textarea id="f-dress" rows="2" maxlength="400"></textarea>
+          <label for="f-levar">O que levar</label>
+          <textarea id="f-levar" rows="2" maxlength="400"></textarea>
+          <label for="f-regras">Regras da casa</label>
+          <textarea id="f-regras" rows="3" maxlength="600"></textarea>
+          <button class="botao largo" style="margin-top:16px">Salvar informações</button>
+        </form>
+      </section>
+
+      <!-- BACKUP -->
+      <section data-painel="backup" class="oculto">
+        <div class="cartao">
+          <h3>Baixar backup</h3>
+          <p class="mudo">Um arquivo com tudo: convidados, links, pontos e configurações. Baixe antes de abrir os portões.</p>
+          <button class="botao largo" id="baixar-backup">Baixar backup agora</button>
+        </div>
+        <div class="cartao" style="margin-top:16px">
+          <h3>Restaurar backup</h3>
+          <p class="mudo">Substitui <b>todos</b> os dados atuais pelos do arquivo.</p>
+          <input type="file" id="arquivo-backup" accept="application/json,.json">
+          <button class="botao perigo largo" id="restaurar-backup" style="margin-top:10px">Restaurar</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/comum/api.js"></script>
+  <script src="/admin/admin.js"></script>
+</body>
+</html>

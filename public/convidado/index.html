@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#120D17">
+  <meta name="robots" content="noindex">
+  <title>Project V — Halloween</title>
+  <link rel="stylesheet" href="/comum/base.css">
+  <link rel="stylesheet" href="/convidado/convidado.css">
+</head>
+<body>
+  <div class="ambiente"></div>
+
+  <div id="tela-carregando" class="carregando"><div class="spinner"></div></div>
+
+  <!-- Sem link válido -->
+  <main id="tela-bloqueio" class="bloqueio oculto">
+    <div>
+      <div class="cadeado-grande">🔒</div>
+      <h1 class="marca">Project V</h1>
+      <p class="mudo" style="max-width:320px;margin:8px auto 0">
+        Este lugar é só para convidados. Abra o link de convite que você recebeu.
+      </p>
+    </div>
+  </main>
+
+  <!-- Primeiro acesso / editar perfil -->
+  <main id="tela-perfil" class="pagina oculto">
+    <header class="topo-perfil">
+      <h1 class="marca" style="font-size:2.6rem">Project V</h1>
+      <p class="mudo" id="perfil-saudacao">Escolha como você vai aparecer na festa.</p>
+    </header>
+    <form id="form-perfil" class="cartao" autocomplete="off">
+      <label for="apelido">Seu apelido</label>
+      <input id="apelido" name="apelido" maxlength="20" required placeholder="Como te chamam?">
+      <label>Seu monstro</label>
+      <div id="grade-avatares" class="grade-avatares" role="radiogroup" aria-label="Escolha seu monstro"></div>
+      <label class="linha-check">
+        <input type="checkbox" id="exibir" checked>
+        <span>Aparecer na lista de confirmados</span>
+      </label>
+      <button class="botao largo" type="submit" id="salvar-perfil" style="margin-top:18px">Entrar na festa</button>
+      <button class="botao secundario largo oculto" type="button" id="cancelar-perfil" style="margin-top:10px">Voltar</button>
+    </form>
+  </main>
+
+  <!-- Principal -->
+  <main id="tela-principal" class="pagina oculto">
+    <header class="barra">
+      <span class="marca barra-marca">Project V</span>
+      <button class="eu" id="botao-eu" type="button" aria-label="Editar meu perfil">
+        <span class="avatar" id="eu-avatar" style="width:36px;height:36px;font-size:20px"></span>
+        <span id="eu-apelido"></span>
+      </button>
+    </header>
+
+    <section class="hero">
+      <p class="hero-sub" id="hero-sub">Faltam</p>
+      <div class="relogio" id="relogio">
+        <div><b id="r-dias">--</b><small>dias</small></div>
+        <div><b id="r-horas">--</b><small>horas</small></div>
+        <div><b id="r-min">--</b><small>min</small></div>
+        <div><b id="r-seg">--</b><small>seg</small></div>
+      </div>
+      <h2 class="terror portoes oculto" id="portoes">Os portões estão abertos</h2>
+      <p class="hero-data" id="hero-data"></p>
+    </section>
+
+    <section>
+      <h2 class="titulo-secao">O que te espera</h2>
+      <div id="atividades" class="grade-atividades"></div>
+    </section>
+
+    <section class="cartao info">
+      <h2 class="titulo-secao" style="margin-top:0">A festa</h2>
+      <dl id="info"></dl>
+    </section>
+
+    <section>
+      <h2 class="titulo-secao">Confirmados <span class="contador" id="total-confirmados"></span></h2>
+      <div id="confirmados" class="grade-confirmados"></div>
+    </section>
+
+    <footer class="rodape fraco">Project V · Halloween 2026</footer>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/comum/api.js"></script>
+  <script src="/convidado/convidado.js"></script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+{
+  "name": "projectv",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Project V - site da edição Halloween (convidados, telão e admin)",
+  "main": "server/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@libsql/client": "^0.17.4",
+    "express": "^4.22.3",
+    "socket.io": "^4.8.4"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.4"
+  }
+}

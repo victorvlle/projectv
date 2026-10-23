@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#120D17">
+  <meta name="robots" content="noindex">
+  <title>Project V — Telão</title>
+  <link rel="stylesheet" href="/comum/base.css">
+  <link rel="stylesheet" href="/telao/telao.css">
+</head>
+<body>
+  <div class="ambiente"></div>
+
+  <main id="tela-login" class="bloqueio oculto">
+    <form id="form-login" class="cartao" style="width:100%;max-width:380px;text-align:left">
+      <h1 class="marca" style="font-size:2.6rem;text-align:center">Telão</h1>
+      <label for="senha">Senha do admin</label>
+      <input id="senha" type="password" required>
+      <button class="botao largo" style="margin-top:16px">Ligar telão</button>
+    </form>
+  </main>
+
+  <div id="palco" class="palco oculto">
+    <header class="cabecalho">
+      <span class="marca">Project V</span>
+      <span class="subtitulo" id="nome-festa"></span>
+    </header>
+
+    <section class="cena" data-cena="contagem">
+      <p class="rotulo" id="rotulo-contagem">A festa começa em</p>
+      <div class="relogio-grande" id="relogio">
+        <div><b id="r-dias">--</b><small>dias</small></div>
+        <div><b id="r-horas">--</b><small>horas</small></div>
+        <div><b id="r-min">--</b><small>minutos</small></div>
+        <div><b id="r-seg">--</b><small>segundos</small></div>
+      </div>
+      <h1 class="terror portoes oculto" id="portoes">Os portões estão abertos</h1>
+      <p class="rodape-cena"><b id="n-confirmados">0</b> almas confirmadas</p>
+      <div class="desfile" id="desfile"></div>
+    </section>
+
+    <section class="cena oculto" data-cena="confirmados">
+      <h1 class="terror titulo-cena">Almas confirmadas <span id="n-confirmados-2"></span></h1>
+      <div class="grade-almas" id="almas"></div>
+    </section>
+
+    <section class="cena oculto" data-cena="atividades">
+      <h1 class="terror titulo-cena">O que espera vocês</h1>
+      <div class="grade-cadeados" id="cadeados"></div>
+    </section>
+
+    <section class="cena oculto" data-cena="mensagem">
+      <h1 class="terror mensagem" id="mensagem"></h1>
+    </section>
+  </div>
+
+  <button id="tela-cheia" class="botao secundario pequeno botao-flutuante oculto" type="button">Tela cheia</button>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/comum/api.js"></script>
+  <script src="/telao/telao.js"></script>
+</body>
+</html>

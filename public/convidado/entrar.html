@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#120D17">
+  <meta name="robots" content="noindex">
+  <title>Project V</title>
+  <link rel="stylesheet" href="/comum/base.css">
+</head>
+<body>
+  <div class="ambiente"></div>
+  <main class="bloqueio">
+    <div id="conteudo">
+      <div class="spinner" style="margin: 0 auto"></div>
+      <p class="mudo">Abrindo os portões…</p>
+    </div>
+  </main>
+  <script src="/comum/api.js"></script>
+  <script>
+    (async function () {
+      const codigo = decodeURIComponent(location.pathname.split('/').pop() || '').toLowerCase();
+      const caixa = document.getElementById('conteudo');
+      try {
+        const r = await PV.chamar('POST', '/api/entrar', { corpo: { codigo } });
+        PV.guardado.gravar('pv.token', r.token);
+        // Tira o código da barra de endereço e do histórico.
+        location.replace('/');
+      } catch (erro) {
+        caixa.innerHTML = `
+          <div class="cadeado-grande">🔒</div>
+          <h1 class="marca" style="font-size:3rem;margin-top:8px">Project V</h1>
+          <p style="max-width:320px;margin:12px auto 0">${PV.esc(erro.message)}</p>`;
+      }
+    })();
+  </script>
+</body>
+</html>

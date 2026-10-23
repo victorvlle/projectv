@@ -1,0 +1,140 @@
+/* Project V — tema Halloween compartilhado pelas três telas. */
+@import url('https://fonts.googleapis.com/css2?family=Creepster&family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --fundo: #120D17;
+  --fundo-2: #1B1424;
+  --cartao: #221A2D;
+  --cartao-2: #2B2138;
+  --borda: #3A2E4A;
+  --roxo: #3B1F5C;
+  --roxo-claro: #6B44A0;
+  --laranja: #E8620C;
+  --laranja-claro: #FF8A3D;
+  --lima: #7BC74D;
+  --sangue: #B3122E;
+  --texto: #F3ECF8;
+  --texto-2: #B9AEC6;
+  --texto-3: #85789A;
+  --raio: 16px;
+  --sombra: 0 10px 30px rgba(0, 0, 0, .45);
+  --fonte: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --fonte-terror: 'Creepster', 'Inter', cursive;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: var(--fonte);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+/* Névoa e brilho de fundo — só CSS, leve para celular. */
+.ambiente {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(232, 98, 12, .18), transparent 60%),
+    radial-gradient(ellipse 70% 60% at 100% 100%, rgba(59, 31, 92, .55), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 0% 80%, rgba(59, 31, 92, .4), transparent 60%),
+    var(--fundo);
+}
+.ambiente::before, .ambiente::after {
+  content: ''; position: absolute; left: -50%; width: 200%; height: 45%;
+  background: radial-gradient(ellipse at center, rgba(185, 174, 198, .09), transparent 65%);
+  filter: blur(18px);
+  animation: nevoa 38s linear infinite;
+}
+.ambiente::before { bottom: -8%; }
+.ambiente::after { bottom: 12%; opacity: .6; animation-duration: 55s; animation-direction: reverse; }
+@keyframes nevoa { from { transform: translateX(-12%); } to { transform: translateX(12%); } }
+@media (prefers-reduced-motion: reduce) {
+  .ambiente::before, .ambiente::after { animation: none; }
+}
+
+h1, h2, h3 { margin: 0; line-height: 1.15; }
+.terror { font-family: var(--fonte-terror); font-weight: 400; letter-spacing: .02em; }
+.marca { font-family: var(--fonte-terror); color: var(--laranja); text-shadow: 0 0 24px rgba(232, 98, 12, .45); }
+a { color: var(--laranja-claro); }
+.mudo { color: var(--texto-2); }
+.fraco { color: var(--texto-3); font-size: .875rem; }
+.oculto { display: none !important; }
+
+.cartao {
+  background: linear-gradient(180deg, var(--cartao-2), var(--cartao));
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  padding: 18px;
+  box-shadow: var(--sombra);
+}
+
+.botao {
+  appearance: none; border: 0; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 48px; padding: 0 20px; border-radius: 12px;
+  font: 700 1rem var(--fonte); color: #fff;
+  background: linear-gradient(180deg, var(--laranja-claro), var(--laranja));
+  box-shadow: 0 6px 18px rgba(232, 98, 12, .35);
+  transition: transform .08s ease, filter .15s ease, opacity .15s;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.botao:active { transform: scale(.97); }
+.botao:disabled { opacity: .5; cursor: default; }
+.botao.secundario { background: var(--cartao-2); border: 1px solid var(--borda); box-shadow: none; color: var(--texto); }
+.botao.perigo { background: linear-gradient(180deg, #D3203F, var(--sangue)); box-shadow: 0 6px 18px rgba(179, 18, 46, .35); }
+.botao.pequeno { min-height: 38px; padding: 0 12px; font-size: .875rem; border-radius: 10px; }
+.botao.largo { width: 100%; }
+
+input, textarea, select {
+  width: 100%; font: 500 1rem var(--fonte); color: var(--texto);
+  background: var(--fundo-2); border: 1px solid var(--borda); border-radius: 12px;
+  padding: 12px 14px; outline: none;
+}
+input:focus, textarea:focus, select:focus { border-color: var(--laranja); box-shadow: 0 0 0 3px rgba(232, 98, 12, .2); }
+label { display: block; font-weight: 600; font-size: .875rem; color: var(--texto-2); margin: 14px 0 6px; }
+
+.aviso {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(120px);
+  background: var(--cartao-2); border: 1px solid var(--borda); color: var(--texto);
+  padding: 12px 18px; border-radius: 12px; box-shadow: var(--sombra);
+  transition: transform .25s ease; z-index: 100; max-width: calc(100vw - 32px); text-align: center;
+}
+.aviso.visivel { transform: translateX(-50%) translateY(0); }
+.aviso.erro { border-color: var(--sangue); }
+.aviso.ok { border-color: var(--lima); }
+
+.conexao {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 90; text-align: center;
+  font-size: .8rem; font-weight: 600; padding: 4px; background: var(--sangue); color: #fff;
+  transform: translateY(-100%); transition: transform .2s;
+}
+.conexao.visivel { transform: translateY(0); }
+
+/* Avatares */
+.avatar {
+  display: inline-grid; place-items: center; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--roxo-claro), var(--roxo));
+  border: 2px solid var(--borda); line-height: 1;
+}
+
+/* Bloqueio */
+.bloqueio {
+  min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; text-align: center; padding: 24px;
+}
+.bloqueio .marca { font-size: clamp(3rem, 16vw, 6rem); }
+.cadeado-grande { font-size: 3.5rem; filter: drop-shadow(0 0 16px rgba(232, 98, 12, .5)); }
+
+.carregando { display: grid; place-items: center; min-height: 60vh; color: var(--texto-3); }
+.spinner {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 3px solid var(--borda); border-top-color: var(--laranja);
+  animation: girar 0.9s linear infinite;
+}
+@keyframes girar { to { transform: rotate(360deg); } }

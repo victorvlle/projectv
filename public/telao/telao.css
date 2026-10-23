@@ -1,0 +1,45 @@
+/* Telão: tudo dimensionado pela altura/largura da tela para ler de longe. */
+body { overflow: hidden; cursor: default; }
+.palco { height: 100vh; display: flex; flex-direction: column; padding: 2.5vh 4vw; }
+.cabecalho { display: flex; align-items: baseline; gap: 2vw; }
+.cabecalho .marca { font-size: 5vh; }
+.subtitulo { color: var(--texto-2); font-size: 2.4vh; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+
+.cena { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 0; animation: entrar .6s ease both; }
+@keyframes entrar { from { opacity: 0; transform: translateY(2vh) scale(.98); } to { opacity: 1; transform: none; } }
+
+.rotulo { font-size: 3vh; text-transform: uppercase; letter-spacing: .35em; color: var(--texto-2); margin: 0 0 3vh; }
+.relogio-grande { display: grid; grid-template-columns: repeat(4, auto); gap: 2.5vw; }
+.relogio-grande div {
+  min-width: 15vw; text-align: center; padding: 2.5vh 1vw 2vh; border-radius: 2vh;
+  background: linear-gradient(180deg, rgba(43, 33, 56, .9), rgba(34, 26, 45, .9)); border: 1px solid var(--borda);
+  box-shadow: 0 0 6vh rgba(232, 98, 12, .12);
+}
+.relogio-grande b { display: block; font-size: 15vh; line-height: 1; font-variant-numeric: tabular-nums; color: var(--laranja-claro); text-shadow: 0 0 4vh rgba(232, 98, 12, .45); }
+.relogio-grande small { font-size: 2.2vh; color: var(--texto-3); text-transform: uppercase; letter-spacing: .2em; }
+.portoes { font-size: 14vh; color: var(--laranja); text-align: center; text-shadow: 0 0 6vh rgba(232, 98, 12, .6); animation: pulsar 3s ease-in-out infinite; }
+@keyframes pulsar { 50% { text-shadow: 0 0 10vh rgba(232, 98, 12, .9); transform: scale(1.02); } }
+.rodape-cena { font-size: 3vh; color: var(--texto-2); margin: 4vh 0 2vh; }
+.rodape-cena b { color: var(--lima); font-size: 4vh; }
+
+.desfile { display: flex; gap: 1.5vw; justify-content: center; flex-wrap: wrap; max-width: 90vw; max-height: 18vh; overflow: hidden; }
+.desfile .avatar { width: 7vh; height: 7vh; font-size: 4vh; animation: flutuar 4s ease-in-out infinite; }
+@keyframes flutuar { 50% { transform: translateY(-1vh); } }
+
+.titulo-cena { font-size: 8vh; color: var(--laranja); margin-bottom: 4vh; text-align: center; }
+.grade-almas { display: flex; flex-wrap: wrap; justify-content: center; gap: 3vh 2vw; width: 100%; max-height: 70vh; overflow: hidden; align-content: flex-start; }
+.alma { width: 14vh; text-align: center; font-size: 2.4vh; font-weight: 600; color: var(--texto); animation: entrar .5s ease both; min-width: 0; }
+.alma .avatar { width: 11vh; height: 11vh; font-size: 6.5vh; margin-bottom: 1vh; }
+.alma span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.grade-cadeados { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2.5vh 2vw; width: 100%; }
+.cadeado { border-radius: 2vh; padding: 3vh 1.5vw; text-align: center; border: 1px solid var(--borda); background: linear-gradient(160deg, #1E1728, #17111F); }
+.cadeado .ic { font-size: 7vh; }
+.cadeado .n { font-family: var(--fonte-terror); font-size: 3.6vh; color: var(--texto-2); margin-top: 1vh; }
+.cadeado.aberto { background: linear-gradient(160deg, var(--roxo), var(--cartao)); border-color: var(--laranja); box-shadow: 0 0 4vh rgba(232, 98, 12, .25); }
+.cadeado.aberto .n { font-family: var(--fonte); font-weight: 800; font-size: 3vh; color: var(--texto); }
+
+.mensagem { font-size: 11vh; color: var(--texto); text-align: center; max-width: 85vw; line-height: 1.1; text-shadow: 0 0 5vh rgba(232, 98, 12, .5); }
+
+.botao-flutuante { position: fixed; right: 16px; bottom: 16px; opacity: .25; }
+.botao-flutuante:hover { opacity: 1; }

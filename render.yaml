@@ -1,0 +1,31 @@
+# Receita de publicação no Render (Blueprint). Mesmo esquema do Bar Bestial.
+services:
+  - type: web
+    name: projectv
+    runtime: node
+    # free: o disco é descartável, por isso o banco mora no Turso (TURSO_URL).
+    # Para não hibernar na semana da festa, troque para "starter" no painel.
+    plan: free
+    region: virginia
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /saude
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      # Banco no Turso. Preencha no painel do Render (Environment), nunca aqui.
+      - key: TURSO_URL
+        sync: false
+      - key: TURSO_TOKEN
+        sync: false
+      # Assina os crachás de sessão. Fixo = ninguém é deslogado quando o servidor reinicia.
+      - key: SESSAO_SEGREDO
+        generateValue: true
+      # Senha do painel /admin e do /telao. Preencha no painel do Render.
+      - key: ADMIN_SEGREDO
+        sync: false
+      # Endereço público usado nos links de convite (opcional; padrão: RENDER_EXTERNAL_URL).
+      - key: URL_PUBLICA
+        sync: false
