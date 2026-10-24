@@ -85,12 +85,14 @@ test('convidado não muda o próprio nome; só o admin renomeia', async () => {
   assert.ok(f.json.confirmados.some((x) => x.nome === 'Nome Novo'));
 });
 
-test('quem escolhe não aparecer fica fora da lista pública', async () => {
+test('todo mundo que escolhe o monstro aparece nos confirmados (não dá para se esconder)', async () => {
   const c = await novoConvidado('Discreto');
   const t = (await entrar(c.codigo)).json.token;
+  let f = await s.req('GET', '/api/festa', { token: t });
+  assert.ok(!f.json.confirmados.some((x) => x.nome === 'Discreto'), 'aparece antes de escolher o monstro');
   await s.req('PUT', '/api/eu/perfil', { token: t, corpo: { avatar: 'fantasma', exibir: false } });
-  const f = await s.req('GET', '/api/festa', { token: t });
-  assert.ok(!f.json.confirmados.some((x) => x.nome === 'Discreto'));
+  f = await s.req('GET', '/api/festa', { token: t });
+  assert.ok(f.json.confirmados.some((x) => x.nome === 'Discreto' && x.avatar === 'fantasma'));
 });
 
 test('link regenerado: código e sessão antigos param de funcionar', async () => {

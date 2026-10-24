@@ -12,7 +12,7 @@ Atualizado em 23/10/2026.
 - [x] Login do admin com senha em variável de ambiente, comparação em tempo constante e freio de tentativas
 - [x] Painel admin (celular e PC): convidados em lote, copiar link, WhatsApp, marcar fora, festa, atividades, telão, backup
 - [x] Contagem regressiva pelo relógio do servidor; informações da festa editáveis
-- [x] Confirmados (só apelido e avatar; nome real nunca sai do admin)
+- [x] Confirmados: nome cadastrado e monstro de todos que já entraram
 - [x] Cards de atividades: bloqueada mostra só o enigma; liberada mostra nome e animação
 - [x] Liberação controlada pelo servidor; agendamento automático (Previsões abrem sex 30/10 00:00)
 - [x] Telão: login, cenas Contagem / Confirmados / Atividades / Mensagem, trocadas pelo admin em tempo real
@@ -24,7 +24,7 @@ Atualizado em 23/10/2026.
 - [x] Lista de bebidas aberta desde já: itens com meta, "eu levo" com − e +, o que mais falta, outras bebidas,
       quem leva o quê em tempo real, privacidade de quem não aparece; admin cria/edita/exclui, fecha e reabre
 - [x] Testes automatizados: 31 passando (inclui lista de bebidas e migração do horário)
-- [x] Nome exibido é sempre o cadastrado pelo organizador; convidado só escolhe o monstro
+- [x] Nome exibido é sempre o cadastrado pelo organizador; convidado só escolhe o monstro e já aparece nos confirmados (sem opção de se esconder)
 - [x] Contribuições (lista de bebidas) num card próprio já liberado, com tela separada
 - [x] Lista e metas do organizador: Cerveja 20 longnecks, Vodka 3, Tequila 1, Cachaça 2, Gin 3,
       Energético Tropical 3 (2 L), Refrigerante 3 (2 L); Gelo, Água e Suco retirados

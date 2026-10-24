@@ -88,7 +88,7 @@
                 : c.perfilCompleto ? '<span class="selo ok">entrou</span>' : '<span class="selo pendente">não entrou</span>'}
               ${c.fora ? '<span class="selo fora">fora</span>' : ''}
             </div>
-            <div class="item-sub">${c.pontos} pts${c.exibir ? '' : ' · escondido da lista'}</div>
+            <div class="item-sub">${c.pontos} pts</div>
           </div>
         </div>
         <div class="item-acoes">

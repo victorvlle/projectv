@@ -10,8 +10,6 @@
 }
 .opcao-avatar span { font-size: 2rem; line-height: 1.1; }
 .opcao-avatar[aria-checked="true"] { border-color: var(--laranja); background: rgba(232, 98, 12, .12); color: var(--texto); transform: scale(1.04); }
-.linha-check { display: flex; align-items: center; gap: 10px; color: var(--texto); font-weight: 500; }
-.linha-check input { width: 22px; height: 22px; accent-color: var(--laranja); }
 
 .barra { display: flex; align-items: center; justify-content: space-between; padding: 4px 0 8px; }
 .barra-marca { font-size: 1.9rem; }

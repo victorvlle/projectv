@@ -48,7 +48,6 @@
 
   function abrirPerfil(editando) {
     escolhido = eu.avatar;
-    $('exibir').checked = eu.exibir !== false;
     $('perfil-saudacao').textContent = editando
       ? 'Troque o seu monstro.'
       : `Olá, ${eu.nome}! Escolha o seu monstro para a festa.`;
@@ -65,7 +64,7 @@
     const botao = $('salvar-perfil');
     botao.disabled = true;
     try {
-      const r = await api('PUT', '/api/eu/perfil', { avatar: escolhido, exibir: $('exibir').checked });
+      const r = await api('PUT', '/api/eu/perfil', { avatar: escolhido });
       eu = r.eu;
       await carregarFesta();
       irPara(location.hash);

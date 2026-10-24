@@ -32,7 +32,6 @@ function paraAdmin(l) {
     codigo: l.codigo,
     ativo: Boolean(l.ativo),
     fora: Boolean(l.fora),
-    exibir: Boolean(l.exibir),
     perfilCompleto: Boolean(l.avatar),
     primeiroAcessoEm: l.primeiro_acesso_em,
     criadoEm: l.criado_em,
@@ -45,7 +44,6 @@ function paraProprio(l) {
     id: l.id,
     nome: l.nome,
     avatar: l.avatar,
-    exibir: Boolean(l.exibir),
     perfilCompleto: Boolean(l.avatar),
   };
 }
@@ -92,11 +90,11 @@ async function listarParaAdmin() {
 }
 
 // O que qualquer convidado pode ver de outro: nome (o cadastrado pelo organizador)
-// e monstro, só de quem está ativo, já escolheu o monstro e quis aparecer na lista.
+// e monstro, de todo convidado ativo que já escolheu o monstro.
 async function confirmados() {
   const linhas = await banco.tudo(
     `SELECT id, nome, avatar FROM convidados
-      WHERE ativo = 1 AND exibir = 1 AND avatar IS NOT NULL
+      WHERE ativo = 1 AND avatar IS NOT NULL
       ORDER BY primeiro_acesso_em, criado_em`,
   );
   return linhas.map((l) => ({ id: l.id, nome: l.nome, avatar: l.avatar }));
@@ -112,13 +110,14 @@ async function totais() {
 }
 
 // O convidado só escolhe o monstro e se quer aparecer na lista. Nome não muda por aqui.
-async function atualizarPerfil(id, { avatar, exibir }) {
+// Todo mundo que escolheu o monstro aparece nos confirmados (não há opção de esconder).
+async function atualizarPerfil(id, { avatar }) {
   if (!avatarValido(avatar)) throw new ErroValidacao('Escolha um dos monstros da lista.');
   await banco.rodar(
-    `UPDATE convidados SET avatar = ?, exibir = ?, atualizado_em = ?,
+    `UPDATE convidados SET avatar = ?, exibir = 1, atualizado_em = ?,
             primeiro_acesso_em = COALESCE(primeiro_acesso_em, ?)
       WHERE id = ? AND ativo = 1`,
-    [avatar, exibir === false ? 0 : 1, Date.now(), Date.now(), id],
+    [avatar, Date.now(), Date.now(), id],
   );
   return buscarPorId(id);
 }
@@ -141,7 +140,7 @@ async function editar(id, campos) {
     if (campos.avatar !== null && !avatarValido(campos.avatar)) throw new ErroValidacao('Avatar inválido.');
     sets.push('avatar = ?'); args.push(campos.avatar);
   }
-  for (const flag of ['ativo', 'fora', 'exibir']) {
+  for (const flag of ['ativo', 'fora']) {
     if (campos[flag] !== undefined) { sets.push(`${flag} = ?`); args.push(campos[flag] ? 1 : 0); }
   }
   if (!sets.length) return atual;

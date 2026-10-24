@@ -9,10 +9,10 @@ let admin;
 test.before(async () => { s = await subir(); admin = await s.tokenAdmin(); });
 test.after(async () => { await s.fechar(); });
 
-async function convidado(nome, avatar, exibir = true) {
+async function convidado(nome, avatar) {
   const c = (await s.req('POST', '/api/admin/convidados', { token: admin, corpo: { nome } })).json.criados[0];
   const token = (await s.req('POST', '/api/entrar', { corpo: { codigo: c.codigo } })).json.token;
-  await s.req('PUT', '/api/eu/perfil', { token, corpo: { avatar, exibir } });
+  await s.req('PUT', '/api/eu/perfil', { token, corpo: { avatar } });
   return { ...c, token };
 }
 
@@ -101,18 +101,15 @@ test('convidado só remove o que é dele', async () => {
   assert.ok(!(await lista(a.token)).outras.some((o) => o.nome === 'Saquê'));
 });
 
-test('quem escolheu não aparecer vira "Alguém" para os outros, mas vê a si mesmo', async () => {
-  const discreto = await convidado('Hugão', 'demonio', false);
+test('quem leva aparece com o nome cadastrado e o monstro para todos', async () => {
+  const a = await convidado('Hugão', 'demonio');
   const outro = await convidado('Iris', 'fantasma');
   const vodka = item(await lista(outro.token), 'Vodka');
-  await s.req('PUT', `/api/bebidas/itens/${vodka.id}`, { token: discreto.token, corpo: { quantidade: 1 } });
+  await s.req('PUT', `/api/bebidas/itens/${vodka.id}`, { token: a.token, corpo: { quantidade: 1 } });
   const visto = item(await lista(outro.token), 'Vodka').quem.find((q) => q.quantidade === 1 && !q.souEu);
-  assert.equal(visto.nome, 'Alguém');
-  assert.equal(visto.avatar, null);
-  const proprio = item(await lista(discreto.token), 'Vodka').quem.find((q) => q.souEu);
-  assert.equal(proprio.nome, 'Hugão');
-  // O nome de quem se escondeu não vai para os outros convidados
-  assert.ok(!JSON.stringify(await lista(outro.token)).includes('Hugão'));
+  assert.equal(visto.nome, 'Hugão');
+  assert.equal(visto.avatar, 'demonio');
+  await s.req('PUT', `/api/bebidas/itens/${vodka.id}`, { token: a.token, corpo: { quantidade: 0 } });
 });
 
 test('admin: cria, edita e exclui itens; exclusão preserva o que foi prometido', async () => {

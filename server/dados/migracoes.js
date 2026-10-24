@@ -142,4 +142,9 @@ module.exports = [
     nome: 'cerveja em longnecks',
     sql: "UPDATE bebidas_itens SET unidade = 'longnecks' WHERE nome = 'Cerveja' AND unidade = 'latas'",
   },
+  {
+    // Não existe mais a opção de se esconder da lista: todo mundo aparece.
+    nome: 'todos aparecem nos confirmados',
+    sql: 'UPDATE convidados SET exibir = 1 WHERE exibir <> 1',
+  },
 ];
