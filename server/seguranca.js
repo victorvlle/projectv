@@ -90,6 +90,12 @@ function criarFreio({ maximo, janelaMs }) {
       r.n += 1;
       return r.n <= maximo;
     },
+    // Já estourou? (só consulta, não conta). Use ANTES de conferir senha/código, para
+    // que um chute certo depois do bloqueio também seja recusado.
+    estourou(chave, agora = Date.now()) {
+      const r = mapa.get(chave);
+      return Boolean(r) && r.ate > agora && r.n >= maximo;
+    },
     zerar(chave) { mapa.delete(chave); },
     faltaMs(chave, agora = Date.now()) {
       const r = mapa.get(chave);

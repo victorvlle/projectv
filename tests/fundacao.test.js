@@ -69,7 +69,7 @@ test('convidado entra pelo link, escolhe o monstro e aparece com o nome cadastra
   assert.ok(Number.isFinite(f.json.agora));
   assert.ok(f.json.confirmados.some((x) => x.nome === 'Victor Teste' && x.avatar === 'vampiro'));
   // Confirmados não vazam código nem dados internos
-  for (const x of f.json.confirmados) assert.deepEqual(Object.keys(x).sort(), ['avatar', 'id', 'nome']);
+  for (const x of f.json.confirmados) assert.deepEqual(Object.keys(x).sort(), ['avatar', 'nome', 'souEu']);
 });
 
 test('convidado não muda o próprio nome; só o admin renomeia', async () => {

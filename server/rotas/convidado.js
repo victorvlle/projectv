@@ -15,18 +15,22 @@ const router = express.Router();
 // 20 tentativas de código por minuto por IP: suficiente para uma festa inteira no
 // mesmo Wi-Fi, inútil para quem quer chutar códigos.
 const freioEntrada = seg.criarFreio({ maximo: 20, janelaMs: 60 * 1000 });
+// Freio geral de códigos ERRADOS (todos os IPs somados), porque o IP pode ser forjado.
+// 120 erros/min não atrapalha ninguém e torna o chute impossível (31^10 códigos).
+const freioEntradaGeral = seg.criarFreio({ maximo: 120, janelaMs: 60 * 1000 });
 const freioPerfil = seg.criarFreio({ maximo: 10, janelaMs: 60 * 1000 });
 const freioBebidas = seg.criarFreio({ maximo: 40, janelaMs: 60 * 1000 });
 
 router.get('/avatares', (_req, res) => res.json({ ok: true, avatares: AVATARES }));
 
 router.post('/entrar', assincrono(async (req, res) => {
-  if (!freioEntrada.tentar(req.ip)) {
+  if (!freioEntrada.tentar(req.ip) || freioEntradaGeral.estourou('*')) {
     return res.status(429).json({ ok: false, erro: 'Muitas tentativas. Espere um minuto.' });
   }
   const codigo = String((req.body && req.body.codigo) || '').trim().toLowerCase();
   const c = await convidados.buscarPorCodigo(codigo);
   if (!c || !c.ativo) {
+    freioEntradaGeral.tentar('*');
     return res.status(404).json({ ok: false, erro: 'Esse link de convite não é válido. Fale com o Victor.' });
   }
   await convidados.marcarAcesso(c.id);
@@ -57,7 +61,9 @@ router.get('/festa', soConvidado, assincrono(async (req, res) => {
   const [info, ativs, lista, beb] = await Promise.all([
     festa.info(), atividades.paraConvidado(), convidados.confirmados(), bebidas.paraConvidado(req.convidado.id),
   ]);
-  res.json({ ok: true, agora: Date.now(), festa: info, atividades: ativs, confirmados: lista, bebidas: beb });
+  // O id interno dos outros convidados não sai: só nome, monstro e "sou eu".
+  const confirmados = lista.map((c) => ({ nome: c.nome, avatar: c.avatar, souEu: c.id === req.convidado.id }));
+  res.json({ ok: true, agora: Date.now(), festa: info, atividades: ativs, confirmados, bebidas: beb });
 }));
 
 // ------------------------------------------------------- lista de bebidas

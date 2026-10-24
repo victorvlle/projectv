@@ -15,7 +15,13 @@ const { avisar } = require('../tempo-real');
 const { assincrono, soAdmin } = require('./util');
 
 const router = express.Router();
+// Dois freios para a senha do admin, contando só tentativas ERRADAS:
+//  - por IP: 8 erros por minuto;
+//  - geral: 30 erros por minuto somando todo mundo. Esse segundo existe porque o IP
+//    pode ser forjado (cabeçalho X-Forwarded-For) dependendo do proxy da hospedagem.
+// O bloqueio é conferido ANTES da senha: bloqueado, nem o chute certo passa.
 const freioLogin = seg.criarFreio({ maximo: 8, janelaMs: 60 * 1000 });
+const freioLoginGeral = seg.criarFreio({ maximo: 30, janelaMs: 60 * 1000 });
 
 function baseUrl(req) {
   return (process.env.URL_PUBLICA || process.env.RENDER_EXTERNAL_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
@@ -25,15 +31,16 @@ const comLink = (req, c) => ({ ...c, link: `${baseUrl(req)}/c/${c.codigo}` });
 
 router.post('/entrar', (req, res) => {
   if (!seg.adminLigado()) return res.status(503).json({ ok: false, erro: 'Painel desligado: defina ADMIN_SEGREDO no servidor.' });
+  if (freioLogin.estourou(req.ip) || freioLoginGeral.estourou('*')) {
+    return res.status(429).json({ ok: false, erro: 'Muitas tentativas erradas. Espere um minuto.' });
+  }
   const senha = String((req.body && req.body.senha) || '');
   if (seg.senhaAdminConfere(senha)) {
     freioLogin.zerar(req.ip);
     return res.json({ ok: true, token: seg.criarSessaoAdmin() });
   }
-  // Só tentativa ERRADA conta para o freio.
-  if (!freioLogin.tentar(req.ip)) {
-    return res.status(429).json({ ok: false, erro: 'Muitas tentativas erradas. Espere um minuto.' });
-  }
+  freioLogin.tentar(req.ip);
+  freioLoginGeral.tentar('*');
   return res.status(401).json({ ok: false, erro: 'Senha incorreta.' });
 });
 
@@ -119,7 +126,8 @@ router.get('/telao', assincrono(async (req, res) => {
   const [info, ativs, lista, telao] = await Promise.all([
     festa.info(), atividades.paraConvidado(), convidados.confirmados(), festa.telao(),
   ]);
-  res.json({ ok: true, agora: Date.now(), festa: info, atividades: ativs, confirmados: lista, telao });
+  const confirmados = lista.map((c) => ({ nome: c.nome, avatar: c.avatar }));
+  res.json({ ok: true, agora: Date.now(), festa: info, atividades: ativs, confirmados, telao });
 }));
 
 // ------------------------------------------------------- lista de bebidas

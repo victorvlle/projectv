@@ -128,7 +128,7 @@
 
     $('total-confirmados').textContent = `(${estado.confirmados.length})`;
     $('confirmados').innerHTML = estado.confirmados.length
-      ? estado.confirmados.map((c) => `<div class="confirmado ${c.id === eu.id ? 'sou-eu' : ''}">
+      ? estado.confirmados.map((c) => `<div class="confirmado ${c.souEu ? 'sou-eu' : ''}">
           <span class="avatar">${emojiDe(c.avatar)}</span><span class="nome-conf">${PV.esc(c.nome)}</span></div>`).join('')
       : '<p class="fraco">Ninguém por aqui ainda… seja o primeiro.</p>';
   }
@@ -311,6 +311,9 @@
   }
   setInterval(tic, 1000);
 
+  // Botões "Recarregar" (sem onclick embutido, por causa da política de conteúdo).
+  document.addEventListener('click', (e) => { if (e.target.closest('[data-recarregar]')) location.reload(); });
+
   // ------------------------------------------------------------- navegação
   // #contribuicoes abre a tela de contribuições; o "voltar" do celular funciona.
   function irPara(hash) {
@@ -339,7 +342,7 @@
     } catch (erro) {
       if (erro.status === 401) return; // bloquear() já cuidou
       $('tela-carregando').innerHTML = `<p class="mudo" style="text-align:center;padding:24px">${PV.esc(erro.message)}<br><br>
-        <button class="botao" onclick="location.reload()">Tentar de novo</button></p>`;
+        <button class="botao" data-recarregar>Tentar de novo</button></p>`;
       return;
     }
 
@@ -369,6 +372,6 @@
     mostrar('tela-carregando');
     $('tela-carregando').innerHTML = `<p class="mudo" style="text-align:center;padding:24px">
       Não consegui abrir a página. Tente recarregar.<br><br>
-      <button class="botao" onclick="location.reload()">Recarregar</button></p>`;
+      <button class="botao" data-recarregar>Recarregar</button></p>`;
   });
 })();

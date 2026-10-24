@@ -34,6 +34,20 @@ function criarApp() {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'no-referrer'); // o código do convite fica na URL
     res.setHeader('X-Frame-Options', 'DENY');
+    // Segunda tranca contra script injetado: só roda JavaScript vindo do próprio site.
+    res.setHeader('Content-Security-Policy', [
+      "default-src 'self'",
+      "script-src 'self'",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com",
+      "img-src 'self' data: blob:",
+      "connect-src 'self' ws: wss:",
+      "object-src 'none'",
+      "base-uri 'none'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+    ].join('; '));
+    res.setHeader('Strict-Transport-Security', 'max-age=15552000');
     next();
   });
 

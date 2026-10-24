@@ -13,7 +13,10 @@ const MAX_POR_CONVIDADO = 15;
 const MAX_ITENS = 50;
 
 function validarQuantidade(q) {
-  if (q === null || q === undefined || q === '') throw new ErroValidacao('Informe a quantidade.');
+  // Só número de verdade (ou texto só com dígitos): true, [], "1e2" etc. são recusados.
+  if (!(typeof q === 'number' || (typeof q === 'string' && /^\d{1,2}$/.test(q)))) {
+    throw new ErroValidacao('A quantidade precisa ser de 0 a 99.');
+  }
   const n = Number(q);
   if (!Number.isInteger(n) || n < 0 || n > 99) throw new ErroValidacao('A quantidade precisa ser de 0 a 99.');
   return n;

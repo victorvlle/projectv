@@ -112,6 +112,40 @@
     }
   }
 
+  // Texto do convite no WhatsApp (aprovado pelo organizador em 24/10). Data, horário e
+  // local vêm das informações da festa, então mudar no admin muda aqui também.
+  function horaTexto(ms) {
+    const [h, m] = PV.dataHora(ms, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).split(':');
+    if (h === '00' && m === '00') return 'meia-noite';
+    return m === '00' ? `${Number(h)}h` : `${Number(h)}h${m}`;
+  }
+  function mensagemConvite(primeiro, link) {
+    const f = estado.festa;
+    const semana = PV.dataHora(f.inicioMs, { weekday: 'long' }).replace(/-feira$/, '');
+    const dia = PV.dataHora(f.inicioMs, { day: '2-digit', month: '2-digit' });
+    const fim = horaTexto(f.fimMs);
+    const quando = `${semana[0].toUpperCase()}${semana.slice(1)}, ${dia}, das ${horaTexto(f.inicioMs)} ${fim === 'meia-noite' ? 'à' : 'às'} ${fim}`;
+    return [
+      '🎃 *Project V — Edição Halloween* 🎃',
+      '',
+      `Fala, *${primeiro}*! Seu convite chegou 👻`,
+      '',
+      'Esse é o seu acesso à festa:',
+      link,
+      '',
+      '⚠️ *Esse link é só seu.* Ele é único e está ligado ao seu nome. *Não repasse para ninguém*: quem abrir entra como você.',
+      '',
+      'Lá dentro você escolhe o seu monstro, acompanha a contagem regressiva e marca nas *Contribuições* o que puder levar. '
+        + 'Com o tempo, os ícones vão sendo desbloqueados… fique de olho. 🔒',
+      '',
+      `🗓️ *${quando}*`,
+      `📍 ${f.local}`,
+      '🧛 Fantasia obrigatória!',
+      '',
+      'Te espero lá. Se tiver coragem. 💀',
+    ].join('\n');
+  }
+
   $('busca').addEventListener('input', () => estado && desenharConvidados());
 
   $('form-novos').addEventListener('submit', async (e) => {
@@ -135,10 +169,8 @@
     const primeiro = c.nome.split(' ')[0];
     switch (b.dataset.acao) {
       case 'copiar': return copiar(c.link);
-      case 'whats': {
-        const msg = `Oi, ${primeiro}! 🎃 Seu convite do Project V — Edição Halloween: ${c.link}\nEle é só seu, não repasse 👻`;
-        return window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
-      }
+      case 'whats':
+        return window.open(`https://wa.me/?text=${encodeURIComponent(mensagemConvite(primeiro, c.link))}`, '_blank', 'noopener');
       case 'fora': await acao(() => api('PATCH', `/convidados/${id}`, { fora: !c.fora })); break;
       case 'ativo':
         if (c.ativo && !confirm(`Desativar ${c.nome}? O link dele para de funcionar.`)) return;
