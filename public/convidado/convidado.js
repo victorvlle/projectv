@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const $ = (id) => document.getElementById(id);
-  const telas = ['tela-carregando', 'tela-bloqueio', 'tela-perfil', 'tela-principal'];
+  const telas = ['tela-carregando', 'tela-bloqueio', 'tela-perfil', 'tela-principal', 'tela-contribuicoes'];
   let telaAtual = 'tela-carregando';
   function mostrar(qual) { telaAtual = qual; telas.forEach((t) => $(t).classList.toggle('oculto', t !== qual)); }
 
@@ -48,11 +48,10 @@
 
   function abrirPerfil(editando) {
     escolhido = eu.avatar;
-    $('apelido').value = eu.apelido || '';
     $('exibir').checked = eu.exibir !== false;
     $('perfil-saudacao').textContent = editando
-      ? 'Mude como você aparece na festa.'
-      : `Olá, ${eu.nome.split(' ')[0]}! Escolha como você vai aparecer na festa.`;
+      ? 'Troque o seu monstro.'
+      : `Olá, ${eu.nome}! Escolha o seu monstro para a festa.`;
     $('salvar-perfil').textContent = editando ? 'Salvar' : 'Entrar na festa';
     $('cancelar-perfil').classList.toggle('oculto', !editando);
     desenharAvatares();
@@ -66,10 +65,10 @@
     const botao = $('salvar-perfil');
     botao.disabled = true;
     try {
-      const r = await api('PUT', '/api/eu/perfil', { apelido: $('apelido').value, avatar: escolhido, exibir: $('exibir').checked });
+      const r = await api('PUT', '/api/eu/perfil', { avatar: escolhido, exibir: $('exibir').checked });
       eu = r.eu;
       await carregarFesta();
-      mostrar('tela-principal');
+      irPara(location.hash);
       PV.avisar('Perfil salvo.', 'ok');
     } catch (erro) {
       if (erro.status !== 401) PV.avisar(erro.message, 'erro');
@@ -77,7 +76,7 @@
       botao.disabled = false;
     }
   });
-  $('cancelar-perfil').addEventListener('click', () => mostrar('tela-principal'));
+  $('cancelar-perfil').addEventListener('click', () => irPara(location.hash));
   $('botao-eu').addEventListener('click', () => abrirPerfil(true));
 
   // ------------------------------------------------------------- principal
@@ -91,13 +90,20 @@
   function desenhar() {
     if (!estado || !eu) return;
     $('eu-avatar').textContent = emojiDe(eu.avatar);
-    $('eu-apelido').textContent = eu.apelido || '';
+    $('eu-nome').textContent = eu.nome || '';
     $('hero-data').textContent = PV.periodo(estado.festa.inicioMs, estado.festa.fimMs);
     tic();
 
     const agora = PV.relogio.agora();
     const liberadasAgora = new Set(estado.atividades.filter((a) => a.estado === 'liberada').map((a) => a.id));
-    $('atividades').innerHTML = estado.atividades.map((a) => {
+    const b = estado.bebidas;
+    const faltaTotal = b ? b.itens.reduce((s, i) => s + (i.falta > 0 ? 1 : 0), 0) : 0;
+    const cardContrib = `<a class="atividade contrib" href="#contribuicoes">
+        <div class="icone">🍻</div>
+        <div><div class="nome">Contribuições</div>
+        <div class="quando">${faltaTotal ? `Liberado · ${faltaTotal} ${faltaTotal === 1 ? 'item precisa' : 'itens precisam'} de alguém` : 'Liberado · tudo garantido'}</div></div>
+      </a>`;
+    $('atividades').innerHTML = cardContrib + estado.atividades.map((a) => {
       const recem = liberadasAntes && liberadasAgora.has(a.id) && !liberadasAntes.has(a.id);
       if (a.estado === 'liberada') {
         return `<article class="atividade liberada ${recem ? 'recem-aberta' : ''}">
@@ -124,7 +130,7 @@
     $('total-confirmados').textContent = `(${estado.confirmados.length})`;
     $('confirmados').innerHTML = estado.confirmados.length
       ? estado.confirmados.map((c) => `<div class="confirmado ${c.id === eu.id ? 'sou-eu' : ''}">
-          <span class="avatar">${emojiDe(c.avatar)}</span><span>${PV.esc(c.apelido)}</span></div>`).join('')
+          <span class="avatar">${emojiDe(c.avatar)}</span><span>${PV.esc(c.nome)}</span></div>`).join('')
       : '<p class="fraco">Ninguém por aqui ainda… seja o primeiro.</p>';
   }
 
@@ -141,9 +147,16 @@
     return meu ? meu.quantidade : 0;
   }
 
+  // "1 garrafas de 2 L" -> "1 garrafa de 2 L"
+  function unid(u, q) {
+    if (q !== 1) return u;
+    const [primeira, ...resto] = String(u).split(' ');
+    return [primeira.length > 3 && primeira.endsWith('s') ? primeira.slice(0, -1) : primeira, ...resto].join(' ');
+  }
+
   function chipPessoa(q) {
     const av = q.avatar ? emojiDe(q.avatar) : '👤';
-    return `<span class="pessoa-chip ${q.souEu ? 'eu' : ''}"><span class="avatar">${av}</span>${PV.esc(q.souEu ? 'Você' : q.apelido)} ×${q.quantidade}</span>`;
+    return `<span class="pessoa-chip ${q.souEu ? 'eu' : ''}"><span class="avatar">${av}</span>${PV.esc(q.souEu ? 'Você' : q.nome)} ×${q.quantidade}</span>`;
   }
 
   function desenharBebidas() {
@@ -158,7 +171,7 @@
       .filter((m) => m.quantidade > 0);
     $('bebidas-minha').classList.toggle('oculto', !minhas.length);
     $('bebidas-minha').innerHTML = minhas.length ? `<h3>Você vai levar</h3><ul>${minhas.map((m) => `
-      <li><span><b>${m.quantidade}</b> ${PV.esc(m.unidade)} de ${PV.esc(m.nome)}</span>
+      <li><span><b>${m.quantidade}</b> ${PV.esc(unid(m.unidade, m.quantidade))} de ${PV.esc(m.nome)}</span>
         ${aberta ? `<button class="tirar" type="button" data-tirar="${m.id}" aria-label="Tirar ${PV.esc(m.nome)}">✕</button>` : ''}</li>`).join('')}</ul>` : '';
 
     // O que mais falta (até 4, do que falta mais para o que falta menos)
@@ -182,10 +195,10 @@
           ? `<span class="b-status ok">Garantido ✓ ${i.total}/${i.meta}</span>`
           : `<span class="b-status falta">${i.total} de ${i.meta} ${PV.esc(i.unidade)} · faltam ${i.falta}</span>`;
       } else {
-        status = `<span class="b-status">${i.total} ${PV.esc(i.unidade)}</span>`;
+        status = `<span class="b-status">${i.total} ${PV.esc(unid(i.unidade, i.total))}</span>`;
       }
       const quem = i.quem.map((q) => (q.souEu ? { ...q, quantidade: levo } : q)).filter((q) => q.quantidade > 0);
-      if (levo > 0 && !quem.some((q) => q.souEu)) quem.push({ souEu: true, avatar: eu.avatar, apelido: eu.apelido, quantidade: levo });
+      if (levo > 0 && !quem.some((q) => q.souEu)) quem.push({ souEu: true, avatar: eu.avatar, nome: eu.nome, quantidade: levo });
       return `<article class="bebida ${completa ? 'completa' : ''} ${levo > 0 ? 'minha' : ''}" id="bebida-${i.id}">
         <div class="b-topo"><span class="b-nome">${PV.esc(i.nome)}</span>${status}</div>
         ${i.meta > 0 ? `<div class="progresso"><i style="width:${pct}%"></i></div>` : ''}
@@ -195,14 +208,14 @@
             <button type="button" data-delta="-1" ${levo <= 0 ? 'disabled' : ''} aria-label="Menos">−</button>
             <output>${levo}</output>
             <button type="button" data-delta="1" ${levo >= 99 ? 'disabled' : ''} aria-label="Mais">+</button>
-            <small>${PV.esc(i.unidade)}</small>
+            <small>${PV.esc(unid(i.unidade, levo))}</small>
           </div></div>` : ''}
       </article>`;
     }).join('');
 
     $('bebidas-outras').innerHTML = b.outras.length ? `<h3 class="fraco" style="margin:8px 0 0">Outras bebidas</h3>` + b.outras.map((o) => `
       <article class="bebida">
-        <div class="b-topo"><span class="b-nome">${PV.esc(o.nome)}</span><span class="b-status">${o.total} ${PV.esc(o.unidade)}</span></div>
+        <div class="b-topo"><span class="b-nome">${PV.esc(o.nome)}</span><span class="b-status">${o.total} ${PV.esc(unid(o.unidade, o.total))}</span></div>
         <div class="b-quem" style="margin-top:8px">${o.quem.map(chipPessoa).join('')}</div>
       </article>`).join('') : '';
   }
@@ -299,6 +312,24 @@
   }
   setInterval(tic, 1000);
 
+  // ------------------------------------------------------------- navegação
+  // #contribuicoes abre a tela de contribuições; o "voltar" do celular funciona.
+  function irPara(hash) {
+    if (!eu || !eu.perfilCompleto) return;
+    if (hash === '#contribuicoes') {
+      mostrar('tela-contribuicoes');
+      window.scrollTo(0, 0);
+    } else {
+      mostrar('tela-principal');
+    }
+  }
+  window.addEventListener('hashchange', () => irPara(location.hash));
+  $('voltar-contrib').addEventListener('click', (e) => {
+    e.preventDefault();
+    if (history.length > 1 && location.hash === '#contribuicoes') history.back();
+    else { location.hash = ''; irPara(''); }
+  });
+
   // ------------------------------------------------------------------ início
   async function iniciar() {
     if (!token) return mostrar('tela-bloqueio');
@@ -321,7 +352,7 @@
       token,
       aoConectar: () => {
         carregarFesta()
-          .then(() => { if (eu.perfilCompleto && telaAtual === 'tela-carregando') mostrar('tela-principal'); })
+          .then(() => { if (eu.perfilCompleto && telaAtual === 'tela-carregando') irPara(location.hash); })
           .catch(() => {});
       },
       aoNegar: bloquear,

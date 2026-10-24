@@ -45,8 +45,8 @@ router.put('/eu/perfil', soConvidado, assincrono(async (req, res) => {
   if (!freioPerfil.tentar(req.convidado.id)) {
     return res.status(429).json({ ok: false, erro: 'Calma! Espere um pouco antes de mudar de novo.' });
   }
-  const { apelido, avatar, exibir } = req.body || {};
-  const atualizado = await convidados.atualizarPerfil(req.convidado.id, { apelido, avatar, exibir: exibir !== false });
+  const { avatar, exibir } = req.body || {};
+  const atualizado = await convidados.atualizarPerfil(req.convidado.id, { avatar, exibir: exibir !== false });
   avisar.atualizar('confirmados');
   res.json({ ok: true, eu: convidados.paraProprio(atualizado) });
 }));

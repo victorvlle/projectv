@@ -3,7 +3,8 @@
 // - Itens da lista (bebidas_itens) são definidos pelo admin, com uma meta.
 // - Cada convidado diz quanto leva de cada item (um compromisso por item) ou
 //   cadastra uma "outra bebida" livre. Quantidade 0 = desistiu.
-// - Quem escolheu não aparecer nos confirmados aparece como "Alguém".
+// - Aparece o nome cadastrado pelo organizador; quem escolheu não aparecer nos
+//   confirmados aparece como "Alguém".
 
 const banco = require('./banco');
 const festa = require('./festa');
@@ -44,7 +45,7 @@ async function linhas() {
   const [itens, compromissos] = await Promise.all([
     banco.tudo('SELECT * FROM bebidas_itens ORDER BY ordem, id'),
     banco.tudo(
-      `SELECT b.*, c.nome AS convidado_nome, c.apelido, c.avatar, c.exibir, c.ativo
+      `SELECT b.*, c.nome AS convidado_nome, c.avatar, c.exibir, c.ativo
          FROM bebidas_compromissos b JOIN convidados c ON c.id = b.convidado_id
         ORDER BY b.criado_em, b.id`,
     ),
@@ -55,8 +56,8 @@ async function linhas() {
 
 function pessoa(x, euId) {
   const souEu = x.convidado_id === euId;
-  if (!souEu && !x.exibir) return { apelido: 'Alguém', avatar: null, quantidade: Number(x.quantidade), souEu };
-  return { apelido: x.apelido || 'Alguém', avatar: x.avatar, quantidade: Number(x.quantidade), souEu };
+  if (!souEu && !x.exibir) return { nome: 'Alguém', avatar: null, quantidade: Number(x.quantidade), souEu };
+  return { nome: x.convidado_nome, avatar: x.avatar, quantidade: Number(x.quantidade), souEu };
 }
 
 function montar({ itens, compromissos }, mapearPessoa) {
@@ -112,7 +113,7 @@ async function paraAdmin() {
   const dados = await linhas();
   const mapear = (x) => ({
     compromissoId: Number(x.id), convidadoId: x.convidado_id, nome: x.convidado_nome,
-    apelido: x.apelido, avatar: x.avatar, quantidade: Number(x.quantidade),
+    avatar: x.avatar, quantidade: Number(x.quantidade),
   });
   return { aberta: await aberta(), ...montar(dados, mapear) };
 }

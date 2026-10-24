@@ -35,3 +35,33 @@ test('horário escolhido pelo admin não é sobrescrito', async () => {
   assert.equal(f.inicio, '2026-10-31T19:30:00-04:00');
   assert.equal(f.fim, '2026-11-01T00:00:00-04:00');
 });
+
+test('lista de bebidas antiga recebe as metas do organizador sem perder promessas', async () => {
+  // Volta o banco para antes do ajuste (versão 3) com a lista antiga e uma promessa de Gelo
+  await banco.rodar("DELETE FROM bebidas_compromissos");
+  await banco.rodar("DELETE FROM bebidas_itens");
+  const antigas = [['Cerveja', 'latas', 72], ['Vodka', 'garrafas', 3], ['Tequila (para os shots)', 'garrafas', 2],
+    ['Cachaça', 'garrafas', 2], ['Gin', 'garrafas', 2], ['Energético', 'latas', 18],
+    ['Refrigerante', 'garrafas de 2 L', 6], ['Suco', 'litros', 4], ['Água', 'garrafas de 1,5 L', 6], ['Gelo', 'sacos', 10]];
+  for (const [i, [nome, unidade, meta]] of antigas.entries()) {
+    await banco.rodar('INSERT INTO bebidas_itens (nome, unidade, meta, ordem, criado_em) VALUES (?, ?, ?, ?, ?)', [nome, unidade, meta, i, Date.now()]);
+  }
+  await banco.rodar("INSERT INTO convidados (id, nome, codigo, avatar, criado_em, atualizado_em) VALUES ('c1', 'Zé', 'abcdefghjk', 'zumbi', 1, 1)");
+  const gelo = await banco.um("SELECT id FROM bebidas_itens WHERE nome = 'Gelo'");
+  await banco.rodar('INSERT INTO bebidas_compromissos (convidado_id, item_id, quantidade, criado_em, atualizado_em) VALUES (?, ?, 4, 1, 1)', ['c1', gelo.id]);
+  await banco.rodar('UPDATE esquema SET versao = 3');
+  await banco.fechar();
+  await banco.abrir();
+
+  const itens = await banco.tudo('SELECT nome, unidade, meta FROM bebidas_itens ORDER BY ordem');
+  assert.deepEqual(itens.map((i) => [i.nome, i.unidade, Number(i.meta)]), [
+    ['Cerveja', 'longnecks', 20], ['Vodka', 'garrafas', 3], ['Tequila (para os shots)', 'garrafas', 1],
+    ['Cachaça', 'garrafas', 2], ['Gin', 'garrafas', 3], ['Energético Tropical', 'garrafas de 2 L', 3],
+    ['Refrigerante', 'garrafas de 2 L', 3],
+  ]);
+  const promessa = await banco.um("SELECT * FROM bebidas_compromissos WHERE convidado_id = 'c1'");
+  assert.equal(promessa.item_id, null);
+  assert.equal(promessa.nome_livre, 'Gelo');
+  assert.equal(promessa.unidade_livre, 'sacos');
+  assert.equal(Number(promessa.quantidade), 4);
+});

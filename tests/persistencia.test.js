@@ -48,7 +48,7 @@ test('dados e sessões sobrevivem a um reinício do servidor', async () => {
   const admin = (await req('POST', '/api/admin/entrar', null, { senha: 'persist-123' })).json.token;
   const c = (await req('POST', '/api/admin/convidados', admin, { nome: 'Persistente' })).json.criados[0];
   const t = (await req('POST', '/api/entrar', null, { codigo: c.codigo })).json.token;
-  await req('PUT', '/api/eu/perfil', t, { apelido: 'Imortal', avatar: 'zumbi' });
+  await req('PUT', '/api/eu/perfil', t, { avatar: 'zumbi' });
   await req('PUT', '/api/admin/festa', admin, { local: 'Cripta' });
   await req('PUT', '/api/admin/atividades/maldicao', admin, { estado: 'liberada' });
   await parar(p);
@@ -60,7 +60,8 @@ test('dados e sessões sobrevivem a um reinício do servidor', async () => {
     assert.ok(!/migração 0 -> 1/.test(p.log()), 'migração repetida no reinício');
     const eu = await req('GET', '/api/eu', t);
     assert.equal(eu.status, 200, 'sessão do convidado caiu no reinício');
-    assert.equal(eu.json.eu.apelido, 'Imortal');
+    assert.equal(eu.json.eu.nome, 'Persistente');
+    assert.equal(eu.json.eu.avatar, 'zumbi');
     const f = await req('GET', '/api/festa', t);
     assert.equal(f.json.festa.local, 'Cripta');
     assert.equal(f.json.atividades.find((a) => a.id === 'maldicao').estado, 'liberada');

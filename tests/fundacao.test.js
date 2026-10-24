@@ -49,45 +49,48 @@ test('visitante sem link não entra; código inválido é recusado', async () =>
   assert.equal((await entrar('<script>')).status, 404);
 });
 
-test('convidado entra pelo link, monta o perfil e aparece nos confirmados', async () => {
+test('convidado entra pelo link, escolhe o monstro e aparece com o nome cadastrado', async () => {
   const c = await novoConvidado('Victor Teste');
   const e = await entrar(c.codigo);
   assert.equal(e.status, 200);
   const token = e.json.token;
   assert.equal(e.json.eu.perfilCompleto, false);
+  assert.equal(e.json.eu.nome, 'Victor Teste');
 
-  // Perfil inválido
-  assert.equal((await s.req('PUT', '/api/eu/perfil', { token, corpo: { apelido: 'x', avatar: 'vampiro' } })).status, 400);
-  assert.equal((await s.req('PUT', '/api/eu/perfil', { token, corpo: { apelido: 'Victor', avatar: 'dragao' } })).status, 400);
+  assert.equal((await s.req('PUT', '/api/eu/perfil', { token, corpo: { avatar: 'dragao' } })).status, 400);
+  assert.equal((await s.req('PUT', '/api/eu/perfil', { token, corpo: {} })).status, 400);
 
-  const p = await s.req('PUT', '/api/eu/perfil', { token, corpo: { apelido: 'Vic', avatar: 'vampiro' } });
+  const p = await s.req('PUT', '/api/eu/perfil', { token, corpo: { avatar: 'vampiro' } });
   assert.equal(p.status, 200);
   assert.equal(p.json.eu.perfilCompleto, true);
 
   const f = await s.req('GET', '/api/festa', { token });
   assert.equal(f.status, 200);
   assert.ok(Number.isFinite(f.json.agora));
-  assert.ok(f.json.confirmados.some((x) => x.apelido === 'Vic' && x.avatar === 'vampiro'));
-  // Confirmados não vazam nome real nem código
-  for (const x of f.json.confirmados) assert.deepEqual(Object.keys(x).sort(), ['apelido', 'avatar', 'id']);
+  assert.ok(f.json.confirmados.some((x) => x.nome === 'Victor Teste' && x.avatar === 'vampiro'));
+  // Confirmados não vazam código nem dados internos
+  for (const x of f.json.confirmados) assert.deepEqual(Object.keys(x).sort(), ['avatar', 'id', 'nome']);
 });
 
-test('apelido duplicado é recusado (sem diferenciar maiúsculas)', async () => {
-  const a = await novoConvidado('Pessoa A');
-  const b = await novoConvidado('Pessoa B');
-  const ta = (await entrar(a.codigo)).json.token;
-  const tb = (await entrar(b.codigo)).json.token;
-  assert.equal((await s.req('PUT', '/api/eu/perfil', { token: ta, corpo: { apelido: 'Morticia', avatar: 'bruxa' } })).status, 200);
-  const dup = await s.req('PUT', '/api/eu/perfil', { token: tb, corpo: { apelido: 'MORTICIA', avatar: 'bruxa' } });
-  assert.equal(dup.status, 409);
+test('convidado não muda o próprio nome; só o admin renomeia', async () => {
+  const c = await novoConvidado('Nome Oficial');
+  const t = (await entrar(c.codigo)).json.token;
+  await s.req('PUT', '/api/eu/perfil', { token: t, corpo: { avatar: 'bruxa', nome: 'Hacker', apelido: 'Hacker' } });
+  let eu = await s.req('GET', '/api/eu', { token: t });
+  assert.equal(eu.json.eu.nome, 'Nome Oficial');
+  await s.req('PATCH', `/api/admin/convidados/${c.id}`, { token: admin, corpo: { nome: 'Nome Novo' } });
+  eu = await s.req('GET', '/api/eu', { token: t });
+  assert.equal(eu.json.eu.nome, 'Nome Novo');
+  const f = await s.req('GET', '/api/festa', { token: t });
+  assert.ok(f.json.confirmados.some((x) => x.nome === 'Nome Novo'));
 });
 
 test('quem escolhe não aparecer fica fora da lista pública', async () => {
   const c = await novoConvidado('Discreto');
   const t = (await entrar(c.codigo)).json.token;
-  await s.req('PUT', '/api/eu/perfil', { token: t, corpo: { apelido: 'Sombra', avatar: 'fantasma', exibir: false } });
+  await s.req('PUT', '/api/eu/perfil', { token: t, corpo: { avatar: 'fantasma', exibir: false } });
   const f = await s.req('GET', '/api/festa', { token: t });
-  assert.ok(!f.json.confirmados.some((x) => x.apelido === 'Sombra'));
+  assert.ok(!f.json.confirmados.some((x) => x.nome === 'Discreto'));
 });
 
 test('link regenerado: código e sessão antigos param de funcionar', async () => {
@@ -217,7 +220,7 @@ test('telão: modo inválido é recusado', async () => {
 test('backup e restauração devolvem exatamente os mesmos dados', async () => {
   const c = await novoConvidado('Guardado');
   const t = (await entrar(c.codigo)).json.token;
-  await s.req('PUT', '/api/eu/perfil', { token: t, corpo: { apelido: 'Cofre', avatar: 'caveira' } });
+  await s.req('PUT', '/api/eu/perfil', { token: t, corpo: { avatar: 'caveira' } });
 
   const b = await s.req('GET', '/api/admin/backup', { token: admin, cru: true });
   assert.equal(b.status, 200);
@@ -233,7 +236,7 @@ test('backup e restauração devolvem exatamente os mesmos dados', async () => {
   assert.equal(r.status, 200);
   const est = await s.req('GET', '/api/admin/estado', { token: admin });
   assert.equal(est.json.convidados.length, total);
-  assert.ok(est.json.convidados.some((x) => x.apelido === 'Cofre'));
+  assert.ok(est.json.convidados.some((x) => x.nome === 'Guardado' && x.avatar === 'caveira'));
   assert.notEqual(est.json.festa.local, 'Outro lugar');
   // A sessão do convidado continua valendo depois da restauração
   assert.equal((await s.req('GET', '/api/eu', { token: t })).status, 200);

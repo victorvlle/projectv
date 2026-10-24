@@ -24,10 +24,15 @@ Atualizado em 23/10/2026.
 - [x] Lista de bebidas aberta desde já: itens com meta, "eu levo" com − e +, o que mais falta, outras bebidas,
       quem leva o quê em tempo real, privacidade de quem não aparece; admin cria/edita/exclui, fecha e reabre
 - [x] Testes automatizados: 31 passando (inclui lista de bebidas e migração do horário)
+- [x] Nome exibido é sempre o cadastrado pelo organizador; convidado só escolhe o monstro
+- [x] Contribuições (lista de bebidas) num card próprio já liberado, com tela separada
+- [x] Lista e metas do organizador: Cerveja 20 longnecks, Vodka 3, Tequila 1, Cachaça 2, Gin 3,
+      Energético Tropical 3 (2 L), Refrigerante 3 (2 L); Gelo, Água e Suco retirados
+- [x] Testes automatizados: 32 passando
+- [x] Deploy no Render + Turso: https://projectv-pec1.onrender.com (`/saude` responde `banco: turso`, verificado em 24/10)
 
 ## Pendente (Etapa C, em ordem)
 
-- [ ] Deploy no Render + Turso (depende do Victor: ver README)
 - [ ] Previsões / Apostas (fecham no início da festa)
 - [ ] A Maldição (só bebida, intensidade e pausa)
 - [ ] Correio das Trevas (fila de aprovação, autor protegido)
@@ -49,6 +54,4 @@ Atualizado em 23/10/2026.
 
 ## Bloqueado / depende do Victor
 
-- Repositório no GitHub e serviço no Render (não tenho acesso às contas)
-- Banco no Turso e variáveis `TURSO_URL`, `TURSO_TOKEN`, `ADMIN_SEGREDO`
 - Confirmar número de convidados, TV/projetor e internet no local

@@ -77,7 +77,7 @@
       <div><b>${lista.filter((c) => c.ativo && c.fora).length}</b><small>Fora</small></div>`;
 
     const termo = $('busca').value.trim().toLowerCase();
-    const filtrados = lista.filter((c) => !termo || `${c.nome} ${c.apelido || ''}`.toLowerCase().includes(termo));
+    const filtrados = lista.filter((c) => !termo || c.nome.toLowerCase().includes(termo));
     $('lista-convidados').innerHTML = filtrados.map((c) => `
       <div class="item ${c.ativo ? '' : 'inativo'}" data-id="${c.id}">
         <div class="item-topo">
@@ -88,7 +88,7 @@
                 : c.perfilCompleto ? '<span class="selo ok">entrou</span>' : '<span class="selo pendente">não entrou</span>'}
               ${c.fora ? '<span class="selo fora">fora</span>' : ''}
             </div>
-            <div class="item-sub">${c.apelido ? PV.esc(c.apelido) + ' · ' : ''}${c.pontos} pts</div>
+            <div class="item-sub">${c.pontos} pts${c.exibir ? '' : ' · escondido da lista'}</div>
           </div>
         </div>
         <div class="item-acoes">
@@ -170,7 +170,7 @@
     $('bebidas-estado').textContent = bebidas.aberta ? '🟢 Lista aberta' : '🔒 Lista fechada';
     $('alternar-bebidas').textContent = bebidas.aberta ? 'Fechar lista' : 'Reabrir lista';
     const pessoas = (quem) => (quem.length ? `<div class="quem-admin">${quem.map((q) => `
-      <div><span>${q.avatar ? emojiDe(q.avatar) : '·'} ${PV.esc(q.nome)}${q.apelido ? ` <span class="fraco">(${PV.esc(q.apelido)})</span>` : ''} — <b>${q.quantidade}</b></span>
+      <div><span>${q.avatar ? emojiDe(q.avatar) : '·'} ${PV.esc(q.nome)} — <b>${q.quantidade}</b></span>
         <button type="button" data-tirar="${q.compromissoId}" aria-label="Remover">✕</button></div>`).join('')}</div>` : '');
     const itens = bebidas.itens.map((i) => {
       const ok = i.meta > 0 && i.falta === 0;

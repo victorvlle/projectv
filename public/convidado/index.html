@@ -29,12 +29,10 @@
   <main id="tela-perfil" class="pagina oculto">
     <header class="topo-perfil">
       <h1 class="marca" style="font-size:2.6rem">Project V</h1>
-      <p class="mudo" id="perfil-saudacao">Escolha como você vai aparecer na festa.</p>
+      <p class="mudo" id="perfil-saudacao">Escolha o seu monstro.</p>
     </header>
     <form id="form-perfil" class="cartao" autocomplete="off">
-      <label for="apelido">Seu apelido</label>
-      <input id="apelido" name="apelido" maxlength="20" required placeholder="Como te chamam?">
-      <label>Seu monstro</label>
+      <label style="margin-top:0">Seu monstro</label>
       <div id="grade-avatares" class="grade-avatares" role="radiogroup" aria-label="Escolha seu monstro"></div>
       <label class="linha-check">
         <input type="checkbox" id="exibir" checked>
@@ -51,7 +49,7 @@
       <span class="marca barra-marca">Project V</span>
       <button class="eu" id="botao-eu" type="button" aria-label="Editar meu perfil">
         <span class="avatar" id="eu-avatar" style="width:36px;height:36px;font-size:20px"></span>
-        <span id="eu-apelido"></span>
+        <span id="eu-nome"></span>
       </button>
     </header>
 
@@ -72,8 +70,28 @@
       <div id="atividades" class="grade-atividades"></div>
     </section>
 
+
+    <section class="cartao info">
+      <h2 class="titulo-secao" style="margin-top:0">A festa</h2>
+      <dl id="info"></dl>
+    </section>
+
+    <section>
+      <h2 class="titulo-secao">Confirmados <span class="contador" id="total-confirmados"></span></h2>
+      <div id="confirmados" class="grade-confirmados"></div>
+    </section>
+
+    <footer class="rodape fraco">Project V · Halloween 2026</footer>
+  </main>
+
+  <!-- Contribuições (lista de bebidas): aberta desde já -->
+  <main id="tela-contribuicoes" class="pagina oculto">
+    <header class="barra">
+      <a class="voltar" href="#" id="voltar-contrib">← Voltar</a>
+      <span class="marca barra-marca">Project V</span>
+    </header>
+    <h1 class="titulo-tela">🍻 Contribuições</h1>
     <section id="sec-bebidas">
-      <h2 class="titulo-secao">Bebidas</h2>
       <p class="mudo intro-bebidas">Marque o que você vai levar. Todo mundo vê o que já está garantido e o que ainda falta.</p>
       <div id="bebidas-fechada" class="aviso-inline oculto">🔒 A lista foi fechada pelo organizador. Dá para ver, mas não mudar.</div>
       <div id="bebidas-minha" class="minha-parte oculto"></div>
@@ -97,18 +115,6 @@
         <button class="botao largo" style="margin-top:14px">Adicionar</button>
       </form>
     </section>
-
-    <section class="cartao info">
-      <h2 class="titulo-secao" style="margin-top:0">A festa</h2>
-      <dl id="info"></dl>
-    </section>
-
-    <section>
-      <h2 class="titulo-secao">Confirmados <span class="contador" id="total-confirmados"></span></h2>
-      <div id="confirmados" class="grade-confirmados"></div>
-    </section>
-
-    <footer class="rodape fraco">Project V · Halloween 2026</footer>
   </main>
 
   <script src="/socket.io/socket.io.js"></script>

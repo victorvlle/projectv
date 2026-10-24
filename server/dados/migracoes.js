@@ -110,4 +110,36 @@ module.exports = [
       })), 'write');
     },
   },
+  {
+    // Ajuste do organizador (24/10) na lista que já estava no ar. Cada mudança
+    // só acontece se o item ainda tiver o nome original; o que alguém já tinha
+    // prometido de um item retirado vira "outra bebida" (nada se perde).
+    nome: 'bebidas: metas definidas pelo organizador',
+    sql: 'SELECT 1',
+    async depois(c) {
+      const comandos = [];
+      for (const nome of ['Gelo', 'Água', 'Suco']) {
+        comandos.push(
+          { sql: `UPDATE bebidas_compromissos SET nome_livre = (SELECT nome FROM bebidas_itens WHERE id = item_id),
+                    unidade_livre = (SELECT unidade FROM bebidas_itens WHERE id = item_id), item_id = NULL
+                  WHERE item_id IN (SELECT id FROM bebidas_itens WHERE nome = ?)`, args: [nome] },
+          { sql: 'DELETE FROM bebidas_itens WHERE nome = ?', args: [nome] },
+        );
+      }
+      const metas = [['Gin', 3], ['Refrigerante', 3], ['Tequila (para os shots)', 1], ['Cerveja', 20]];
+      for (const [nome, meta] of metas) comandos.push({ sql: 'UPDATE bebidas_itens SET meta = ? WHERE nome = ?', args: [meta, nome] });
+      comandos.push({
+        sql: `UPDATE bebidas_itens SET nome = 'Energético Tropical', unidade = 'garrafas de 2 L', meta = 3
+              WHERE nome = 'Energético'
+                AND NOT EXISTS (SELECT 1 FROM bebidas_itens WHERE nome = 'Energético Tropical' COLLATE NOCASE)`,
+        args: [],
+      });
+      await c.batch(comandos, 'write');
+    },
+  },
+  {
+    // Cerveja passa a ser contada em longnecks (meta continua 20).
+    nome: 'cerveja em longnecks',
+    sql: "UPDATE bebidas_itens SET unidade = 'longnecks' WHERE nome = 'Cerveja' AND unidade = 'latas'",
+  },
 ];

@@ -19,25 +19,21 @@ function validarNome(nome) {
   return n;
 }
 
-function validarApelido(apelido) {
-  const a = limparTexto(apelido, 20);
-  if (a.length < 2) throw new ErroValidacao('O apelido precisa ter de 2 a 20 caracteres.');
-  if (!/^[\p{L}\p{N} ._'-]+$/u.test(a)) throw new ErroValidacao('Use só letras, números, espaço, ponto, hífen ou apóstrofo no apelido.');
-  return a;
-}
+// O nome que aparece para todo mundo é o que o organizador cadastrou: o convidado
+// não digita nome nem apelido, só escolhe o monstro. (A coluna `apelido` ficou
+// no banco por compatibilidade e não é mais usada.)
 
 // Linha do banco -> objeto para o próprio convidado ou para o admin.
 function paraAdmin(l) {
   return {
     id: l.id,
     nome: l.nome,
-    apelido: l.apelido,
     avatar: l.avatar,
     codigo: l.codigo,
     ativo: Boolean(l.ativo),
     fora: Boolean(l.fora),
     exibir: Boolean(l.exibir),
-    perfilCompleto: Boolean(l.apelido && l.avatar),
+    perfilCompleto: Boolean(l.avatar),
     primeiroAcessoEm: l.primeiro_acesso_em,
     criadoEm: l.criado_em,
     pontos: Number(l.pontos ?? 0),
@@ -48,10 +44,9 @@ function paraProprio(l) {
   return {
     id: l.id,
     nome: l.nome,
-    apelido: l.apelido,
     avatar: l.avatar,
     exibir: Boolean(l.exibir),
-    perfilCompleto: Boolean(l.apelido && l.avatar),
+    perfilCompleto: Boolean(l.avatar),
   };
 }
 
@@ -96,40 +91,35 @@ async function listarParaAdmin() {
   return linhas.map(paraAdmin);
 }
 
-// O que qualquer convidado pode ver de outro: só apelido e avatar, e só de quem
-// está ativo, já montou o perfil e quis aparecer na lista.
+// O que qualquer convidado pode ver de outro: nome (o cadastrado pelo organizador)
+// e monstro, só de quem está ativo, já escolheu o monstro e quis aparecer na lista.
 async function confirmados() {
   const linhas = await banco.tudo(
-    `SELECT id, apelido, avatar FROM convidados
-      WHERE ativo = 1 AND exibir = 1 AND apelido IS NOT NULL AND avatar IS NOT NULL
+    `SELECT id, nome, avatar FROM convidados
+      WHERE ativo = 1 AND exibir = 1 AND avatar IS NOT NULL
       ORDER BY primeiro_acesso_em, criado_em`,
   );
-  return linhas.map((l) => ({ id: l.id, apelido: l.apelido, avatar: l.avatar }));
+  return linhas.map((l) => ({ id: l.id, nome: l.nome, avatar: l.avatar }));
 }
 
 async function totais() {
   const r = await banco.um(
     `SELECT COUNT(*) AS total,
-            SUM(CASE WHEN apelido IS NOT NULL AND avatar IS NOT NULL THEN 1 ELSE 0 END) AS com_perfil
+            SUM(CASE WHEN avatar IS NOT NULL THEN 1 ELSE 0 END) AS com_perfil
        FROM convidados WHERE ativo = 1`,
   );
   return { total: Number(r.total || 0), comPerfil: Number(r.com_perfil || 0) };
 }
 
-async function atualizarPerfil(id, { apelido, avatar, exibir }) {
-  const ap = validarApelido(apelido);
+// O convidado só escolhe o monstro e se quer aparecer na lista. Nome não muda por aqui.
+async function atualizarPerfil(id, { avatar, exibir }) {
   if (!avatarValido(avatar)) throw new ErroValidacao('Escolha um dos monstros da lista.');
-  try {
-    await banco.rodar(
-      `UPDATE convidados SET apelido = ?, avatar = ?, exibir = ?, atualizado_em = ?,
-              primeiro_acesso_em = COALESCE(primeiro_acesso_em, ?)
-        WHERE id = ? AND ativo = 1`,
-      [ap, avatar, exibir === false ? 0 : 1, Date.now(), Date.now(), id],
-    );
-  } catch (erro) {
-    if (/UNIQUE/i.test(erro.message)) throw new ErroValidacao('Esse apelido já está em uso. Escolha outro.', 409);
-    throw erro;
-  }
+  await banco.rodar(
+    `UPDATE convidados SET avatar = ?, exibir = ?, atualizado_em = ?,
+            primeiro_acesso_em = COALESCE(primeiro_acesso_em, ?)
+      WHERE id = ? AND ativo = 1`,
+    [avatar, exibir === false ? 0 : 1, Date.now(), Date.now(), id],
+  );
   return buscarPorId(id);
 }
 
@@ -147,10 +137,6 @@ async function editar(id, campos) {
   const sets = [];
   const args = [];
   if (campos.nome !== undefined) { sets.push('nome = ?'); args.push(validarNome(campos.nome)); }
-  if (campos.apelido !== undefined) {
-    sets.push('apelido = ?');
-    args.push(campos.apelido === null || campos.apelido === '' ? null : validarApelido(campos.apelido));
-  }
   if (campos.avatar !== undefined) {
     if (campos.avatar !== null && !avatarValido(campos.avatar)) throw new ErroValidacao('Avatar inválido.');
     sets.push('avatar = ?'); args.push(campos.avatar);
@@ -162,12 +148,7 @@ async function editar(id, campos) {
   // Desativar também derruba as sessões abertas.
   if (campos.ativo === false) sets.push('sessao_versao = sessao_versao + 1');
   sets.push('atualizado_em = ?'); args.push(Date.now());
-  try {
-    await banco.rodar(`UPDATE convidados SET ${sets.join(', ')} WHERE id = ?`, [...args, id]);
-  } catch (erro) {
-    if (/UNIQUE/i.test(erro.message)) throw new ErroValidacao('Esse apelido já está em uso.', 409);
-    throw erro;
-  }
+  await banco.rodar(`UPDATE convidados SET ${sets.join(', ')} WHERE id = ?`, [...args, id]);
   return buscarPorId(id);
 }
 

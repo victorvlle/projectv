@@ -73,7 +73,7 @@ router.post('/convidados', assincrono(async (req, res) => {
 }));
 
 router.patch('/convidados/:id', assincrono(async (req, res) => {
-  const permitidos = ['nome', 'apelido', 'avatar', 'ativo', 'fora', 'exibir'];
+  const permitidos = ['nome', 'avatar', 'ativo', 'fora', 'exibir'];
   const campos = Object.fromEntries(Object.entries(req.body || {}).filter(([k]) => permitidos.includes(k)));
   const c = await convidados.editar(req.params.id, campos);
   if (campos.ativo === false) avisar.expulsar(req.params.id);

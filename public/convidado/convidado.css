@@ -20,7 +20,7 @@
   display: flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; border-radius: 999px;
   font: 600 .9rem var(--fonte); cursor: pointer; max-width: 55%;
 }
-.eu #eu-apelido { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.eu #eu-nome { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .hero { text-align: center; padding: 28px 0 24px; }
 .hero-sub { text-transform: uppercase; letter-spacing: .25em; font-size: .78rem; color: var(--texto-2); margin: 0 0 10px; }
@@ -126,3 +126,11 @@
 .form-outra { margin-top: 14px; }
 .form-outra h3 { font-size: 1rem; }
 .linha-outra { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; }
+
+/* -------------------------------------------------- card e tela de contribuições */
+.atividade.contrib { cursor: pointer; text-decoration: none; color: inherit; border-color: var(--lima);
+  background: linear-gradient(160deg, #24371F, var(--cartao)); box-shadow: 0 0 0 1px rgba(123, 199, 77, .25), 0 8px 24px rgba(123, 199, 77, .12); }
+.atividade.contrib .quando { color: var(--lima); }
+.atividade.contrib:active { transform: scale(.98); }
+.voltar { color: var(--texto); text-decoration: none; font-weight: 600; padding: 8px 12px 8px 0; }
+.titulo-tela { font-size: 1.6rem; margin: 12px 0 6px; }
