@@ -147,4 +147,56 @@ module.exports = [
     nome: 'todos aparecem nos confirmados',
     sql: 'UPDATE convidados SET exibir = 1 WHERE exibir <> 1',
   },
+  {
+    nome: 'playlist, caronas, como chegar e o pós',
+    sql: `
+      CREATE TABLE IF NOT EXISTS playlist_musicas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        convidado_id TEXT NOT NULL REFERENCES convidados(id) ON DELETE CASCADE,
+        titulo TEXT NOT NULL,
+        artista TEXT NOT NULL,
+        chave TEXT NOT NULL UNIQUE,
+        criado_em INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_playlist_convidado ON playlist_musicas (convidado_id);
+      CREATE TABLE IF NOT EXISTS playlist_votos (
+        musica_id INTEGER NOT NULL REFERENCES playlist_musicas(id) ON DELETE CASCADE,
+        convidado_id TEXT NOT NULL REFERENCES convidados(id) ON DELETE CASCADE,
+        criado_em INTEGER NOT NULL,
+        PRIMARY KEY (musica_id, convidado_id)
+      );
+      CREATE TABLE IF NOT EXISTS caronas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        motorista_id TEXT NOT NULL UNIQUE REFERENCES convidados(id) ON DELETE CASCADE,
+        vagas INTEGER NOT NULL CHECK (vagas BETWEEN 1 AND 6),
+        trajeto TEXT NOT NULL CHECK (trajeto IN ('ida', 'volta', 'ida_volta')),
+        saindo TEXT NOT NULL,
+        obs TEXT,
+        criado_em INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS caronas_reservas (
+        carona_id INTEGER NOT NULL REFERENCES caronas(id) ON DELETE CASCADE,
+        convidado_id TEXT NOT NULL UNIQUE REFERENCES convidados(id) ON DELETE CASCADE,
+        criado_em INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_reservas_carona ON caronas_reservas (carona_id);
+      CREATE TABLE IF NOT EXISTS pos_opcoes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nome TEXT NOT NULL,
+        ordem INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_pos_nome ON pos_opcoes (nome COLLATE NOCASE);
+      CREATE TABLE IF NOT EXISTS pos_votos (
+        convidado_id TEXT PRIMARY KEY REFERENCES convidados(id) ON DELETE CASCADE,
+        opcao_id INTEGER NOT NULL REFERENCES pos_opcoes(id) ON DELETE CASCADE,
+        atualizado_em INTEGER NOT NULL
+      );
+      INSERT OR IGNORE INTO pos_opcoes (nome, ordem) VALUES ('Bello''s Club', 0), ('Condado Bar', 1), ('Augusta Haus', 2);
+      INSERT OR IGNORE INTO config (chave, valor) VALUES ('chegadaEndereco', '"Condomínio Singolare — Manaus"');
+      INSERT OR IGNORE INTO config (chave, valor) VALUES ('chegadaPortaria', '"Diga na portaria que vai para a festa do Victor, na churrasqueira gourmet."');
+      INSERT OR IGNORE INTO config (chave, valor) VALUES ('chegadaEstacionamento', '""');
+      INSERT OR IGNORE INTO config (chave, valor) VALUES ('chegadaObs', '""');
+      INSERT OR IGNORE INTO atividades (id, estado, abre_em, atualizado_em) VALUES ('pos', 'agendada', 1793502000000, 0)
+    `,
+  },
 ];

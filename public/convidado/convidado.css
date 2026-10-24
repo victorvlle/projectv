@@ -133,3 +133,29 @@
 .atividade.contrib:active { transform: scale(.98); }
 .voltar { color: var(--texto); text-decoration: none; font-weight: 600; padding: 8px 12px 8px 0; }
 .titulo-tela { font-size: 1.6rem; margin: 12px 0 6px; }
+
+/* ------------------------------------------- playlist, caronas, chegar, pós */
+.lista-extras { display: grid; gap: 10px; margin-top: 14px; }
+.lista-extras:empty { display: none; }
+#form-musica, #form-carona { margin-top: 14px; }
+#form-musica h3, #form-carona h3 { font-size: 1rem; }
+select { appearance: auto; }
+.item-extra {
+  display: flex; align-items: center; gap: 10px; background: var(--cartao); border: 1px solid var(--borda);
+  border-radius: 14px; padding: 10px 10px 10px 12px;
+}
+.item-extra.minha { box-shadow: inset 3px 0 0 var(--lima); }
+.item-extra-corpo { flex: 1; min-width: 0; }
+.item-extra-corpo .b-nome { overflow-wrap: anywhere; }
+.pos-num { width: 26px; text-align: center; font-weight: 800; color: var(--laranja-claro); font-variant-numeric: tabular-nums; }
+.voto {
+  appearance: none; border: 1px solid var(--borda); background: var(--cartao-2); color: var(--texto); border-radius: 999px;
+  padding: 8px 12px; font: 700 .9rem var(--fonte); cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent;
+}
+.voto.votei { background: rgba(232, 98, 12, .2); border-color: var(--laranja); }
+.item-extra .tirar { appearance: none; border: 0; background: none; color: var(--texto-3); font-size: 1.1rem; cursor: pointer; padding: 4px 6px; }
+#minha-carona .pessoa-chip { margin: 2px 2px 0 0; }
+.carona .b-quem { margin-top: 2px; }
+.botoes-mapa { display: grid; gap: 10px; margin-top: 14px; }
+.opcao-pos .botao { margin-top: 4px; }
+.opcao-pos.completa .progresso i { background: var(--lima); }

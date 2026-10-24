@@ -2,7 +2,8 @@
 (function () {
   'use strict';
   const $ = (id) => document.getElementById(id);
-  const telas = ['tela-carregando', 'tela-bloqueio', 'tela-perfil', 'tela-principal', 'tela-contribuicoes'];
+  const telas = ['tela-carregando', 'tela-bloqueio', 'tela-perfil', 'tela-principal', 'tela-contribuicoes',
+    'tela-playlist', 'tela-caronas', 'tela-chegar', 'tela-pos'];
   let telaAtual = 'tela-carregando';
   function mostrar(qual) { telaAtual = qual; telas.forEach((t) => $(t).classList.toggle('oculto', t !== qual)); }
 
@@ -102,13 +103,16 @@
         <div><div class="nome">Contribuições</div>
         <div class="quando">${faltaTotal ? `Liberado · ${faltaTotal} ${faltaTotal === 1 ? 'item precisa' : 'itens precisam'} de alguém` : 'Liberado · tudo garantido'}</div></div>
       </a>`;
-    $('atividades').innerHTML = cardContrib + estado.atividades.map((a) => {
+    const extras = window.PVExtras ? window.PVExtras.cards(estado) : '';
+    $('atividades').innerHTML = cardContrib + extras + estado.atividades.map((a) => {
       const recem = liberadasAntes && liberadasAgora.has(a.id) && !liberadasAntes.has(a.id);
       if (a.estado === 'liberada') {
-        return `<article class="atividade liberada ${recem ? 'recem-aberta' : ''}">
+        // Atividade que já tem tela vira link; as outras abrem na festa.
+        const tag = TELAS_ATIVIDADE[a.id] ? `a href="#${a.id}"` : 'article';
+        return `<${tag} class="atividade liberada ${recem ? 'recem-aberta' : ''}">
           <div class="icone">${a.icone}</div>
           <div><div class="nome">${PV.esc(a.nome)}</div><div class="quando">Liberado</div></div>
-        </article>`;
+        </${tag.split(' ')[0]}>`;
       }
       const quando = a.abreEm && a.abreEm > agora ? `Abre ${PV.dataCurta(a.abreEm)}` : 'Abre na festa';
       return `<article class="atividade bloqueada">
@@ -119,6 +123,7 @@
     liberadasAntes = liberadasAgora;
 
     desenharBebidas();
+    if (window.PVExtras) window.PVExtras.desenhar(estado);
 
     const f = estado.festa;
     const itens = [['Quando', PV.periodo(f.inicioMs, f.fimMs)],
@@ -316,21 +321,42 @@
 
   // ------------------------------------------------------------- navegação
   // #contribuicoes abre a tela de contribuições; o "voltar" do celular funciona.
+  const TELAS_ATIVIDADE = { pos: true };
+  // Telas extras: hash -> id da tela. #pos só abre quando a atividade foi liberada.
+  const TELAS = {
+    '#contribuicoes': 'tela-contribuicoes', '#playlist': 'tela-playlist',
+    '#caronas': 'tela-caronas', '#chegar': 'tela-chegar', '#pos': 'tela-pos',
+  };
   function irPara(hash) {
     if (!eu || !eu.perfilCompleto) return;
-    if (hash === '#contribuicoes') {
-      mostrar('tela-contribuicoes');
-      window.scrollTo(0, 0);
+    let tela = TELAS[hash];
+    if (hash === '#pos' && !(estado && estado.pos && estado.pos.liberada)) tela = null;
+    if (tela) {
+      if (telaAtual !== tela) window.scrollTo(0, 0);
+      mostrar(tela);
     } else {
       mostrar('tela-principal');
     }
   }
   window.addEventListener('hashchange', () => irPara(location.hash));
-  $('voltar-contrib').addEventListener('click', (e) => {
+  // Tocar num card cujo # já está na barra não dispara "hashchange": abre direto.
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest('a[href^="#"]:not(.voltar)');
+    if (link && link.getAttribute('href') === location.hash) { e.preventDefault(); irPara(location.hash); }
+  });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.voltar')) return;
     e.preventDefault();
-    if (history.length > 1 && location.hash === '#contribuicoes') history.back();
+    if (history.length > 1 && TELAS[location.hash]) history.back();
     else { location.hash = ''; irPara(''); }
   });
+
+  // Ponte para extras.js (playlist, caronas, como chegar, pós).
+  window.PVConvidado = {
+    api, emojiDe,
+    estado: () => estado,
+    recarregar: () => carregarFesta().catch(() => {}),
+  };
 
   // ------------------------------------------------------------------ início
   async function iniciar() {

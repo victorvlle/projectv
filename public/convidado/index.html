@@ -83,7 +83,7 @@
   <!-- Contribuições (lista de bebidas): aberta desde já -->
   <main id="tela-contribuicoes" class="pagina oculto">
     <header class="barra">
-      <a class="voltar" href="#" id="voltar-contrib">← Voltar</a>
+      <a class="voltar" href="#">← Voltar</a>
       <span class="marca barra-marca">Project V</span>
     </header>
     <h1 class="titulo-tela">🍻 Contribuições</h1>
@@ -113,8 +113,79 @@
     </section>
   </main>
 
+  <!-- Playlist da Noite -->
+  <main id="tela-playlist" class="pagina oculto">
+    <header class="barra">
+      <a class="voltar" href="#">← Voltar</a>
+      <span class="marca barra-marca">Project V</span>
+    </header>
+    <h1 class="titulo-tela">🎵 Playlist da Noite</h1>
+    <p class="mudo intro-bebidas">Sugira até 5 músicas e vote nas dos outros. As mais votadas sobem.</p>
+    <form id="form-musica" class="cartao" autocomplete="off">
+      <h3>Sugerir música <span class="fraco" id="musicas-contador"></span></h3>
+      <label for="musica-titulo">Música</label>
+      <input id="musica-titulo" maxlength="60" placeholder="Ex.: Thriller" required>
+      <label for="musica-artista">Artista</label>
+      <input id="musica-artista" maxlength="60" placeholder="Ex.: Michael Jackson" required>
+      <button class="botao largo" style="margin-top:14px">Sugerir</button>
+    </form>
+    <div id="lista-musicas" class="lista-extras"></div>
+  </main>
+
+  <!-- Caronas -->
+  <main id="tela-caronas" class="pagina oculto">
+    <header class="barra">
+      <a class="voltar" href="#">← Voltar</a>
+      <span class="marca barra-marca">Project V</span>
+    </header>
+    <h1 class="titulo-tela">🚗 Caronas</h1>
+    <p class="mudo intro-bebidas">Vai de carro? Ofereça vagas. Precisa de carona? Reserve uma. Bebeu, não dirija. 🍻🚫🚗</p>
+    <div id="minha-carona"></div>
+    <div id="lista-caronas" class="lista-extras"></div>
+    <form id="form-carona" class="cartao" autocomplete="off">
+      <h3 id="form-carona-titulo">Vou de carro</h3>
+      <div class="linha-outra">
+        <div><label for="carona-vagas">Vagas</label>
+          <select id="carona-vagas"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></div>
+        <div><label for="carona-trajeto">Trajeto</label>
+          <select id="carona-trajeto"><option value="ida_volta">Ida e volta</option><option value="ida">Só ida</option><option value="volta">Só volta</option></select></div>
+      </div>
+      <label for="carona-saindo">Saindo de</label>
+      <input id="carona-saindo" maxlength="40" placeholder="Bairro ou ponto de encontro" required>
+      <label for="carona-obs">Observação (opcional)</label>
+      <input id="carona-obs" maxlength="100" placeholder="Ex.: saio às 16h30">
+      <button class="botao largo" style="margin-top:14px" id="carona-salvar">Oferecer carona</button>
+    </form>
+  </main>
+
+  <!-- Como chegar -->
+  <main id="tela-chegar" class="pagina oculto">
+    <header class="barra">
+      <a class="voltar" href="#">← Voltar</a>
+      <span class="marca barra-marca">Project V</span>
+    </header>
+    <h1 class="titulo-tela">📍 Como chegar</h1>
+    <section class="cartao info"><dl id="chegar-info"></dl></section>
+    <div class="botoes-mapa">
+      <a class="botao largo" id="link-maps" target="_blank" rel="noopener">Abrir no Google Maps</a>
+      <a class="botao secundario largo" id="link-waze" target="_blank" rel="noopener">Abrir no Waze</a>
+    </div>
+  </main>
+
+  <!-- O Pós -->
+  <main id="tela-pos" class="pagina oculto">
+    <header class="barra">
+      <a class="voltar" href="#">← Voltar</a>
+      <span class="marca barra-marca">Project V</span>
+    </header>
+    <h1 class="titulo-tela">🌙 O Pós</h1>
+    <p class="mudo intro-bebidas" id="pos-status"></p>
+    <div id="pos-opcoes" class="lista-extras"></div>
+  </main>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="/comum/api.js"></script>
   <script src="/convidado/convidado.js"></script>
+  <script src="/convidado/extras.js"></script>
 </body>
 </html>

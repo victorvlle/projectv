@@ -87,7 +87,7 @@ async function main() {
 
     const relogioFalso = Date.parse('2026-11-01T02:00:00-04:00');
     f = await req('GET', '/api/festa', { token: tA, headers: { Date: new Date(relogioFalso).toUTCString(), 'X-Agora': String(relogioFalso) } });
-    barrado(G1, 'Adiantar o relógio (cabeçalhos Date/X-Agora falsos)', f.json.atividades.every((a) => a.id === 'previsoes' || a.estado === 'bloqueada'),
+    barrado(G1, 'Adiantar o relógio (cabeçalhos Date/X-Agora falsos)', f.json.atividades.every((a) => a.estado !== 'liberada'),
       'o servidor usa só o próprio relógio; o que o celular diz é ignorado');
 
     const prev = f.json.atividades.find((a) => a.id === 'previsoes');
@@ -270,6 +270,43 @@ async function main() {
       h.get('content-security-policy') ? 'CSP ativa' : 'sem CSP: o site já escapa tudo, mas uma CSP é uma segunda tranca');
     registrar(G8, 'CORS: outro site ler a API com o login do convidado', !h.get('access-control-allow-origin') ? 'BARRADO' : 'FALHOU',
       'a API não libera outras origens; o login vai em cabeçalho, não em cookie (sem CSRF)');
+    // ============================================ 8b. PLAYLIST, CARONAS E PÓS
+    const GX = 'Playlist, caronas e pós';
+    const opc = (await req('GET', '/api/admin/extras', { token: admin })).json.pos.opcoes;
+    const vPos = await req('PUT', '/api/pos/voto', { token: tA, corpo: { opcaoId: opc[0].id } });
+    const posAntes = (await req('GET', '/api/festa', { token: tA })).json.pos;
+    barrado(GX, 'Votar no pós antes das 23h (ou ver as opções antes)', vPos.status === 403 && Object.keys(posAntes).length === 1,
+      `HTTP ${vPos.status}; antes de abrir o servidor não manda nem as opções`);
+
+    await req('POST', '/api/playlist', { token: tV, corpo: { titulo: 'Canção da Vítima', artista: 'X' } });
+    const mus = (await req('GET', '/api/festa', { token: tA })).json.playlist.musicas.find((m) => m.titulo === 'Canção da Vítima');
+    const apagarMus = await req('DELETE', `/api/playlist/${mus.id}`, { token: tA });
+    barrado(GX, 'Apagar a música que outra pessoa sugeriu', apagarMus.status === 404, `HTTP ${apagarMus.status}`);
+    for (let i = 0; i < 5; i++) await req('PUT', `/api/playlist/${mus.id}/voto`, { token: tA, corpo: { voto: true } });
+    const votos = (await req('GET', '/api/festa', { token: tA })).json.playlist.musicas.find((m) => m.id === mus.id).votos;
+    barrado(GX, 'Votar várias vezes na mesma música', votos === 1, `5 votos enviados, ${votos} contado`);
+    let sugestoes = 0;
+    for (let i = 0; i < 8; i++) {
+      const r = await req('POST', '/api/playlist', { token: tA, corpo: { titulo: `Spam ${i}`, artista: 'Spam' } });
+      if (r.status === 200) sugestoes++;
+    }
+    barrado(GX, 'Sugerir mais de 5 músicas', sugestoes === 5, `8 tentativas, ${sugestoes} aceitas`);
+
+    // Carro com 1 vaga e 3 pessoas disputando ao mesmo tempo
+    const extrasC = (await req('POST', '/api/admin/convidados', { token: admin, corpo: { nome: 'Motor\nP1\nP2\nP3' } })).json.criados;
+    const tks = [];
+    for (const c of extrasC) tks.push((await req('POST', '/api/entrar', { corpo: { codigo: c.codigo }, headers: { 'X-Forwarded-For': '7.7.7.' + tks.length } })).json.token);
+    await req('PUT', '/api/caronas/minha', { token: tks[0], corpo: { vagas: 1, trajeto: 'ida', saindo: 'Centro' } });
+    const carroId = (await req('GET', '/api/festa', { token: tks[1] })).json.caronas.caronas.find((c) => c.vagas === 1).id;
+    const disputa = await Promise.all(tks.slice(1).map((t) => req('POST', `/api/caronas/${carroId}/reserva`, { token: t })));
+    const entraram = disputa.filter((r) => r.status === 200).length;
+    barrado(GX, 'Lotar um carro além das vagas (3 pessoas ao mesmo tempo, 1 vaga)', entraram === 1, `${entraram} entrou`);
+    const cancelarAlheio = await req('DELETE', '/api/caronas/minha', { token: tA });
+    const aindaExiste = (await req('GET', '/api/festa', { token: tA })).json.caronas.caronas.some((c) => c.id === carroId);
+    barrado(GX, 'Cancelar a carona de outra pessoa', cancelarAlheio.status === 404 && aindaExiste, `HTTP ${cancelarAlheio.status}; carro continua lá`);
+    const vagasLoucas = await req('PUT', '/api/caronas/minha', { token: tA, corpo: { vagas: 999, trajeto: 'ida', saindo: 'X' } });
+    barrado(GX, 'Oferecer 999 vagas', vagasLoucas.status === 400, `HTTP ${vagasLoucas.status} (limite de 1 a 6)`);
+
     // =========================================== 9. FORÇA BRUTA (por último: esgota os freios)
     const GF = 'Força bruta';
     // Força bruta em códigos

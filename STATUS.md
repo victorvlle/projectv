@@ -29,6 +29,11 @@ Atualizado em 23/10/2026.
 - [x] Lista e metas do organizador: Cerveja 20 longnecks, Vodka 3, Tequila 1, Cachaça 2, Gin 3,
       Energético Tropical 3 (2 L), Refrigerante 3 (2 L); Gelo, Água e Suco retirados
 - [x] Testes automatizados: 32 passando
+- [x] Playlist da Noite (5 músicas por pessoa, votos, repetida vira voto), Caronas (vagas sem lotar, uma reserva por pessoa),
+      Como chegar (editável no admin, botões Maps/Waze) — liberados desde já
+- [x] O Pós: abre 31/10 23h, votação até a meia-noite, resultado ao vivo e no telão; opções editáveis
+- [x] Segurança: 41 ataques simulados barrados (`npm run seguranca`), relatório em PDF
+- [x] Testes automatizados: 39 passando
 - [x] Deploy no Render + Turso: https://projectv-pec1.onrender.com (`/saude` responde `banco: turso`, verificado em 24/10)
 
 ## Pendente (Etapa C, em ordem)

@@ -5,6 +5,9 @@ const convidados = require('../dados/convidados');
 const festa = require('../dados/festa');
 const atividades = require('../dados/atividades');
 const bebidas = require('../dados/bebidas');
+const playlist = require('../dados/playlist');
+const caronas = require('../dados/caronas');
+const pos = require('../dados/pos');
 const seg = require('../seguranca');
 const { AVATARES } = require('../avatares');
 const { avisar } = require('../tempo-real');
@@ -20,6 +23,7 @@ const freioEntrada = seg.criarFreio({ maximo: 20, janelaMs: 60 * 1000 });
 const freioEntradaGeral = seg.criarFreio({ maximo: 120, janelaMs: 60 * 1000 });
 const freioPerfil = seg.criarFreio({ maximo: 10, janelaMs: 60 * 1000 });
 const freioBebidas = seg.criarFreio({ maximo: 40, janelaMs: 60 * 1000 });
+const freioExtras = seg.criarFreio({ maximo: 40, janelaMs: 60 * 1000 });
 
 router.get('/avatares', (_req, res) => res.json({ ok: true, avatares: AVATARES }));
 
@@ -58,12 +62,17 @@ router.put('/eu/perfil', soConvidado, assincrono(async (req, res) => {
 // Tudo o que a tela do convidado precisa, numa ida só. `agora` é o relógio do
 // servidor: a contagem regressiva calcula a diferença e ignora o relógio do celular.
 router.get('/festa', soConvidado, assincrono(async (req, res) => {
-  const [info, ativs, lista, beb] = await Promise.all([
-    festa.info(), atividades.paraConvidado(), convidados.confirmados(), bebidas.paraConvidado(req.convidado.id),
+  const eu = req.convidado.id;
+  const [info, ativs, lista, beb, musicas, carros, noite] = await Promise.all([
+    festa.info(), atividades.paraConvidado(), convidados.confirmados(), bebidas.paraConvidado(eu),
+    playlist.listar(eu), caronas.listar(eu), pos.paraConvidado(eu),
   ]);
   // O id interno dos outros convidados não sai: só nome, monstro e "sou eu".
   const confirmados = lista.map((c) => ({ nome: c.nome, avatar: c.avatar, souEu: c.id === req.convidado.id }));
-  res.json({ ok: true, agora: Date.now(), festa: info, atividades: ativs, confirmados, bebidas: beb });
+  res.json({
+    ok: true, agora: Date.now(), festa: info, atividades: ativs, confirmados, bebidas: beb,
+    playlist: musicas, caronas: carros, pos: noite,
+  });
 }));
 
 // ------------------------------------------------------- lista de bebidas
@@ -92,6 +101,52 @@ router.post('/bebidas/outras', soConvidado, freiarBebidas, assincrono(async (req
 router.delete('/bebidas/minhas/:id', soConvidado, freiarBebidas, assincrono(async (req, res) => {
   await bebidas.removerMinha(req.convidado.id, req.params.id);
   await responderBebidas(req, res);
+}));
+
+// ------------------------------------------- playlist, caronas e o pós
+function freiarExtras(req, res, next) {
+  if (freioExtras.tentar(req.convidado.id)) return next();
+  return res.status(429).json({ ok: false, erro: 'Calma! Espere um pouco antes de mudar de novo.' });
+}
+const ok = (oque) => (req, res) => { avisar.atualizar(oque); res.json({ ok: true }); };
+
+router.post('/playlist', soConvidado, freiarExtras, assincrono(async (req, res, next) => {
+  const { titulo, artista } = req.body || {};
+  const r = await playlist.sugerir(req.convidado.id, { titulo, artista });
+  avisar.atualizar('playlist');
+  res.json({ ok: true, jaExistia: r.jaExistia });
+  void next;
+}));
+router.put('/playlist/:id/voto', soConvidado, freiarExtras, assincrono(async (req, res, next) => {
+  await playlist.votar(req.convidado.id, req.params.id, (req.body || {}).voto === true);
+  ok('playlist')(req, res, next);
+}));
+router.delete('/playlist/:id', soConvidado, freiarExtras, assincrono(async (req, res, next) => {
+  await playlist.remover(req.params.id, req.convidado.id);
+  ok('playlist')(req, res, next);
+}));
+
+router.put('/caronas/minha', soConvidado, freiarExtras, assincrono(async (req, res, next) => {
+  const { vagas, trajeto, saindo, obs } = req.body || {};
+  await caronas.oferecer(req.convidado.id, { vagas, trajeto, saindo, obs });
+  ok('caronas')(req, res, next);
+}));
+router.delete('/caronas/minha', soConvidado, freiarExtras, assincrono(async (req, res, next) => {
+  await caronas.cancelarOferta(req.convidado.id);
+  ok('caronas')(req, res, next);
+}));
+router.post('/caronas/:id/reserva', soConvidado, freiarExtras, assincrono(async (req, res, next) => {
+  await caronas.reservar(req.convidado.id, req.params.id);
+  ok('caronas')(req, res, next);
+}));
+router.delete('/caronas/reserva', soConvidado, freiarExtras, assincrono(async (req, res, next) => {
+  await caronas.cancelarReserva(req.convidado.id);
+  ok('caronas')(req, res, next);
+}));
+
+router.put('/pos/voto', soConvidado, freiarExtras, assincrono(async (req, res, next) => {
+  await pos.votar(req.convidado.id, (req.body || {}).opcaoId);
+  ok('pos')(req, res, next);
 }));
 
 module.exports = router;

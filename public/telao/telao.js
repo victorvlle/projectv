@@ -67,6 +67,18 @@
       ? `<div class="cadeado aberto"><div class="ic">${a.icone}</div><div class="n">${PV.esc(a.nome)}</div></div>`
       : `<div class="cadeado"><div class="ic">🔒</div><div class="n">${PV.esc(a.enigma)}</div></div>`)).join('');
     $('mensagem').textContent = estado.telao.mensagem || '';
+    const p = estado.pos;
+    if (p) {
+      $('pos-telao').innerHTML = p.opcoes.map((o) => {
+        const pct = p.total ? Math.round((o.votos / p.total) * 100) : 0;
+        const lider = p.lideres.includes(o.id);
+        return `<div class="pos-linha ${lider ? 'lider' : ''}">
+          <div class="pos-nome">${lider ? '👑 ' : ''}${PV.esc(o.nome)}</div>
+          <div class="pos-barra"><i style="width:${pct}%"></i></div>
+          <div class="pos-num">${o.votos}</div></div>`;
+      }).join('');
+      $('pos-telao-rodape').textContent = p.encerrada ? 'Votação encerrada!' : p.aberta ? `${p.total} ${p.total === 1 ? 'voto' : 'votos'} · vote pelo celular` : 'A votação abre às 23h';
+    }
     trocarCena(estado.telao.modo);
     tic();
   }

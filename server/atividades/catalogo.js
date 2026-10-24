@@ -59,6 +59,15 @@ const ATIVIDADES = [
     descricao: 'Papéis secretos. Descubra os monstros antes que eles peguem todo mundo.',
     padrao: { estado: 'bloqueada' },
   },
+  {
+    id: 'pos',
+    nome: 'O Pós',
+    enigma: 'Depois da meia-noite',
+    icone: '🌙',
+    descricao: 'Vote para onde a noite continua depois da festa.',
+    // Abre às 23h do dia da festa; a votação fecha quando a festa termina.
+    padrao: { estado: 'agendada', abreEm: '2026-10-31T23:00:00-04:00' },
+  },
 ];
 
 const IDS = new Set(ATIVIDADES.map((a) => a.id));

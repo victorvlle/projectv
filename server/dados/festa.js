@@ -3,8 +3,12 @@
 const banco = require('./banco');
 const { ErroValidacao, limparTexto } = require('./convidados');
 
-const CAMPOS_TEXTO = { nome: 80, local: 160, dressCode: 400, oQueLevar: 400, regras: 600 };
-const MODOS_TELAO = new Set(['contagem', 'confirmados', 'atividades', 'mensagem']);
+const CAMPOS_TEXTO = {
+  nome: 80, local: 160, dressCode: 400, oQueLevar: 400, regras: 600,
+  // Como chegar
+  chegadaEndereco: 160, chegadaPortaria: 300, chegadaEstacionamento: 300, chegadaObs: 400,
+};
+const MODOS_TELAO = new Set(['contagem', 'confirmados', 'atividades', 'mensagem', 'pos']);
 
 async function ler(chave) {
   const l = await banco.um('SELECT valor FROM config WHERE chave = ?', [chave]);
@@ -31,6 +35,12 @@ async function info() {
     dressCode: tudo.dressCode,
     oQueLevar: tudo.oQueLevar,
     regras: tudo.regras,
+    chegada: {
+      endereco: tudo.chegadaEndereco || '',
+      portaria: tudo.chegadaPortaria || '',
+      estacionamento: tudo.chegadaEstacionamento || '',
+      obs: tudo.chegadaObs || '',
+    },
   };
 }
 

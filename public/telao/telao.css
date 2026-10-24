@@ -43,3 +43,12 @@ body { overflow: hidden; cursor: default; }
 
 .botao-flutuante { position: fixed; right: 16px; bottom: 16px; opacity: .25; }
 .botao-flutuante:hover { opacity: 1; }
+
+/* Votação do pós */
+.grade-pos { width: min(80vw, 140vh); display: grid; gap: 3vh; }
+.pos-linha { display: grid; grid-template-columns: 34vh 1fr 10vh; align-items: center; gap: 2vw; }
+.pos-nome { font-size: 4.2vh; font-weight: 800; }
+.pos-barra { height: 5vh; border-radius: 3vh; background: rgba(255, 255, 255, .08); overflow: hidden; }
+.pos-barra i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--roxo-claro), var(--laranja)); transition: width .8s ease; }
+.pos-linha.lider .pos-barra i { background: linear-gradient(90deg, var(--laranja), var(--lima)); }
+.pos-num { font-size: 5vh; font-weight: 800; color: var(--laranja-claro); text-align: right; font-variant-numeric: tabular-nums; }

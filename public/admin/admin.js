@@ -268,6 +268,64 @@
     if (r) { bebidas = r.bebidas; desenharBebidas(); }
   });
 
+  // ------------------------------------------------- extras: pós, playlist, caronas
+  let extras = null;
+  function desenharExtras() {
+    if (!extras) return;
+    const p = extras.pos;
+    $('pos-admin-status').textContent = p.encerrada ? '· encerrada' : p.aberta ? '· votação aberta' : '· fechada até as 23h';
+    $('pos-admin').innerHTML = p.opcoes.map((o) => `
+      <div class="item" data-pos="${o.id}">
+        <div class="item-topo" style="justify-content:space-between">
+          <div><div class="item-nome">${p.lideres.includes(o.id) ? '👑 ' : ''}${PV.esc(o.nome)}</div>
+            <div class="item-sub">${o.votos} ${o.votos === 1 ? 'voto' : 'votos'}</div></div>
+          <div class="item-acoes" style="margin:0;flex-wrap:nowrap">
+            <button class="botao secundario pequeno" data-renomear>Renomear</button>
+            <button class="botao perigo pequeno" data-excluir>Excluir</button>
+          </div>
+        </div>
+      </div>`).join('');
+    $('playlist-admin').innerHTML = extras.playlist.musicas.map((m, i) => `
+      <div class="item" data-musica="${m.id}"><div class="item-topo" style="justify-content:space-between">
+        <div><div class="item-nome">${i + 1}. ${PV.esc(m.titulo)} — ${PV.esc(m.artista)}</div>
+          <div class="item-sub">🔥 ${m.votos} · sugerida por ${PV.esc(m.autor)}</div></div>
+        <button class="botao perigo pequeno" data-tirar-musica>Tirar</button></div></div>`).join('')
+      || '<p class="fraco">Nenhuma música ainda.</p>';
+    $('caronas-admin').innerHTML = extras.caronas.caronas.map((c) => `
+      <div class="item" data-carona="${c.id}"><div class="item-topo" style="justify-content:space-between">
+        <div><div class="item-nome">${PV.esc(c.motorista)} · ${c.vagas - c.livres}/${c.vagas}</div>
+          <div class="item-sub">${PV.esc(c.trajetoTexto)} · ${PV.esc(c.saindo)}${c.passageiros.length ? ' · ' + c.passageiros.map((x) => PV.esc(x.nome)).join(', ') : ''}</div></div>
+        <button class="botao perigo pequeno" data-tirar-carona>Tirar</button></div></div>`).join('')
+      || '<p class="fraco">Nenhuma carona ainda.</p>';
+  }
+
+  $('tela-painel').addEventListener('click', async (e) => {
+    const pos = e.target.closest('[data-pos]');
+    let ok = null;
+    if (pos && e.target.closest('[data-renomear]')) {
+      const nome = prompt('Novo nome:', extras.pos.opcoes.find((o) => o.id === Number(pos.dataset.pos)).nome);
+      if (!nome) return;
+      ok = await acao(() => api('PATCH', `/pos/opcoes/${pos.dataset.pos}`, { nome }), 'Renomeado.');
+    } else if (pos && e.target.closest('[data-excluir]')) {
+      if (!confirm('Excluir esse lugar? Os votos nele somem.')) return;
+      ok = await acao(() => api('DELETE', `/pos/opcoes/${pos.dataset.pos}`), 'Excluído.');
+    } else if (e.target.closest('[data-tirar-musica]')) {
+      if (!confirm('Tirar essa música da playlist?')) return;
+      ok = await acao(() => api('DELETE', `/playlist/${e.target.closest('[data-musica]').dataset.musica}`), 'Música retirada.');
+    } else if (e.target.closest('[data-tirar-carona]')) {
+      if (!confirm('Tirar essa carona? Quem reservou fica sem.')) return;
+      ok = await acao(() => api('DELETE', `/caronas/${e.target.closest('[data-carona]').dataset.carona}`), 'Carona retirada.');
+    }
+    if (ok) carregar();
+  });
+
+  $('form-pos').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const nome = $('pos-nova').value.trim();
+    if (!nome) return;
+    if (await acao(() => api('POST', '/pos/opcoes', { nome }), 'Lugar adicionado.')) { $('pos-nova').value = ''; carregar(); }
+  });
+
   // -------------------------------------------------------------- atividades
   function desenharAtividades() {
     $('lista-atividades').innerHTML = estado.atividades.map((a) => `
@@ -335,6 +393,10 @@
     $('f-dress').value = f.dressCode || '';
     $('f-levar').value = f.oQueLevar || '';
     $('f-regras').value = f.regras || '';
+    $('f-endereco').value = f.chegada.endereco || '';
+    $('f-portaria').value = f.chegada.portaria || '';
+    $('f-estacionamento').value = f.chegada.estacionamento || '';
+    $('f-chegada-obs').value = f.chegada.obs || '';
   }
   $('form-festa').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -346,6 +408,10 @@
       dressCode: $('f-dress').value,
       oQueLevar: $('f-levar').value,
       regras: $('f-regras').value,
+      chegadaEndereco: $('f-endereco').value,
+      chegadaPortaria: $('f-portaria').value,
+      chegadaEstacionamento: $('f-estacionamento').value,
+      chegadaObs: $('f-chegada-obs').value,
     }), 'Informações salvas.');
     carregar();
   });
@@ -382,11 +448,13 @@
 
   // -------------------------------------------------------------- carregar
   async function carregar() {
-    const [r, b] = await Promise.all([api('GET', '/estado'), api('GET', '/bebidas')]);
+    const [r, b, x] = await Promise.all([api('GET', '/estado'), api('GET', '/bebidas'), api('GET', '/extras')]);
+    extras = x;
     PV.relogio.sincronizar(r.agora);
     estado = r;
     bebidas = b.bebidas;
     desenharBebidas();
+    desenharExtras();
     const ondeBanco = { turso: 'banco: Turso', arquivo: 'banco: arquivo', memoria: 'banco: memória' }[r.banco] || '';
     $('info-banco').textContent = ondeBanco;
     desenharConvidados();

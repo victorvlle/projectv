@@ -173,9 +173,14 @@ async function excluir(id) {
   const r = await banco.lote([
     { sql: 'DELETE FROM bebidas_compromissos WHERE convidado_id = ?', args: [id] },
     { sql: 'DELETE FROM pontos_log WHERE convidado_id = ?', args: [id] },
+    { sql: 'DELETE FROM playlist_votos WHERE convidado_id = ? OR musica_id IN (SELECT id FROM playlist_musicas WHERE convidado_id = ?)', args: [id, id] },
+    { sql: 'DELETE FROM playlist_musicas WHERE convidado_id = ?', args: [id] },
+    { sql: 'DELETE FROM caronas_reservas WHERE convidado_id = ? OR carona_id IN (SELECT id FROM caronas WHERE motorista_id = ?)', args: [id, id] },
+    { sql: 'DELETE FROM caronas WHERE motorista_id = ?', args: [id] },
+    { sql: 'DELETE FROM pos_votos WHERE convidado_id = ?', args: [id] },
     { sql: 'DELETE FROM convidados WHERE id = ?', args: [id] },
   ]);
-  if (!r[2].rowsAffected) throw new ErroValidacao('Convidado não encontrado.', 404);
+  if (!r[r.length - 1].rowsAffected) throw new ErroValidacao('Convidado não encontrado.', 404);
 }
 
 module.exports = {

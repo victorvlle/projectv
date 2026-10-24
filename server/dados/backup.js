@@ -10,7 +10,8 @@
 const banco = require('./banco');
 const { ErroValidacao } = require('./convidados');
 
-const ORDEM = ['config', 'convidados', 'atividades', 'bebidas_itens', 'bebidas_compromissos', 'pontos_log'];
+const ORDEM = ['config', 'convidados', 'atividades', 'bebidas_itens', 'bebidas_compromissos', 'pontos_log',
+  'playlist_musicas', 'playlist_votos', 'caronas', 'caronas_reservas', 'pos_opcoes', 'pos_votos'];
 
 async function tabelas() {
   const rs = await banco.tudo(

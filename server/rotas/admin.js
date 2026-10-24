@@ -9,6 +9,9 @@ const festa = require('../dados/festa');
 const atividades = require('../dados/atividades');
 const backup = require('../dados/backup');
 const bebidas = require('../dados/bebidas');
+const playlist = require('../dados/playlist');
+const caronas = require('../dados/caronas');
+const pos = require('../dados/pos');
 const banco = require('../dados/banco');
 const seg = require('../seguranca');
 const { avisar } = require('../tempo-real');
@@ -127,7 +130,7 @@ router.get('/telao', assincrono(async (req, res) => {
     festa.info(), atividades.paraConvidado(), convidados.confirmados(), festa.telao(),
   ]);
   const confirmados = lista.map((c) => ({ nome: c.nome, avatar: c.avatar }));
-  res.json({ ok: true, agora: Date.now(), festa: info, atividades: ativs, confirmados, telao });
+  res.json({ ok: true, agora: Date.now(), festa: info, atividades: ativs, confirmados, telao, pos: await pos.resultado() });
 }));
 
 // ------------------------------------------------------- lista de bebidas
@@ -166,6 +169,18 @@ router.put('/bebidas/aberta', assincrono(async (req, res) => {
   await bebidas.definirAberta((req.body || {}).aberta !== false);
   await responderBebidas(res);
 }));
+
+// ------------------------------------------- playlist, caronas e o pós
+router.get('/extras', assincrono(async (_req, res) => {
+  const [musicas, carros, noite] = await Promise.all([playlist.listar(null), caronas.listar(null), pos.resultado()]);
+  res.json({ ok: true, playlist: musicas, caronas: carros, pos: noite });
+}));
+const pronto = (oque) => (res) => { avisar.atualizar(oque); res.json({ ok: true }); };
+router.delete('/playlist/:id', assincrono(async (req, res) => { await playlist.remover(req.params.id); pronto('playlist')(res); }));
+router.delete('/caronas/:id', assincrono(async (req, res) => { await caronas.removerOferta(req.params.id); pronto('caronas')(res); }));
+router.post('/pos/opcoes', assincrono(async (req, res) => { await pos.criarOpcao((req.body || {}).nome); pronto('pos')(res); }));
+router.patch('/pos/opcoes/:id', assincrono(async (req, res) => { await pos.renomearOpcao(req.params.id, (req.body || {}).nome); pronto('pos')(res); }));
+router.delete('/pos/opcoes/:id', assincrono(async (req, res) => { await pos.removerOpcao(req.params.id); pronto('pos')(res); }));
 
 // ---------------------------------------------------------------- backup
 router.get('/backup', assincrono(async (_req, res) => {
