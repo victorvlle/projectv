@@ -363,5 +363,13 @@
     });
   }
 
-  iniciar();
+  // Se algo inesperado quebrar na abertura, nunca deixa o convidado preso no
+  // carregando: mostra um aviso com botão para tentar de novo.
+  iniciar().catch((erro) => {
+    console.error(erro);
+    mostrar('tela-carregando');
+    $('tela-carregando').innerHTML = `<p class="mudo" style="text-align:center;padding:24px">
+      Não consegui abrir a página. Tente recarregar.<br><br>
+      <button class="botao" onclick="location.reload()">Recarregar</button></p>`;
+  });
 })();

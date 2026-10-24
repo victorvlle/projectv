@@ -12,7 +12,10 @@ const banco = require('./dados/banco');
 const { tratarErros } = require('./rotas/util');
 
 const PUBLICO = path.join(__dirname, '..', 'public');
-const pagina = (arquivo) => (_req, res) => res.sendFile(path.join(PUBLICO, arquivo));
+const pagina = (arquivo) => (_req, res) => {
+  res.setHeader('Cache-Control', 'no-cache');
+  res.sendFile(path.join(PUBLICO, arquivo));
+};
 
 function criarApp() {
   const app = express();
@@ -56,7 +59,12 @@ function criarApp() {
   app.get('/c/:codigo', pagina('convidado/entrar.html'));
   app.get('/telao', pagina('telao/index.html'));
   app.get('/admin', pagina('admin/index.html'));
-  app.use(express.static(PUBLICO, { index: false, maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0 }));
+  // Sem cache longo: a cada deploy o celular precisa pegar o HTML e o JS da MESMA
+  // versão. Com "no-cache" o navegador revalida (ETag) e só baixa de novo o que mudou.
+  app.use(express.static(PUBLICO, {
+    index: false,
+    setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache'),
+  }));
 
   app.use(tratarErros);
 
