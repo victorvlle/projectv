@@ -8,6 +8,7 @@ const convidados = require('../dados/convidados');
 const festa = require('../dados/festa');
 const atividades = require('../dados/atividades');
 const backup = require('../dados/backup');
+const bebidas = require('../dados/bebidas');
 const banco = require('../dados/banco');
 const seg = require('../seguranca');
 const { avisar } = require('../tempo-real');
@@ -119,6 +120,43 @@ router.get('/telao', assincrono(async (req, res) => {
     festa.info(), atividades.paraConvidado(), convidados.confirmados(), festa.telao(),
   ]);
   res.json({ ok: true, agora: Date.now(), festa: info, atividades: ativs, confirmados: lista, telao });
+}));
+
+// ------------------------------------------------------- lista de bebidas
+async function responderBebidas(res, status = 200) {
+  avisar.atualizar('bebidas');
+  res.status(status).json({ ok: true, bebidas: await bebidas.paraAdmin() });
+}
+
+router.get('/bebidas', assincrono(async (_req, res) => {
+  res.json({ ok: true, bebidas: await bebidas.paraAdmin() });
+}));
+
+router.post('/bebidas/itens', assincrono(async (req, res) => {
+  const { nome, unidade, meta } = req.body || {};
+  await bebidas.criarItem({ nome, unidade, meta });
+  await responderBebidas(res, 201);
+}));
+
+router.patch('/bebidas/itens/:id', assincrono(async (req, res) => {
+  const { nome, unidade, meta } = req.body || {};
+  await bebidas.editarItem(req.params.id, { nome, unidade, meta });
+  await responderBebidas(res);
+}));
+
+router.delete('/bebidas/itens/:id', assincrono(async (req, res) => {
+  await bebidas.excluirItem(req.params.id);
+  await responderBebidas(res);
+}));
+
+router.delete('/bebidas/compromissos/:id', assincrono(async (req, res) => {
+  await bebidas.removerCompromisso(req.params.id);
+  await responderBebidas(res);
+}));
+
+router.put('/bebidas/aberta', assincrono(async (req, res) => {
+  await bebidas.definirAberta((req.body || {}).aberta !== false);
+  await responderBebidas(res);
 }));
 
 // ---------------------------------------------------------------- backup

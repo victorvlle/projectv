@@ -163,6 +163,79 @@
     await carregar();
   });
 
+  // ---------------------------------------------------------------- bebidas
+  let bebidas = null;
+  function desenharBebidas() {
+    if (!bebidas) return;
+    $('bebidas-estado').textContent = bebidas.aberta ? '🟢 Lista aberta' : '🔒 Lista fechada';
+    $('alternar-bebidas').textContent = bebidas.aberta ? 'Fechar lista' : 'Reabrir lista';
+    const pessoas = (quem) => (quem.length ? `<div class="quem-admin">${quem.map((q) => `
+      <div><span>${q.avatar ? emojiDe(q.avatar) : '·'} ${PV.esc(q.nome)}${q.apelido ? ` <span class="fraco">(${PV.esc(q.apelido)})</span>` : ''} — <b>${q.quantidade}</b></span>
+        <button type="button" data-tirar="${q.compromissoId}" aria-label="Remover">✕</button></div>`).join('')}</div>` : '');
+    const itens = bebidas.itens.map((i) => {
+      const ok = i.meta > 0 && i.falta === 0;
+      const pct = i.meta > 0 ? Math.min(100, Math.round((i.total / i.meta) * 100)) : 0;
+      return `<div class="item" data-item="${i.id}">
+        <div class="item-topo" style="justify-content:space-between">
+          <div><div class="item-nome">${PV.esc(i.nome)}</div>
+            <div class="item-sub">${i.total}${i.meta > 0 ? ` de ${i.meta}` : ''} ${PV.esc(i.unidade)}${i.meta > 0 ? (ok ? ' · garantido' : ` · faltam ${i.falta}`) : ' · sem meta'}</div></div>
+          <div class="item-acoes" style="margin:0;flex-wrap:nowrap">
+            <button class="botao secundario pequeno" data-editar>Editar</button>
+            <button class="botao perigo pequeno" data-excluir>Excluir</button>
+          </div>
+        </div>
+        ${i.meta > 0 ? `<div class="barra-meta ${ok ? 'ok' : ''}"><i style="width:${pct}%"></i></div>` : ''}
+        ${pessoas(i.quem)}
+      </div>`;
+    }).join('');
+    const outras = bebidas.outras.map((o) => `<div class="item">
+        <div class="item-nome">${PV.esc(o.nome)} <span class="selo fora">fora da lista</span></div>
+        <div class="item-sub">${o.total} ${PV.esc(o.unidade)}</div>
+        ${pessoas(o.quem)}
+      </div>`).join('');
+    $('lista-bebidas').innerHTML = itens + outras || '<p class="fraco">Nenhuma bebida na lista.</p>';
+  }
+
+  $('alternar-bebidas').addEventListener('click', async () => {
+    const r = await acao(() => api('PUT', '/bebidas/aberta', { aberta: !bebidas.aberta }));
+    if (r) { bebidas = r.bebidas; desenharBebidas(); }
+  });
+
+  $('form-bebida').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const r = await acao(() => api('POST', '/bebidas/itens', {
+      nome: $('b-nome').value, unidade: $('b-unidade').value, meta: Number($('b-meta').value || 0),
+    }), 'Bebida adicionada.');
+    if (r) {
+      bebidas = r.bebidas; desenharBebidas();
+      $('b-nome').value = ''; $('b-unidade').value = ''; $('b-meta').value = '0';
+    }
+  });
+
+  $('lista-bebidas').addEventListener('click', async (e) => {
+    const tirar = e.target.closest('[data-tirar]');
+    const card = e.target.closest('[data-item]');
+    let r = null;
+    if (tirar) {
+      if (!confirm('Remover esta bebida da parte dessa pessoa?')) return;
+      r = await acao(() => api('DELETE', `/bebidas/compromissos/${tirar.dataset.tirar}`), 'Removido.');
+    } else if (card && e.target.closest('[data-excluir]')) {
+      const item = bebidas.itens.find((i) => i.id === Number(card.dataset.item));
+      if (!confirm(`Tirar "${item.nome}" da lista? Quem já marcou continua levando (vira "fora da lista").`)) return;
+      r = await acao(() => api('DELETE', `/bebidas/itens/${item.id}`), 'Tirado da lista.');
+    } else if (card && e.target.closest('[data-editar]')) {
+      const item = bebidas.itens.find((i) => i.id === Number(card.dataset.item));
+      const nome = prompt('Nome:', item.nome);
+      if (nome === null) return;
+      const unidade = prompt('Unidade (latas, garrafas, sacos…):', item.unidade);
+      if (unidade === null) return;
+      const meta = prompt('Meta (0 = sem meta):', String(item.meta));
+      if (meta === null) return;
+      r = await acao(() => api('PATCH', `/bebidas/itens/${item.id}`, { nome, unidade, meta: Number(meta) }), 'Atualizado.');
+    }
+    if (r) { bebidas = r.bebidas; desenharBebidas(); }
+  });
+
   // -------------------------------------------------------------- atividades
   function desenharAtividades() {
     $('lista-atividades').innerHTML = estado.atividades.map((a) => `
@@ -225,6 +298,7 @@
     const f = estado.festa;
     $('f-nome').value = f.nome || '';
     $('f-inicio').value = msParaLocal(f.inicioMs);
+    $('f-fim').value = msParaLocal(f.fimMs);
     $('f-local').value = f.local || '';
     $('f-dress').value = f.dressCode || '';
     $('f-levar').value = f.oQueLevar || '';
@@ -235,6 +309,7 @@
     await acao(() => api('PUT', '/festa', {
       nome: $('f-nome').value,
       inicio: localParaIso($('f-inicio').value),
+      fim: localParaIso($('f-fim').value),
       local: $('f-local').value,
       dressCode: $('f-dress').value,
       oQueLevar: $('f-levar').value,
@@ -275,9 +350,11 @@
 
   // -------------------------------------------------------------- carregar
   async function carregar() {
-    const r = await api('GET', '/estado');
+    const [r, b] = await Promise.all([api('GET', '/estado'), api('GET', '/bebidas')]);
     PV.relogio.sincronizar(r.agora);
     estado = r;
+    bebidas = b.bebidas;
+    desenharBebidas();
     const ondeBanco = { turso: 'banco: Turso', arquivo: 'banco: arquivo', memoria: 'banco: memória' }[r.banco] || '';
     $('info-banco').textContent = ondeBanco;
     desenharConvidados();

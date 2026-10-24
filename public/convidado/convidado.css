@@ -73,3 +73,56 @@
 .confirmado.sou-eu .avatar { border-color: var(--laranja); }
 
 .rodape { text-align: center; margin-top: 36px; }
+
+/* ------------------------------------------------------- lista de bebidas */
+.intro-bebidas { margin: -4px 0 12px; font-size: .92rem; }
+.aviso-inline { background: rgba(179, 18, 46, .15); border: 1px solid var(--sangue); border-radius: 12px; padding: 10px 12px; font-size: .9rem; margin-bottom: 12px; }
+.minha-parte { background: rgba(123, 199, 77, .1); border: 1px solid rgba(123, 199, 77, .45); border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; }
+.minha-parte h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .12em; color: var(--lima); margin-bottom: 6px; }
+.minha-parte ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.minha-parte li { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.minha-parte .tirar { appearance: none; border: 0; background: none; color: var(--texto-3); font-size: 1.1rem; cursor: pointer; padding: 4px 8px; }
+
+.falta-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 12px; scrollbar-width: none; }
+.falta-chips::-webkit-scrollbar { display: none; }
+.chip-falta {
+  appearance: none; flex: none; border: 1px solid rgba(232, 98, 12, .55); background: rgba(232, 98, 12, .12); color: var(--texto);
+  border-radius: 999px; padding: 6px 12px; font: 600 .82rem var(--fonte); cursor: pointer; white-space: nowrap;
+}
+.chip-falta b { color: var(--laranja-claro); }
+
+.lista-bebidas { display: grid; gap: 10px; }
+.lista-bebidas + .lista-bebidas:not(:empty) { margin-top: 10px; }
+.bebida { background: var(--cartao); border: 1px solid var(--borda); border-radius: 14px; padding: 12px 14px; scroll-margin-top: 16px; }
+.bebida.completa { border-color: rgba(123, 199, 77, .45); }
+.bebida.minha { box-shadow: inset 3px 0 0 var(--lima); }
+.bebida.destaque { animation: brilho 1.2s ease; }
+@keyframes brilho { 30% { border-color: var(--laranja); box-shadow: 0 0 0 3px rgba(232, 98, 12, .3); } }
+.b-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.b-nome { font-weight: 700; }
+.b-status { font-size: .8rem; color: var(--texto-2); text-align: right; white-space: nowrap; }
+.b-status.falta { color: var(--laranja-claro); }
+.b-status.ok { color: var(--lima); }
+.progresso { height: 6px; border-radius: 999px; background: var(--fundo-2); margin: 8px 0; overflow: hidden; }
+.progresso i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--laranja), var(--laranja-claro)); transition: width .4s ease; }
+.bebida.completa .progresso i { background: var(--lima); }
+.b-quem { display: flex; flex-wrap: wrap; gap: 6px; min-height: 0; }
+.b-quem:empty { display: none; }
+.pessoa-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--fundo-2); border-radius: 999px; padding: 2px 8px 2px 2px; font-size: .78rem; color: var(--texto-2); }
+.pessoa-chip .avatar { width: 22px; height: 22px; font-size: 13px; border-width: 1px; }
+.pessoa-chip.eu { color: var(--texto); outline: 1px solid rgba(123, 199, 77, .5); }
+.b-eu { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--borda); }
+.b-eu > span { font-size: .85rem; color: var(--texto-2); font-weight: 600; }
+.passo { display: flex; align-items: center; gap: 4px; }
+.passo button {
+  appearance: none; width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--borda); background: var(--cartao-2);
+  color: var(--texto); font: 700 1.25rem var(--fonte); cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.passo button:active { transform: scale(.94); }
+.passo button:disabled { opacity: .35; }
+.passo output { min-width: 34px; text-align: center; font-weight: 800; font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.passo small { color: var(--texto-3); font-size: .75rem; margin-left: 2px; max-width: 70px; line-height: 1.1; }
+.passo.salvando output { color: var(--laranja-claro); }
+.form-outra { margin-top: 14px; }
+.form-outra h3 { font-size: 1rem; }
+.linha-outra { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; }

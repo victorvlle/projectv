@@ -30,6 +30,7 @@
     </header>
     <nav class="abas" role="tablist">
       <button data-aba="convidados" class="ativa">Convidados</button>
+      <button data-aba="bebidas">Bebidas</button>
       <button data-aba="atividades">Atividades</button>
       <button data-aba="telao">Telão</button>
       <button data-aba="festa">Festa</button>
@@ -47,6 +48,27 @@
         </form>
         <input id="busca" type="search" placeholder="Buscar convidado…" style="margin:16px 0 10px">
         <div id="lista-convidados" class="lista"></div>
+      </section>
+
+      <!-- BEBIDAS -->
+      <section data-painel="bebidas" class="oculto">
+        <div class="cartao linha-aberta">
+          <div>
+            <h3 id="bebidas-estado"></h3>
+            <p class="fraco" style="margin:0">Fechada: os convidados veem a lista, mas não mudam.</p>
+          </div>
+          <button class="botao secundario pequeno" id="alternar-bebidas"></button>
+        </div>
+        <form id="form-bebida" class="cartao" style="margin-top:12px">
+          <label for="b-nome" style="margin-top:0">Nova bebida na lista</label>
+          <input id="b-nome" maxlength="40" placeholder="Ex.: Whisky" required>
+          <div class="linha-2">
+            <div><label for="b-unidade">Unidade</label><input id="b-unidade" maxlength="20" placeholder="garrafas"></div>
+            <div><label for="b-meta">Meta (0 = sem meta)</label><input id="b-meta" type="number" min="0" max="999" value="0" inputmode="numeric"></div>
+          </div>
+          <button class="botao largo" style="margin-top:12px">Adicionar à lista</button>
+        </form>
+        <div id="lista-bebidas" class="lista" style="margin-top:12px"></div>
       </section>
 
       <!-- ATIVIDADES -->
@@ -80,6 +102,8 @@
           <input id="f-nome" maxlength="80">
           <label for="f-inicio">Início (horário de Manaus)</label>
           <input id="f-inicio" type="datetime-local">
+          <label for="f-fim">Fim (horário de Manaus)</label>
+          <input id="f-fim" type="datetime-local">
           <label for="f-local">Local</label>
           <input id="f-local" maxlength="160">
           <label for="f-dress">Dress code</label>

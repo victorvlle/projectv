@@ -72,6 +72,32 @@
       <div id="atividades" class="grade-atividades"></div>
     </section>
 
+    <section id="sec-bebidas">
+      <h2 class="titulo-secao">Bebidas</h2>
+      <p class="mudo intro-bebidas">Marque o que você vai levar. Todo mundo vê o que já está garantido e o que ainda falta.</p>
+      <div id="bebidas-fechada" class="aviso-inline oculto">🔒 A lista foi fechada pelo organizador. Dá para ver, mas não mudar.</div>
+      <div id="bebidas-minha" class="minha-parte oculto"></div>
+      <div id="bebidas-falta" class="falta-chips"></div>
+      <div id="bebidas-lista" class="lista-bebidas"></div>
+      <div id="bebidas-outras" class="lista-bebidas"></div>
+      <form id="form-outra" class="cartao form-outra" autocomplete="off">
+        <h3>Vou levar outra coisa</h3>
+        <label for="outra-nome">Bebida</label>
+        <input id="outra-nome" maxlength="40" placeholder="Ex.: Vinho tinto" required>
+        <div class="linha-outra">
+          <div>
+            <label for="outra-qtd">Quantidade</label>
+            <input id="outra-qtd" type="number" min="1" max="99" value="1" inputmode="numeric" required>
+          </div>
+          <div>
+            <label for="outra-unidade">Unidade</label>
+            <input id="outra-unidade" maxlength="20" placeholder="garrafas">
+          </div>
+        </div>
+        <button class="botao largo" style="margin-top:14px">Adicionar</button>
+      </form>
+    </section>
+
     <section class="cartao info">
       <h2 class="titulo-secao" style="margin-top:0">A festa</h2>
       <dl id="info"></dl>

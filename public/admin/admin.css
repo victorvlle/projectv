@@ -51,3 +51,12 @@ h3 { font-size: 1.05rem; margin-bottom: 6px; }
   font: 600 .95rem var(--fonte); padding: 16px 8px; border-radius: 12px; cursor: pointer;
 }
 .grade-modos button.ativo { border-color: var(--laranja); background: rgba(232, 98, 12, .18); }
+
+.linha-aberta { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.linha-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.quem-admin { display: grid; gap: 4px; margin-top: 8px; }
+.quem-admin div { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: .88rem; background: var(--fundo-2); border-radius: 8px; padding: 4px 4px 4px 10px; }
+.quem-admin button { appearance: none; border: 0; background: none; color: var(--texto-3); cursor: pointer; font-size: 1rem; padding: 4px 8px; }
+.barra-meta { height: 6px; border-radius: 999px; background: var(--fundo-2); margin-top: 8px; overflow: hidden; }
+.barra-meta i { display: block; height: 100%; background: var(--laranja); }
+.barra-meta.ok i { background: var(--lima); }

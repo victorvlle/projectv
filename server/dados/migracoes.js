@@ -60,4 +60,54 @@ module.exports = [
       await c.batch(comandos, 'write');
     },
   },
+  {
+    // Horário confirmado: 17h à meia-noite. Só troca o início se ainda for o
+    // padrão antigo (21h); se o admin já tiver mudado, respeita.
+    nome: 'horário da festa: 17h às 00h',
+    sql: `
+      INSERT OR IGNORE INTO config (chave, valor) VALUES ('fim', '"2026-11-01T00:00:00-04:00"');
+      UPDATE config SET valor = '"2026-10-31T17:00:00-04:00"'
+       WHERE chave = 'inicio' AND valor = '"2026-10-31T21:00:00-04:00"'
+    `,
+  },
+  {
+    nome: 'lista de bebidas',
+    sql: `
+      CREATE TABLE IF NOT EXISTS bebidas_itens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nome TEXT NOT NULL,
+        unidade TEXT NOT NULL DEFAULT 'un.',
+        meta INTEGER NOT NULL DEFAULT 0,
+        ordem INTEGER NOT NULL DEFAULT 0,
+        criado_em INTEGER NOT NULL
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_bebidas_itens_nome ON bebidas_itens (nome COLLATE NOCASE);
+      CREATE TABLE IF NOT EXISTS bebidas_compromissos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        convidado_id TEXT NOT NULL REFERENCES convidados(id) ON DELETE CASCADE,
+        item_id INTEGER REFERENCES bebidas_itens(id),
+        nome_livre TEXT,
+        unidade_livre TEXT,
+        quantidade INTEGER NOT NULL CHECK (quantidade BETWEEN 1 AND 99),
+        criado_em INTEGER NOT NULL,
+        atualizado_em INTEGER NOT NULL,
+        CHECK ((item_id IS NULL) <> (nome_livre IS NULL))
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_bebidas_um_por_item ON bebidas_compromissos (convidado_id, item_id) WHERE item_id IS NOT NULL;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_bebidas_um_por_livre ON bebidas_compromissos (convidado_id, nome_livre COLLATE NOCASE) WHERE nome_livre IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS idx_bebidas_item ON bebidas_compromissos (item_id);
+      INSERT OR IGNORE INTO config (chave, valor) VALUES ('bebidasAberta', 'true')
+    `,
+    // Sugestão inicial com metas (o admin ajusta tudo no painel). Só entra se a lista estiver vazia.
+    async depois(c) {
+      const r = await c.execute('SELECT COUNT(*) AS n FROM bebidas_itens');
+      if (Number(r.rows[0].n) > 0) return;
+      const { SUGESTOES } = require('./bebidas-sugestoes');
+      const agora = Date.now();
+      await c.batch(SUGESTOES.map((s, i) => ({
+        sql: 'INSERT INTO bebidas_itens (nome, unidade, meta, ordem, criado_em) VALUES (?, ?, ?, ?, ?)',
+        args: [s.nome, s.unidade, s.meta, i, agora],
+      })), 'write');
+    },
+  },
 ];

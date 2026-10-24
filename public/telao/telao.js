@@ -78,6 +78,7 @@
     $('relogio').classList.toggle('oculto', c.acabou);
     $('rotulo-contagem').classList.toggle('oculto', c.acabou);
     $('portoes').classList.toggle('oculto', !c.acabou);
+    $('portoes').textContent = PV.relogio.agora() >= estado.festa.fimMs ? 'Até a próxima edição' : 'Os portões estão abertos';
     $('r-dias').textContent = c.dias;
     $('r-horas').textContent = dois(c.horas);
     $('r-min').textContent = dois(c.minutos);

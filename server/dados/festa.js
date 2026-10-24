@@ -25,6 +25,8 @@ async function info() {
     nome: tudo.nome,
     inicio: tudo.inicio,
     inicioMs: Date.parse(tudo.inicio),
+    fim: tudo.fim,
+    fimMs: Date.parse(tudo.fim),
     local: tudo.local,
     dressCode: tudo.dressCode,
     oQueLevar: tudo.oQueLevar,
@@ -32,17 +34,22 @@ async function info() {
   };
 }
 
-// Aceita só os campos conhecidos; `inicio` precisa ser uma data ISO válida.
+// Aceita só os campos conhecidos; `inicio` e `fim` precisam ser datas ISO válidas,
+// com o fim depois do início. Tudo é validado antes de gravar qualquer coisa.
 async function editar(campos) {
+  const atual = await info();
+  const inicioMs = campos.inicio !== undefined ? Date.parse(campos.inicio) : atual.inicioMs;
+  const fimMs = campos.fim !== undefined ? Date.parse(campos.fim) : atual.fimMs;
+  if (!Number.isFinite(inicioMs)) throw new ErroValidacao('Data de início inválida.');
+  if (!Number.isFinite(fimMs)) throw new ErroValidacao('Data de fim inválida.');
+  if (fimMs <= inicioMs) throw new ErroValidacao('O fim da festa precisa ser depois do início.');
+
   for (const [chave, max] of Object.entries(CAMPOS_TEXTO)) {
     if (campos[chave] !== undefined) await gravar(chave, limparTexto(campos[chave], max));
   }
-  if (campos.inicio !== undefined) {
-    const ms = Date.parse(campos.inicio);
-    if (!Number.isFinite(ms)) throw new ErroValidacao('Data de início inválida.');
-    // Guarda no fuso de Manaus para a leitura humana continuar fazendo sentido.
-    await gravar('inicio', paraManaus(ms));
-  }
+  // Guarda no fuso de Manaus para a leitura humana continuar fazendo sentido.
+  if (campos.inicio !== undefined) await gravar('inicio', paraManaus(inicioMs));
+  if (campos.fim !== undefined) await gravar('fim', paraManaus(fimMs));
   return info();
 }
 

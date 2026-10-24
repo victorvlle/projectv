@@ -190,8 +190,12 @@ async function regenerarLink(id) {
 }
 
 async function excluir(id) {
-  const r = await banco.rodar('DELETE FROM convidados WHERE id = ?', [id]);
-  if (!r.rowsAffected) throw new ErroValidacao('Convidado não encontrado.', 404);
+  const r = await banco.lote([
+    { sql: 'DELETE FROM bebidas_compromissos WHERE convidado_id = ?', args: [id] },
+    { sql: 'DELETE FROM pontos_log WHERE convidado_id = ?', args: [id] },
+    { sql: 'DELETE FROM convidados WHERE id = ?', args: [id] },
+  ]);
+  if (!r[2].rowsAffected) throw new ErroValidacao('Convidado não encontrado.', 404);
 }
 
 module.exports = {

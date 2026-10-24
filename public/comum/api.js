@@ -55,6 +55,16 @@
     return dataHora(ms, { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
   }
 
+  // "sábado, 31 de outubro · 17h às 00h"
+  function horaCurta(ms) {
+    const [h, m] = dataHora(ms, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).split(':');
+    return m === '00' ? `${h}h` : `${h}h${m}`;
+  }
+  function periodo(inicioMs, fimMs) {
+    const dia = dataHora(inicioMs, { weekday: 'long', day: '2-digit', month: 'long' });
+    return Number.isFinite(fimMs) ? `${dia} · ${horaCurta(inicioMs)} às ${horaCurta(fimMs)}` : `${dia} · ${horaCurta(inicioMs)}`;
+  }
+
   function esc(texto) {
     return String(texto ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
@@ -110,5 +120,5 @@
     return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
   }
 
-  window.PV = { guardado, chamar, ErroApi, relogio, contagem, dataHora, dataCurta, esc, avisar, conectar, adiar, FUSO };
+  window.PV = { guardado, chamar, ErroApi, relogio, contagem, dataHora, dataCurta, periodo, esc, avisar, conectar, adiar, FUSO };
 })();

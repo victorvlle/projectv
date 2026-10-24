@@ -92,7 +92,7 @@
     if (!estado || !eu) return;
     $('eu-avatar').textContent = emojiDe(eu.avatar);
     $('eu-apelido').textContent = eu.apelido || '';
-    $('hero-data').textContent = PV.dataHora(estado.festa.inicioMs, { weekday: 'long', day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' });
+    $('hero-data').textContent = PV.periodo(estado.festa.inicioMs, estado.festa.fimMs);
     tic();
 
     const agora = PV.relogio.agora();
@@ -113,8 +113,10 @@
     }).join('');
     liberadasAntes = liberadasAgora;
 
+    desenharBebidas();
+
     const f = estado.festa;
-    const itens = [['Quando', PV.dataHora(f.inicioMs, { weekday: 'long', day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' })],
+    const itens = [['Quando', PV.periodo(f.inicioMs, f.fimMs)],
       ['Onde', f.local], ['Dress code', f.dressCode], ['O que levar', f.oQueLevar], ['Regras da casa', f.regras]]
       .filter(([, v]) => v);
     $('info').innerHTML = itens.map(([k, v]) => `<div><dt>${PV.esc(k)}</dt><dd>${PV.esc(v)}</dd></div>`).join('');
@@ -126,6 +128,160 @@
       : '<p class="fraco">Ninguém por aqui ainda… seja o primeiro.</p>';
   }
 
+  // ------------------------------------------------------- lista de bebidas
+  // Quantidade que o próprio convidado está mudando agora (ainda não salva no
+  // servidor). Tem prioridade sobre o que vem do servidor, para o número não
+  // "voltar" enquanto a pessoa toca no + várias vezes.
+  const pendentes = new Map();
+  const timersBebida = new Map();
+
+  function quantoLevo(item) {
+    if (pendentes.has(item.id)) return pendentes.get(item.id);
+    const meu = item.quem.find((q) => q.souEu);
+    return meu ? meu.quantidade : 0;
+  }
+
+  function chipPessoa(q) {
+    const av = q.avatar ? emojiDe(q.avatar) : '👤';
+    return `<span class="pessoa-chip ${q.souEu ? 'eu' : ''}"><span class="avatar">${av}</span>${PV.esc(q.souEu ? 'Você' : q.apelido)} ×${q.quantidade}</span>`;
+  }
+
+  function desenharBebidas() {
+    const b = estado.bebidas;
+    if (!b) return;
+    const aberta = b.aberta;
+    $('bebidas-fechada').classList.toggle('oculto', aberta);
+    $('form-outra').classList.toggle('oculto', !aberta);
+
+    // Minha parte
+    const minhas = b.minhas.map((m) => (m.itemId != null && pendentes.has(m.itemId) ? { ...m, quantidade: pendentes.get(m.itemId) } : m))
+      .filter((m) => m.quantidade > 0);
+    $('bebidas-minha').classList.toggle('oculto', !minhas.length);
+    $('bebidas-minha').innerHTML = minhas.length ? `<h3>Você vai levar</h3><ul>${minhas.map((m) => `
+      <li><span><b>${m.quantidade}</b> ${PV.esc(m.unidade)} de ${PV.esc(m.nome)}</span>
+        ${aberta ? `<button class="tirar" type="button" data-tirar="${m.id}" aria-label="Tirar ${PV.esc(m.nome)}">✕</button>` : ''}</li>`).join('')}</ul>` : '';
+
+    // O que mais falta (até 4, do que falta mais para o que falta menos)
+    // Os totais já contam o que eu acabei de tocar, antes mesmo de salvar.
+    const comFalta = b.itens.map((i) => {
+      const meuServidor = (i.quem.find((q) => q.souEu) || { quantidade: 0 }).quantidade;
+      const total = i.total - meuServidor + quantoLevo(i);
+      return { ...i, total, falta: i.meta > 0 ? Math.max(0, i.meta - total) : 0 };
+    });
+    const top = comFalta.filter((i) => i.falta > 0).sort((x, y) => y.falta / y.meta - x.falta / x.meta).slice(0, 4);
+    $('bebidas-falta').innerHTML = top.map((i) =>
+      `<button class="chip-falta" type="button" data-ir="${i.id}">${PV.esc(i.nome)} · <b>faltam ${i.falta}</b></button>`).join('');
+
+    $('bebidas-lista').innerHTML = comFalta.map((i) => {
+      const levo = quantoLevo(i);
+      const completa = i.meta > 0 && i.falta === 0;
+      const pct = i.meta > 0 ? Math.min(100, Math.round((i.total / i.meta) * 100)) : (i.total > 0 ? 100 : 0);
+      let status;
+      if (i.meta > 0) {
+        status = completa
+          ? `<span class="b-status ok">Garantido ✓ ${i.total}/${i.meta}</span>`
+          : `<span class="b-status falta">${i.total} de ${i.meta} ${PV.esc(i.unidade)} · faltam ${i.falta}</span>`;
+      } else {
+        status = `<span class="b-status">${i.total} ${PV.esc(i.unidade)}</span>`;
+      }
+      const quem = i.quem.map((q) => (q.souEu ? { ...q, quantidade: levo } : q)).filter((q) => q.quantidade > 0);
+      if (levo > 0 && !quem.some((q) => q.souEu)) quem.push({ souEu: true, avatar: eu.avatar, apelido: eu.apelido, quantidade: levo });
+      return `<article class="bebida ${completa ? 'completa' : ''} ${levo > 0 ? 'minha' : ''}" id="bebida-${i.id}">
+        <div class="b-topo"><span class="b-nome">${PV.esc(i.nome)}</span>${status}</div>
+        ${i.meta > 0 ? `<div class="progresso"><i style="width:${pct}%"></i></div>` : ''}
+        <div class="b-quem">${quem.map(chipPessoa).join('')}</div>
+        ${aberta ? `<div class="b-eu"><span>Eu levo</span>
+          <div class="passo ${pendentes.has(i.id) ? 'salvando' : ''}" data-item="${i.id}">
+            <button type="button" data-delta="-1" ${levo <= 0 ? 'disabled' : ''} aria-label="Menos">−</button>
+            <output>${levo}</output>
+            <button type="button" data-delta="1" ${levo >= 99 ? 'disabled' : ''} aria-label="Mais">+</button>
+            <small>${PV.esc(i.unidade)}</small>
+          </div></div>` : ''}
+      </article>`;
+    }).join('');
+
+    $('bebidas-outras').innerHTML = b.outras.length ? `<h3 class="fraco" style="margin:8px 0 0">Outras bebidas</h3>` + b.outras.map((o) => `
+      <article class="bebida">
+        <div class="b-topo"><span class="b-nome">${PV.esc(o.nome)}</span><span class="b-status">${o.total} ${PV.esc(o.unidade)}</span></div>
+        <div class="b-quem" style="margin-top:8px">${o.quem.map(chipPessoa).join('')}</div>
+      </article>`).join('') : '';
+  }
+
+  function salvarItemDepois(itemId) {
+    clearTimeout(timersBebida.get(itemId));
+    timersBebida.set(itemId, setTimeout(async () => {
+      const valor = pendentes.get(itemId);
+      try {
+        const r = await api('PUT', `/api/bebidas/itens/${itemId}`, { quantidade: valor });
+        if (pendentes.get(itemId) === valor) pendentes.delete(itemId);
+        estado.bebidas = r.bebidas;
+      } catch (erro) {
+        pendentes.delete(itemId);
+        if (erro.status !== 401) PV.avisar(erro.message, 'erro');
+        carregarFesta().catch(() => {});
+      }
+      desenharBebidas();
+    }, 600));
+  }
+
+  $('sec-bebidas').addEventListener('click', async (e) => {
+    const passo = e.target.closest('.passo button[data-delta]');
+    if (passo) {
+      const itemId = Number(passo.closest('.passo').dataset.item);
+      const item = estado.bebidas.itens.find((i) => i.id === itemId);
+      if (!item) return;
+      const novo = Math.max(0, Math.min(99, quantoLevo(item) + Number(passo.dataset.delta)));
+      pendentes.set(itemId, novo);
+      desenharBebidas();
+      salvarItemDepois(itemId);
+      return;
+    }
+    const ir = e.target.closest('[data-ir]');
+    if (ir) {
+      const alvo = $(`bebida-${ir.dataset.ir}`);
+      if (alvo) {
+        alvo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        alvo.classList.remove('destaque'); void alvo.offsetWidth; alvo.classList.add('destaque');
+      }
+      return;
+    }
+    const tirar = e.target.closest('[data-tirar]');
+    if (tirar) {
+      const id = Number(tirar.dataset.tirar);
+      const minha = estado.bebidas.minhas.find((m) => m.id === id);
+      try {
+        if (minha && minha.itemId != null) {
+          pendentes.delete(minha.itemId);
+          clearTimeout(timersBebida.get(minha.itemId));
+        }
+        const r = await api('DELETE', `/api/bebidas/minhas/${id}`);
+        estado.bebidas = r.bebidas;
+        desenharBebidas();
+      } catch (erro) {
+        if (erro.status !== 401) PV.avisar(erro.message, 'erro');
+      }
+    }
+  });
+
+  $('form-outra').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const botao = e.target.querySelector('button');
+    botao.disabled = true;
+    try {
+      const r = await api('POST', '/api/bebidas/outras', {
+        nome: $('outra-nome').value, quantidade: Number($('outra-qtd').value), unidade: $('outra-unidade').value,
+      });
+      estado.bebidas = r.bebidas;
+      $('outra-nome').value = ''; $('outra-qtd').value = '1'; $('outra-unidade').value = '';
+      desenharBebidas();
+      PV.avisar('Anotado! 🍻', 'ok');
+    } catch (erro) {
+      if (erro.status !== 401) PV.avisar(erro.message, 'erro');
+    } finally {
+      botao.disabled = false;
+    }
+  });
+
   const dois = (n) => String(n).padStart(2, '0');
   function tic() {
     if (!estado) return;
@@ -133,6 +289,7 @@
     $('relogio').classList.toggle('oculto', c.acabou);
     $('hero-sub').classList.toggle('oculto', c.acabou);
     $('portoes').classList.toggle('oculto', !c.acabou);
+    $('portoes').textContent = PV.relogio.agora() >= estado.festa.fimMs ? 'Até a próxima edição' : 'Os portões estão abertos';
     if (!c.acabou) {
       $('r-dias').textContent = c.dias;
       $('r-horas').textContent = dois(c.horas);

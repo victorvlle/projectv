@@ -155,13 +155,27 @@ test('Previsões nascem agendadas para 30/10 e abrem sozinhas no horário', asyn
   await s.req('PUT', '/api/admin/atividades/quiz', { token: admin, corpo: { estado: 'bloqueada' } });
 });
 
+test('horário padrão: sábado 31/10, das 17h à meia-noite', async () => {
+  const est = await s.req('GET', '/api/admin/estado', { token: admin });
+  assert.equal(est.json.festa.inicio, '2026-10-31T17:00:00-04:00');
+  assert.equal(est.json.festa.fim, '2026-11-01T00:00:00-04:00');
+  assert.equal(est.json.festa.fimMs - est.json.festa.inicioMs, 7 * 60 * 60 * 1000);
+});
+
 test('informações da festa: edição validada e fuso de Manaus', async () => {
   const r = await s.req('PUT', '/api/admin/festa', { token: admin, corpo: { inicio: '2026-10-31T22:30:00-04:00', local: 'Salão' } });
   assert.equal(r.status, 200);
   assert.equal(r.json.festa.inicio, '2026-10-31T22:30:00-04:00');
   assert.equal(r.json.festa.local, 'Salão');
   assert.equal((await s.req('PUT', '/api/admin/festa', { token: admin, corpo: { inicio: 'amanhã' } })).status, 400);
-  await s.req('PUT', '/api/admin/festa', { token: admin, corpo: { inicio: '2026-10-31T21:00:00-04:00' } });
+  // Fim antes do início é recusado e nada é gravado
+  const ruim = await s.req('PUT', '/api/admin/festa', { token: admin, corpo: { fim: '2026-10-31T20:00:00-04:00', local: 'Não grava' } });
+  assert.equal(ruim.status, 400);
+  const depois = await s.req('GET', '/api/admin/estado', { token: admin });
+  assert.equal(depois.json.festa.local, 'Salão');
+  const ok = await s.req('PUT', '/api/admin/festa', { token: admin, corpo: { inicio: '2026-10-31T17:00:00-04:00', fim: '2026-11-01T00:00:00-04:00' } });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.json.festa.fim, '2026-11-01T00:00:00-04:00');
 });
 
 test('socket: só conecta com credencial; recebe atualizações; é expulso ao desativar', async () => {
