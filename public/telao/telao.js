@@ -62,7 +62,7 @@
     $('desfile').innerHTML = lista.slice(-40).map((c, i) =>
       `<span class="avatar" title="${PV.esc(c.nome)}" style="animation-delay:${(i % 8) * 0.4}s">${emojiDe(c.avatar)}</span>`).join('');
     $('almas').innerHTML = lista.map((c, i) =>
-      `<div class="alma" style="animation-delay:${Math.min(i, 30) * 0.04}s"><span class="avatar">${emojiDe(c.avatar)}</span><span>${PV.esc(c.nome)}</span></div>`).join('');
+      `<div class="alma" style="animation-delay:${Math.min(i, 30) * 0.04}s"><span class="avatar">${emojiDe(c.avatar)}</span><span class="nome-conf">${PV.esc(c.nome)}</span></div>`).join('');
     $('cadeados').innerHTML = estado.atividades.map((a) => (a.estado === 'liberada'
       ? `<div class="cadeado aberto"><div class="ic">${a.icone}</div><div class="n">${PV.esc(a.nome)}</div></div>`
       : `<div class="cadeado"><div class="ic">🔒</div><div class="n">${PV.esc(a.enigma)}</div></div>`)).join('');

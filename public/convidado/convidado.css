@@ -64,10 +64,10 @@
 .info dt { font-size: .75rem; text-transform: uppercase; letter-spacing: .12em; color: var(--laranja-claro); font-weight: 700; }
 .info dd { margin: 2px 0 0; color: var(--texto); white-space: pre-line; }
 
-.grade-confirmados { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 12px 8px; }
-.confirmado { text-align: center; font-size: .78rem; color: var(--texto-2); min-width: 0; }
-.confirmado .avatar { width: 52px; height: 52px; font-size: 28px; margin-bottom: 4px; }
-.confirmado span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grade-confirmados { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px 10px; }
+.confirmado { width: 80px; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: .78rem; color: var(--texto-2); }
+.confirmado .avatar { width: 56px; height: 56px; font-size: 30px; }
+.confirmado .nome-conf { display: block; width: 100%; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .confirmado.sou-eu .avatar { border-color: var(--laranja); }
 
 .rodape { text-align: center; margin-top: 36px; }

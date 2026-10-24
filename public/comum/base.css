@@ -119,9 +119,12 @@ label { display: block; font-weight: 600; font-size: .875rem; color: var(--texto
 
 /* Avatares */
 .avatar {
-  display: inline-grid; place-items: center; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  border-radius: 50%; overflow: hidden; text-align: center; line-height: 1;
+  /* Fonte de emoji primeiro: com a fonte do texto o emoji sai deslocado para cima/lado. */
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
   background: radial-gradient(circle at 35% 30%, var(--roxo-claro), var(--roxo));
-  border: 2px solid var(--borda); line-height: 1;
+  border: 2px solid var(--borda);
 }
 
 /* Bloqueio */

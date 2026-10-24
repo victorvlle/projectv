@@ -129,7 +129,7 @@
     $('total-confirmados').textContent = `(${estado.confirmados.length})`;
     $('confirmados').innerHTML = estado.confirmados.length
       ? estado.confirmados.map((c) => `<div class="confirmado ${c.id === eu.id ? 'sou-eu' : ''}">
-          <span class="avatar">${emojiDe(c.avatar)}</span><span>${PV.esc(c.nome)}</span></div>`).join('')
+          <span class="avatar">${emojiDe(c.avatar)}</span><span class="nome-conf">${PV.esc(c.nome)}</span></div>`).join('')
       : '<p class="fraco">Ninguém por aqui ainda… seja o primeiro.</p>';
   }
 
