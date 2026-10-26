@@ -34,6 +34,9 @@ Atualizado em 23/10/2026.
 - [x] O Pós: abre 31/10 23h, votação até a meia-noite, resultado ao vivo e no telão; opções editáveis
 - [x] Segurança: 41 ataques simulados barrados (`npm run seguranca`), relatório em PDF
 - [x] Testes automatizados: 39 passando
+- [x] Notificações (Web Push): ativar/desativar, passo a passo do iPhone com atalho já logado, movimento dos amigos agrupado,
+      programados (véspera, contribuições, 2h, portões, campeão do pós), atividade liberada, avisos livres no admin
+- [x] Segurança: 46 ataques barrados (inclui SSRF nas inscrições de push); testes automatizados: 47 passando
 - [x] Deploy no Render + Turso: https://projectv-pec1.onrender.com (`/saude` responde `banco: turso`, verificado em 24/10)
 
 ## Pendente (Etapa C, em ordem)
@@ -60,3 +63,4 @@ Atualizado em 23/10/2026.
 ## Bloqueado / depende do Victor
 
 - Confirmar número de convidados, TV/projetor e internet no local
+- Monitor no UptimeRobot (a cada 5 min em /saude) para os avisos agendados saírem com o Render free; pausar depois da festa

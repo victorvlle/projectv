@@ -69,6 +69,25 @@ function criarApp() {
   app.use('/api', (_req, res) => res.status(404).json({ ok: false, erro: 'Rota não encontrada.' }));
 
   // Páginas. O código do convite é lido pelo JavaScript da página, não pelo servidor.
+  app.get('/manifest/:codigo.webmanifest', (req, res) => {
+    const { codigoValido } = require('./seguranca');
+    if (!codigoValido(req.params.codigo)) return res.status(404).end();
+    res.setHeader('Content-Type', 'application/manifest+json');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.json({
+      name: 'Project V — Halloween',
+      short_name: 'Project V',
+      start_url: `/?c=${req.params.codigo}`,
+      scope: '/',
+      display: 'standalone',
+      background_color: '#120D17',
+      theme_color: '#120D17',
+      icons: [
+        { src: '/icones/icone-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: '/icones/icone-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      ],
+    });
+  });
   app.get('/', pagina('convidado/index.html'));
   app.get('/c/:codigo', pagina('convidado/entrar.html'));
   app.get('/telao', pagina('telao/index.html'));

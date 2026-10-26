@@ -33,6 +33,7 @@
       <button data-aba="bebidas">Bebidas</button>
       <button data-aba="extras">Extras</button>
       <button data-aba="atividades">Atividades</button>
+      <button data-aba="avisos">Avisos</button>
       <button data-aba="telao">Telão</button>
       <button data-aba="festa">Festa</button>
       <button data-aba="backup">Backup</button>
@@ -98,6 +99,37 @@
       <section data-painel="atividades" class="oculto">
         <p class="mudo">Bloqueada: ninguém vê. Agendada: abre sozinha no horário. Liberada: aberta agora.</p>
         <div id="lista-atividades" class="lista"></div>
+      </section>
+
+      <!-- AVISOS (notificações no celular) -->
+      <section data-painel="avisos" class="oculto">
+        <div class="resumo" id="resumo-avisos"></div>
+        <form id="form-aviso" class="cartao">
+          <h3>Mandar aviso para todo mundo</h3>
+          <label for="aviso-titulo">Título</label>
+          <input id="aviso-titulo" maxlength="60" placeholder="🎃 Project V">
+          <label for="aviso-corpo">Mensagem</label>
+          <textarea id="aviso-corpo" rows="2" maxlength="180" placeholder="Ex.: A pizza chegou! 🍕" required></textarea>
+          <label for="aviso-url">Ao tocar, abre</label>
+          <select id="aviso-url">
+            <option value="/">Página inicial</option>
+            <option value="/#contribuicoes">Contribuições</option>
+            <option value="/#playlist">Playlist da Noite</option>
+            <option value="/#caronas">Caronas</option>
+            <option value="/#chegar">Como chegar</option>
+            <option value="/#pos">O Pós</option>
+          </select>
+          <button class="botao largo" style="margin-top:12px">Enviar agora</button>
+        </form>
+        <div class="cartao" style="margin-top:12px">
+          <h3>Programados</h3>
+          <p class="fraco" style="margin:0 0 8px">Saem sozinhos, uma vez cada. Os horários seguem a data da festa.</p>
+          <div id="programados" class="lista"></div>
+        </div>
+        <div class="cartao" style="margin-top:12px">
+          <h3>Enviados</h3>
+          <div id="historico-avisos" class="lista"></div>
+        </div>
       </section>
 
       <!-- TELÃO -->

@@ -326,6 +326,39 @@
     if (await acao(() => api('POST', '/pos/opcoes', { nome }), 'Lugar adicionado.')) { $('pos-nova').value = ''; carregar(); }
   });
 
+  // ------------------------------------------------------------------ avisos
+  let avisos = null;
+  function desenharAvisos() {
+    if (!avisos) return;
+    const r = avisos.resumo;
+    $('resumo-avisos').innerHTML = `
+      <div><b>${r.pessoas}</b><small>Com avisos</small></div>
+      <div><b>${Math.max(0, r.convidados - r.pessoas)}</b><small>Sem avisos</small></div>
+      <div><b>${r.aparelhos}</b><small>Aparelhos</small></div>`;
+    $('programados').innerHTML = avisos.programados.map((p) => `
+      <div class="item"><div class="item-nome">${PV.esc(p.nome)}
+        ${p.enviado ? '<span class="selo ok">enviado</span>' : '<span class="selo pendente">pendente</span>'}</div>
+        <div class="item-sub">${PV.dataCurta(p.quando)}${p.enviado ? ` · chegou em ${p.entregues} aparelho(s)` : ''}</div></div>`).join('');
+    $('historico-avisos').innerHTML = avisos.historico.filter((h) => h.titulo !== '(sem envio)').map((h) => `
+      <div class="item"><div class="item-nome">${PV.esc(h.titulo)}</div>
+        <div class="item-sub">${PV.esc(h.corpo)}</div>
+        <div class="item-sub">${PV.dataCurta(h.enviadoEm)} · ${h.para} pessoa(s), ${h.entregues} aparelho(s)</div></div>`).join('')
+      || '<p class="fraco">Nada enviado ainda.</p>';
+  }
+
+  $('form-aviso').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!confirm('Mandar esse aviso para todo mundo que ativou as notificações?')) return;
+    const r = await acao(() => api('POST', '/avisos', {
+      titulo: $('aviso-titulo').value, corpo: $('aviso-corpo').value, url: $('aviso-url').value,
+    }));
+    if (r) {
+      PV.avisar(`Aviso enviado: ${r.entregues} aparelho(s).`, 'ok');
+      $('aviso-corpo').value = '';
+      carregar();
+    }
+  });
+
   // -------------------------------------------------------------- atividades
   function desenharAtividades() {
     $('lista-atividades').innerHTML = estado.atividades.map((a) => `
@@ -448,13 +481,15 @@
 
   // -------------------------------------------------------------- carregar
   async function carregar() {
-    const [r, b, x] = await Promise.all([api('GET', '/estado'), api('GET', '/bebidas'), api('GET', '/extras')]);
+    const [r, b, x, av] = await Promise.all([api('GET', '/estado'), api('GET', '/bebidas'), api('GET', '/extras'), api('GET', '/avisos')]);
     extras = x;
+    avisos = av;
     PV.relogio.sincronizar(r.agora);
     estado = r;
     bebidas = b.bebidas;
     desenharBebidas();
     desenharExtras();
+    desenharAvisos();
     const ondeBanco = { turso: 'banco: Turso', arquivo: 'banco: arquivo', memoria: 'banco: memória' }[r.banco] || '';
     $('info-banco').textContent = ondeBanco;
     desenharConvidados();

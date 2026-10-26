@@ -2,7 +2,7 @@
   "name": "projectv",
   "version": "0.1.0",
   "private": true,
-  "description": "Project V - site da edi\u00e7\u00e3o Halloween (convidados, tel\u00e3o e admin)",
+  "description": "Project V - site da edição Halloween (convidados, telão e admin)",
   "main": "server/index.js",
   "engines": {
     "node": ">=20"
@@ -17,7 +17,8 @@
   "dependencies": {
     "@libsql/client": "^0.17.4",
     "express": "^4.22.3",
-    "socket.io": "^4.8.4"
+    "socket.io": "^4.8.4",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "socket.io-client": "^4.8.4"

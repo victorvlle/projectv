@@ -57,6 +57,7 @@ async function sugerir(convidadoId, { titulo, artista }) {
     if (/UNIQUE/i.test(erro.message)) return sugerir(convidadoId, { titulo, artista }); // corrida: vira voto
     throw erro;
   }
+  require('../notificacoes').evento('musica', convidadoId);
   return { jaExistia: false };
 }
 

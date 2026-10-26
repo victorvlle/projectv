@@ -354,12 +354,24 @@
   // Ponte para extras.js (playlist, caronas, como chegar, pós).
   window.PVConvidado = {
     api, emojiDe,
+    eu: () => eu,
     estado: () => estado,
     recarregar: () => carregarFesta().catch(() => {}),
   };
 
   // ------------------------------------------------------------------ início
   async function iniciar() {
+    // Atalho da tela inicial (iPhone) abre com ?c=<código>: troca por uma sessão nova.
+    const params = new URLSearchParams(location.search);
+    const codigo = params.get('c');
+    if (codigo) {
+      try {
+        const r = await PV.chamar('POST', '/api/entrar', { corpo: { codigo } });
+        token = r.token;
+        PV.guardado.gravar('pv.token', token);
+      } catch (_) { /* código inválido: segue com o que tiver */ }
+      history.replaceState(null, '', '/' + location.hash);
+    }
     if (!token) return mostrar('tela-bloqueio');
     try {
       const [r, a] = await Promise.all([api('GET', '/api/eu'), PV.chamar('GET', '/api/avatares')]);

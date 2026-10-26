@@ -56,7 +56,7 @@ async function main() {
   const servidor = spawn(process.execPath, ['server/index.js'], {
     cwd: RAIZ,
     env: { ...process.env, NODE_ENV: 'production', PORT: String(PORTA), BANCO_CAMINHO: path.join(PASTA, 'alvo.db'),
-      ADMIN_SEGREDO: SENHA, SESSAO_SEGREDO: crypto.randomBytes(32).toString('hex'), TURSO_URL: '' },
+      ADMIN_SEGREDO: SENHA, SESSAO_SEGREDO: crypto.randomBytes(32).toString('hex'), TURSO_URL: '', PUSH_FALSO: '1' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let log = '';
@@ -306,6 +306,29 @@ async function main() {
     barrado(GX, 'Cancelar a carona de outra pessoa', cancelarAlheio.status === 404 && aindaExiste, `HTTP ${cancelarAlheio.status}; carro continua lá`);
     const vagasLoucas = await req('PUT', '/api/caronas/minha', { token: tA, corpo: { vagas: 999, trajeto: 'ida', saindo: 'X' } });
     barrado(GX, 'Oferecer 999 vagas', vagasLoucas.status === 400, `HTTP ${vagasLoucas.status} (limite de 1 a 6)`);
+
+    // ================================================== 8c. NOTIFICAÇÕES
+    const GN = 'Notificações';
+    const alvos = ['http://169.254.169.254/latest/meta-data', 'https://127.0.0.1/x', 'https://localhost:3000/x',
+      'https://projectv-pec1.onrender.com/api/admin/estado', 'https://fcm.googleapis.com.atacante.com/x', 'https://evil.com/fcm.googleapis.com'];
+    let aceitos = 0;
+    for (const endpoint of alvos) {
+      const r = await req('POST', '/api/eu/push', { token: tA, corpo: { inscricao: { endpoint, keys: { p256dh: 'B'.repeat(87), auth: 'a'.repeat(22) } } } });
+      if (r.status === 200) aceitos++;
+    }
+    barrado(GN, 'Cadastrar endereço falso para o servidor fazer requisições (SSRF)', aceitos === 0,
+      `${alvos.length} endereços (rede interna, metadados, outro site): ${aceitos} aceitos; só serviços de push oficiais passam`);
+    const envio = await req('POST', '/api/admin/avisos', { token: tA, corpo: { corpo: 'Festa cancelada!' } });
+    barrado(GN, 'Convidado mandar notificação para todo mundo', envio.status === 401, `HTTP ${envio.status}`);
+    const semLogin = await req('POST', '/api/eu/push', { corpo: { inscricao: { endpoint: 'https://fcm.googleapis.com/x' } } });
+    barrado(GN, 'Inscrever aparelho sem estar logado', semLogin.status === 401, `HTTP ${semLogin.status}`);
+    for (let i = 0; i < 8; i++) {
+      await req('POST', '/api/eu/push', { token: tV, corpo: { inscricao: { endpoint: `https://fcm.googleapis.com/fcm/send/v${i}`, keys: { p256dh: 'B'.repeat(87), auth: 'a'.repeat(22) } } } });
+    }
+    const aparelhos = (await req('GET', '/api/admin/avisos', { token: admin })).json.resumo.aparelhos;
+    barrado(GN, 'Encher o servidor de inscrições (8 aparelhos para a mesma pessoa)', aparelhos <= 5, `${aparelhos} guardados (limite de 5 por pessoa)`);
+    const manifestoRuim = await req('GET', '/manifest/..%2f..%2fpackage.json.webmanifest');
+    barrado(GN, 'Usar o manifesto do atalho para ler arquivos', manifestoRuim.status === 404, `HTTP ${manifestoRuim.status}`);
 
     // =========================================== 9. FORÇA BRUTA (por último: esgota os freios)
     const GF = 'Força bruta';

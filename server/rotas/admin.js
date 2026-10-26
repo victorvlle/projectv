@@ -12,12 +12,15 @@ const bebidas = require('../dados/bebidas');
 const playlist = require('../dados/playlist');
 const caronas = require('../dados/caronas');
 const pos = require('../dados/pos');
+const notificacoes = require('../notificacoes');
+const { porId } = require('../atividades/catalogo');
 const banco = require('../dados/banco');
 const seg = require('../seguranca');
 const { avisar } = require('../tempo-real');
 const { assincrono, soAdmin } = require('./util');
 
 const router = express.Router();
+const freioAvisos = seg.criarFreio({ maximo: 10, janelaMs: 60 * 1000 });
 // Dois freios para a senha do admin, contando só tentativas ERRADAS:
 //  - por IP: 8 erros por minuto;
 //  - geral: 30 erros por minuto somando todo mundo. Esse segundo existe porque o IP
@@ -86,7 +89,10 @@ router.patch('/convidados/:id', assincrono(async (req, res) => {
   const permitidos = ['nome', 'avatar', 'ativo', 'fora'];
   const campos = Object.fromEntries(Object.entries(req.body || {}).filter(([k]) => permitidos.includes(k)));
   const c = await convidados.editar(req.params.id, campos);
-  if (campos.ativo === false) avisar.expulsar(req.params.id);
+  if (campos.ativo === false) {
+    avisar.expulsar(req.params.id);
+    await notificacoes.removerDoConvidado(req.params.id);
+  }
   avisar.atualizar('convidados');
   res.json({ ok: true, convidado: comLink(req, convidados.paraAdmin(c)) });
 }));
@@ -94,6 +100,8 @@ router.patch('/convidados/:id', assincrono(async (req, res) => {
 router.post('/convidados/:id/regenerar', assincrono(async (req, res) => {
   const c = await convidados.regenerarLink(req.params.id);
   avisar.expulsar(req.params.id);
+  // Link repassado: o aparelho de quem recebeu o link antigo para de receber avisos.
+  await notificacoes.removerDoConvidado(req.params.id);
   avisar.atualizar('convidados');
   res.json({ ok: true, convidado: comLink(req, convidados.paraAdmin(c)) });
 }));
@@ -113,7 +121,12 @@ router.put('/festa', assincrono(async (req, res) => {
 }));
 
 router.put('/atividades/:id', assincrono(async (req, res) => {
+  const antes = (await atividades.paraAdmin()).find((a) => a.id === req.params.id);
   await atividades.definir(req.params.id, req.body || {});
+  const depois = (await atividades.paraAdmin()).find((a) => a.id === req.params.id);
+  if (antes && depois && antes.efetivo !== 'liberada' && depois.efetivo === 'liberada') {
+    notificacoes.atividadeLiberada(porId(depois.id)).catch((e) => console.error('[push]', e.message));
+  }
   avisar.atualizar('atividades');
   res.json({ ok: true, atividades: await atividades.paraAdmin() });
 }));
@@ -181,6 +194,23 @@ router.delete('/caronas/:id', assincrono(async (req, res) => { await caronas.rem
 router.post('/pos/opcoes', assincrono(async (req, res) => { await pos.criarOpcao((req.body || {}).nome); pronto('pos')(res); }));
 router.patch('/pos/opcoes/:id', assincrono(async (req, res) => { await pos.renomearOpcao(req.params.id, (req.body || {}).nome); pronto('pos')(res); }));
 router.delete('/pos/opcoes/:id', assincrono(async (req, res) => { await pos.removerOpcao(req.params.id); pronto('pos')(res); }));
+
+// --------------------------------------------------------------- avisos
+router.get('/avisos', assincrono(async (_req, res) => {
+  const [resumo, programados, historico] = await Promise.all([notificacoes.resumo(), notificacoes.programados(), notificacoes.historico()]);
+  res.json({ ok: true, resumo, programados, historico });
+}));
+const DESTINOS = new Set(['/', '/#contribuicoes', '/#playlist', '/#caronas', '/#chegar', '/#pos']);
+router.post('/avisos', assincrono(async (req, res) => {
+  if (!freioAvisos.tentar('admin')) return res.status(429).json({ ok: false, erro: 'Muitos avisos seguidos. Espere um minuto.' });
+  const { limparTexto } = require('../dados/convidados');
+  const titulo = limparTexto((req.body || {}).titulo, 60) || '🎃 Project V';
+  const corpo = limparTexto((req.body || {}).corpo, 180);
+  if (corpo.length < 2) return res.status(400).json({ ok: false, erro: 'Escreva a mensagem.' });
+  const url = DESTINOS.has((req.body || {}).url) ? req.body.url : '/';
+  const r = await notificacoes.enviar({ titulo, corpo, url, tag: `aviso-${Date.now()}` });
+  res.json({ ok: true, ...r });
+}));
 
 // ---------------------------------------------------------------- backup
 router.get('/backup', assincrono(async (_req, res) => {

@@ -2,6 +2,7 @@
 
 const banco = require('./dados/banco');
 const agendador = require('./agendador');
+const notificacoes = require('./notificacoes');
 const seg = require('./seguranca');
 const { criarApp } = require('./app');
 
@@ -20,6 +21,7 @@ async function main() {
   });
 
   agendador.iniciar();
+  notificacoes.iniciar();
   server.listen(PORT, () => {
     const onde = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
     console.log(`\n  Project V rodando em ${onde}  (banco: ${banco.ondeEsta()})`);
@@ -34,6 +36,7 @@ async function main() {
   const encerrar = () => {
     console.log('[servidor] encerrando...');
     agendador.parar();
+    notificacoes.parar();
     server.close(() => banco.fechar().finally(() => process.exit(0)));
     setTimeout(() => process.exit(0), 8000).unref();
   };

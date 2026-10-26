@@ -60,6 +60,7 @@ async function oferecer(convidadoId, dados) {
   }
   await banco.rodar('INSERT INTO caronas (motorista_id, vagas, trajeto, saindo, obs, criado_em) VALUES (?, ?, ?, ?, ?, ?)',
     [convidadoId, o.vagas, o.trajeto, o.saindo, o.obs, Date.now()]);
+  require('../notificacoes').evento('carona', convidadoId);
 }
 
 async function cancelarOferta(convidadoId) {

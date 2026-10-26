@@ -34,6 +34,7 @@ npm test
 | `SESSAO_SEGREDO` | Assina as sessões. **Precisa ser fixo em produção** | sorteado a cada boot |
 | `ADMIN_SEGREDO` | Senha do `/admin` e do `/telao` | vazio = login sempre recusado |
 | `URL_PUBLICA` | Domínio usado nos links de convite | `RENDER_EXTERNAL_URL` |
+| `VAPID_PUBLIC` / `VAPID_PRIVATE` | Chaves das notificações (opcional) | geradas uma vez e guardadas no banco |
 
 ## Publicar no Render
 

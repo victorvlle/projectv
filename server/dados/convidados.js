@@ -178,6 +178,7 @@ async function excluir(id) {
     { sql: 'DELETE FROM caronas_reservas WHERE convidado_id = ? OR carona_id IN (SELECT id FROM caronas WHERE motorista_id = ?)', args: [id, id] },
     { sql: 'DELETE FROM caronas WHERE motorista_id = ?', args: [id] },
     { sql: 'DELETE FROM pos_votos WHERE convidado_id = ?', args: [id] },
+    { sql: 'DELETE FROM push_inscricoes WHERE convidado_id = ?', args: [id] },
     { sql: 'DELETE FROM convidados WHERE id = ?', args: [id] },
   ]);
   if (!r[r.length - 1].rowsAffected) throw new ErroValidacao('Convidado não encontrado.', 404);

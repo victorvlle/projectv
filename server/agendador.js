@@ -12,6 +12,9 @@ const INTERVALO_MS = 5000;
 let timer = null;
 
 async function verificar(agora = Date.now()) {
+  const abrindo = await banco.tudo(
+    "SELECT id FROM atividades WHERE estado = 'agendada' AND abre_em IS NOT NULL AND abre_em <= ?", [agora]);
+  if (!abrindo.length) return 0;
   const r = await banco.rodar(
     "UPDATE atividades SET estado = 'liberada', atualizado_em = ? WHERE estado = 'agendada' AND abre_em IS NOT NULL AND abre_em <= ?",
     [agora, agora],
@@ -19,6 +22,12 @@ async function verificar(agora = Date.now()) {
   if (r.rowsAffected > 0) {
     console.log(`[agendador] ${r.rowsAffected} atividade(s) liberada(s) no horário`);
     avisar.atualizar('atividades');
+    const { porId } = require('./atividades/catalogo');
+    const notificacoes = require('./notificacoes');
+    for (const { id } of abrindo) {
+      const a = porId(id);
+      if (a) notificacoes.atividadeLiberada(a).catch((e) => console.error('[push]', e.message));
+    }
   }
   return r.rowsAffected;
 }

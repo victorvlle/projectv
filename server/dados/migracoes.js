@@ -199,4 +199,27 @@ module.exports = [
       INSERT OR IGNORE INTO atividades (id, estado, abre_em, atualizado_em) VALUES ('pos', 'agendada', 1793502000000, 0)
     `,
   },
+  {
+    nome: 'notificações (web push)',
+    sql: `
+      CREATE TABLE IF NOT EXISTS push_inscricoes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        convidado_id TEXT NOT NULL REFERENCES convidados(id) ON DELETE CASCADE,
+        endpoint TEXT NOT NULL UNIQUE,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        criado_em INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_push_convidado ON push_inscricoes (convidado_id);
+      CREATE TABLE IF NOT EXISTS push_enviados (
+        chave TEXT PRIMARY KEY,
+        titulo TEXT NOT NULL,
+        corpo TEXT NOT NULL,
+        para INTEGER NOT NULL DEFAULT 0,
+        entregues INTEGER NOT NULL DEFAULT 0,
+        enviado_em INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_push_enviados_quando ON push_enviados (enviado_em)
+    `,
+  },
 ];

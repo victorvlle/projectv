@@ -8,6 +8,7 @@ const bebidas = require('../dados/bebidas');
 const playlist = require('../dados/playlist');
 const caronas = require('../dados/caronas');
 const pos = require('../dados/pos');
+const notificacoes = require('../notificacoes');
 const seg = require('../seguranca');
 const { AVATARES } = require('../avatares');
 const { avisar } = require('../tempo-real');
@@ -46,8 +47,37 @@ router.post('/entrar', assincrono(async (req, res) => {
 }));
 
 router.get('/eu', soConvidado, (req, res) => {
-  res.json({ ok: true, eu: convidados.paraProprio(req.convidado) });
+  // O próprio código vai só para o dono (usado no atalho de tela inicial do iPhone).
+  res.json({ ok: true, eu: { ...convidados.paraProprio(req.convidado), codigo: req.convidado.codigo } });
 });
+
+// ------------------------------------------------------------- notificações
+const freioPush = seg.criarFreio({ maximo: 20, janelaMs: 60 * 1000 });
+function freiarPush(req, res, next) {
+  if (freioPush.tentar(req.convidado.id)) return next();
+  return res.status(429).json({ ok: false, erro: 'Calma! Espere um pouco.' });
+}
+router.get('/push/chave', soConvidado, assincrono(async (_req, res) => {
+  res.json({ ok: true, chave: await notificacoes.chavePublica() });
+}));
+router.post('/eu/push', soConvidado, freiarPush, assincrono(async (req, res) => {
+  await notificacoes.inscrever(req.convidado.id, (req.body || {}).inscricao);
+  res.json({ ok: true });
+  // Confirmação no próprio aparelho: prova na hora que está funcionando.
+  notificacoes.enviar({
+    titulo: '🔔 Notificações ativadas!',
+    corpo: 'Você vai receber os avisos do Project V. Te espero lá. 💀',
+    para: { ids: [req.convidado.id] },
+    tag: 'boas-vindas',
+  }).catch((e) => console.error('[push]', e.message));
+}));
+router.post('/eu/push/situacao', soConvidado, assincrono(async (req, res) => {
+  res.json({ ok: true, inscrito: await notificacoes.estaInscrito(req.convidado.id, (req.body || {}).endpoint) });
+}));
+router.delete('/eu/push', soConvidado, freiarPush, assincrono(async (req, res) => {
+  await notificacoes.desinscrever(req.convidado.id, (req.body || {}).endpoint);
+  res.json({ ok: true });
+}));
 
 router.put('/eu/perfil', soConvidado, assincrono(async (req, res) => {
   if (!freioPerfil.tentar(req.convidado.id)) {
