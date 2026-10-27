@@ -393,4 +393,9 @@ module.exports = [
       }
     },
   },
+  {
+    nome: 'apaga votos de quem votou na própria música',
+    sql: `DELETE FROM playlist_votos
+           WHERE EXISTS (SELECT 1 FROM playlist_musicas m WHERE m.id = playlist_votos.musica_id AND m.convidado_id = playlist_votos.convidado_id)`,
+  },
 ];

@@ -42,8 +42,10 @@
           <div class="b-nome">${esc(m.titulo)}</div>
           <div class="fraco">${esc(m.artista)} · sugerida por ${m.minha ? 'você' : esc(m.autor)}</div>
         </div>
-        <button type="button" class="voto ${m.votei ? 'votei' : ''}" data-votar="${m.id}" data-quer="${m.votei ? '0' : '1'}"
-          aria-label="${m.votei ? 'Tirar voto' : 'Votar'}">🔥 ${m.votos}</button>
+        ${m.minha
+    ? `<span class="voto propria" title="Você não vota na sua própria música" aria-label="${m.votos} votos">🔥 ${m.votos}</span>`
+    : `<button type="button" class="voto ${m.votei ? 'votei' : ''}" data-votar="${m.id}" data-quer="${m.votei ? '0' : '1'}"
+          aria-label="${m.votei ? 'Tirar voto' : 'Votar'}">🔥 ${m.votos}</button>`}
         ${m.minha ? `<button type="button" class="tirar" data-tirar-musica="${m.id}" aria-label="Tirar sugestão">✕</button>` : ''}
       </article>`).join('') : '<p class="fraco">Nenhuma música ainda. Comece a playlist!</p>';
   }
@@ -70,7 +72,7 @@
   async function votar(id, quer) {
     const p = C().estado().playlist;
     const m = p.musicas.find((x) => x.id === id);
-    if (!m || m.votei === quer) return;
+    if (!m || m.minha || m.votei === quer) return;
     m.votei = quer;
     m.votos += quer ? 1 : -1;
     desenharPlaylist(p);

@@ -22,7 +22,7 @@ async function listar(euId) {
   const linhas = await banco.tudo(
     `SELECT m.id, m.titulo, m.artista, m.convidado_id, m.criado_em, c.nome AS autor, c.avatar AS autor_avatar,
             (SELECT COUNT(*) FROM playlist_votos v JOIN convidados cv ON cv.id = v.convidado_id AND cv.ativo = 1
-              WHERE v.musica_id = m.id) AS votos,
+              WHERE v.musica_id = m.id AND v.convidado_id <> m.convidado_id) AS votos,
             EXISTS (SELECT 1 FROM playlist_votos v WHERE v.musica_id = m.id AND v.convidado_id = ?) AS votei
        FROM playlist_musicas m JOIN convidados c ON c.id = m.convidado_id
       WHERE c.ativo = 1
@@ -42,8 +42,10 @@ async function sugerir(convidadoId, { titulo, artista }) {
   const a = validar(artista, 'o artista');
   const chave = chaveDe(t, a);
   if (chave.length < 3) throw new ErroValidacao('Escreva o nome da música e do artista.');
-  const existente = await banco.um('SELECT id FROM playlist_musicas WHERE chave = ?', [chave]);
+  const existente = await banco.um('SELECT id, convidado_id FROM playlist_musicas WHERE chave = ?', [chave]);
   if (existente) {
+    // Quem sugeriu não vota na própria música.
+    if (existente.convidado_id === convidadoId) throw new ErroValidacao('Você já sugeriu essa música.');
     await banco.rodar('INSERT OR IGNORE INTO playlist_votos (musica_id, convidado_id, criado_em) VALUES (?, ?, ?)',
       [existente.id, convidadoId, Date.now()]);
     return { jaExistia: true };
@@ -64,8 +66,9 @@ async function sugerir(convidadoId, { titulo, artista }) {
 }
 
 async function votar(convidadoId, musicaId, quer) {
-  const m = await banco.um('SELECT id FROM playlist_musicas WHERE id = ?', [Number(musicaId)]);
+  const m = await banco.um('SELECT id, convidado_id FROM playlist_musicas WHERE id = ?', [Number(musicaId)]);
   if (!m) throw new ErroValidacao('Essa música não está mais na lista.', 404);
+  if (quer && m.convidado_id === convidadoId) throw new ErroValidacao('Você não pode votar na música que você sugeriu.', 403);
   if (quer) {
     await banco.rodar('INSERT OR IGNORE INTO playlist_votos (musica_id, convidado_id, criado_em) VALUES (?, ?, ?)', [m.id, convidadoId, Date.now()]);
   } else {

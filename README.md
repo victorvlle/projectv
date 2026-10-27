@@ -24,7 +24,7 @@ npm test
 
 85 testes: acesso por link, perfil, admin, atividades e agendamento, tempo real, bebidas, extras, notificações (aparelhos, limite, fila, agendados), segurança, backup/restauração e reinício real do servidor.
 
-`npm run seguranca` roda 56 ataques simulados contra uma cópia local.
+`npm run seguranca` roda 57 ataques simulados contra uma cópia local.
 
 ## Variáveis de ambiente
 

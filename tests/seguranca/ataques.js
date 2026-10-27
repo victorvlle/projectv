@@ -285,6 +285,9 @@ async function main() {
     for (let i = 0; i < 5; i++) await req('PUT', `/api/playlist/${mus.id}/voto`, { token: tA, corpo: { voto: true } });
     const votos = (await req('GET', '/api/festa', { token: tA })).json.playlist.musicas.find((m) => m.id === mus.id).votos;
     barrado(GX, 'Votar várias vezes na mesma música', votos === 1, `5 votos enviados, ${votos} contado`);
+    for (let i = 0; i < 3; i++) await req('PUT', `/api/playlist/${mus.id}/voto`, { token: tV, corpo: { voto: true } });
+    const votosProprios = (await req('GET', '/api/festa', { token: tA })).json.playlist.musicas.find((m) => m.id === mus.id).votos;
+    barrado(GX, 'Votar na própria música', votosProprios === 1, `autor tentou 3 vezes; continua ${votosProprios} voto (o de outra pessoa)`);
     let sugestoes = 0;
     for (let i = 0; i < 8; i++) {
       const r = await req('POST', '/api/playlist', { token: tA, corpo: { titulo: `Spam ${i}`, artista: 'Spam' } });

@@ -47,6 +47,17 @@ test('playlist: até 5 sugestões por pessoa, repetida vira voto, ordem por voto
   p = (await festa(b.token)).playlist;
   assert.equal(p.musicas.find((m) => m.id === m1.id).votos, 0);
 
+  // Quem sugeriu não vota na própria música (nem pelo voto, nem sugerindo de novo)
+  const propria = await s.req('PUT', `/api/playlist/${m1.id}/voto`, { token: a.token, corpo: { voto: true } });
+  assert.equal(propria.status, 403);
+  const deNovo = await s.req('POST', '/api/playlist', { token: a.token, corpo: { titulo: 'música 1', artista: 'BANDA' } });
+  assert.equal(deNovo.status, 400);
+  // Voto antigo na própria música (de antes da regra) não conta
+  await banco.rodar('INSERT INTO playlist_votos (musica_id, convidado_id, criado_em) VALUES (?, ?, ?)', [m1.id, a.id, Date.now()]);
+  p = (await festa(a.token)).playlist;
+  assert.equal(p.musicas.find((m) => m.id === m1.id).votos, 0);
+  await banco.rodar('DELETE FROM playlist_votos WHERE musica_id = ? AND convidado_id = ?', [m1.id, a.id]);
+
   // Só o autor tira a própria sugestão
   assert.equal((await s.req('DELETE', `/api/playlist/${m1.id}`, { token: b.token })).status, 404);
   assert.equal((await s.req('DELETE', `/api/playlist/${m1.id}`, { token: a.token })).status, 200);

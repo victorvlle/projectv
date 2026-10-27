@@ -153,6 +153,7 @@ select { appearance: auto; }
   padding: 8px 12px; font: 700 .9rem var(--fonte); cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent;
 }
 .voto.votei { background: rgba(232, 98, 12, .2); border-color: var(--laranja); }
+.voto.propria { cursor: default; opacity: .6; }
 .item-extra .tirar { appearance: none; border: 0; background: none; color: var(--texto-3); font-size: 1.1rem; cursor: pointer; padding: 4px 6px; }
 #minha-carona .pessoa-chip { margin: 2px 2px 0 0; }
 .carona .b-quem { margin-top: 2px; }

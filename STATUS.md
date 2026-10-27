@@ -57,7 +57,7 @@ Atualizado em 27/10/2026.
 - [x] Pontos retroativos: quem já tinha sugerido música ou oferecido carona ganha os +5 (uma vez)
 - [x] Enigmas de terça (8h, 13h, 19h): 12 no total; cada enigma fecha quando o próximo abre
 - [x] Voto na playlist instantâneo (a tela muda na hora; desfaz se o servidor recusar)
-- [x] Testes automatizados: 85 passando; 56 ataques barrados
+- [x] Testes automatizados: 85 passando; 57 ataques barrados
 - [x] Deploy no Render + Turso: https://projectv-pec1.onrender.com (`/saude` responde `banco: turso`, verificado em 24/10)
 
 ## Pendente (Etapa C, em ordem)
