@@ -42,6 +42,9 @@ Atualizado em 26/10/2026.
       aparelhos (até 5, escolher qual remover), testar e desativar; fila do movimento dos amigos no banco; não avisa quem está
       com a tela aberta; agendados também a cada acesso; admin com público estimado, confirmação na tela, envio único, teste por pessoa e falhas
 - [x] Segurança: 50 ataques barrados; testes automatizados: 55 passando; 40 verificações no navegador (simuladas, não em celular real)
+- [x] Boas-vindas das notificações: modal na primeira visita de cada aparelho ("Quero receber avisos" / "Continuar sem ativar"),
+      Android direto ao pedido, tutorial de 3 passos no iPhone, sem banner fixo na home (só "Reconectar" quando preciso);
+      inscrições existentes preservadas; 13 cenários testados em navegador simulado
 - [x] Deploy no Render + Turso: https://projectv-pec1.onrender.com (`/saude` responde `banco: turso`, verificado em 24/10)
 
 ## Pendente (Etapa C, em ordem)

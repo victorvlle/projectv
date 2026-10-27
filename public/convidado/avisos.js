@@ -69,11 +69,21 @@
     if (!registro) return null;
     try { return await registro.pushManager.getSubscription(); } catch (_) { return null; }
   }
-  const adiado = () => Date.now() - Number(PV.guardado.ler('pv.avisos.depois') || 0) < 2 * 24 * 3600 * 1000;
+  // Decisão registrada NESTE aparelho/navegador: 'ativar' | 'depois' | 'negado' | 'tutorial'.
+  // Só controla se o modal de boas-vindas aparece; quem diz se os avisos funcionam é o servidor.
+  // O app da Tela de Início do iPhone tem armazenamento próprio: lá a decisão começa vazia,
+  // e o modal aparece de novo, agora com a ativação de verdade (passo 3 do tutorial).
+  const DECISAO = 'pv.avisos.decisao';
+  function decisao() {
+    const d = PV.guardado.ler(DECISAO);
+    if (d) return d;
+    return PV.guardado.ler('pv.avisos.ativo') === '1' ? 'ativar' : null; // quem já tinha ativado na versão anterior
+  }
+  const decidir = (d) => PV.guardado.gravar(DECISAO, d);
 
   // ---------------------------------------------------------------- textos
   const T = {
-    sucesso: 'Tudo pronto! Você vai receber os avisos importantes do Project V por aqui.',
+    sucesso: 'Tudo certo! Você receberá os avisos do Project V.',
     negada: 'As notificações estão bloqueadas neste aparelho. Você pode ativá-las nas configurações do navegador ou do sistema.',
     falha: 'Não conseguimos concluir a ativação agora. Sua participação na festa continua normal. Tente novamente em instantes.',
     incompativel: 'Este navegador não permite receber notificações por aqui. Você ainda pode acompanhar tudo diretamente no Project V.',
@@ -126,13 +136,17 @@
     return { ...base, estado: 'pronto' };
   }
 
+  let iniciado = false;
   async function atualizar() {
-    if (!C() || !C().eu()) return;
+    // Antes do service worker estar registrado não dá para saber se já existe inscrição:
+    // decidir cedo mostraria o modal para quem já recebe avisos.
+    if (!iniciado || !C() || !C().eu()) return;
     try { atual = await calcular(); } catch (e) { console.error(e); atual = { estado: 'sem-conexao' }; }
     desenharCard();
     desenharPreferencias();
+    talvezBoasVindas();
     if (sino) {
-      const acao = ['pronto', 'instalar', 'reconectar'].includes(atual.estado);
+      const acao = atual.estado === 'reconectar' || (!decisao() && ['pronto', 'instalar'].includes(atual.estado));
       sino.dataset.estado = atual.estado === 'ativado' ? 'ativado' : acao ? 'acao' : '';
       sino.setAttribute('aria-label', atual.estado === 'ativado' ? 'Notificações (ativadas)' : 'Notificações');
     }
@@ -144,45 +158,60 @@
     card.classList.toggle('oculto', !html);
     card.classList.toggle('compacto', compacto);
   }
+  // Sem banner permanente: a home só mostra um card quando há algo a consertar
+  // (permissão concedida, mas a inscrição sumiu). Ativar depois: sino no topo.
   function desenharCard() {
     if (!card) return;
-    const e = atual.estado;
-    if (e === 'ativado') {
-      return mostrarCard(`<div class="avisos-linha"><span>🔔 Avisos ativados neste aparelho</span>
-        <a class="link" href="#avisos">Gerenciar</a></div>`, true);
-    }
-    if (e === 'reconectar') {
+    if (atual.estado === 'reconectar') {
       return mostrarCard(`<div class="avisos-topo"><span class="sino" aria-hidden="true">🔔</span><div>
           <b>Reconectar os avisos</b><p class="mudo">${T.expirou}</p></div></div>
         <div class="avisos-acoes"><button class="botao pequeno" type="button" data-avisos="ativar-direto">Reconectar</button></div>`);
     }
-    if (adiado() || ['indisponivel', 'carregando', 'sem-conexao'].includes(e)) return mostrarCard('');
-    if (e === 'pronto') {
-      return mostrarCard(`<div class="avisos-topo"><span class="sino" aria-hidden="true">🔔</span><div>
-          <b>Receba os avisos da festa</b>
-          <p class="mudo">Quando um jogo abrir, alguém oferecer carona ou a votação do pós começar, você fica sabendo na hora.</p></div></div>
-        <div class="avisos-acoes">
-          <button class="botao pequeno" type="button" data-avisos="beneficios">Ativar notificações</button>
-          <button class="botao secundario pequeno" type="button" data-avisos="depois">Agora não</button></div>`);
-    }
-    if (e === 'instalar') {
-      return mostrarCard(`<div class="avisos-topo"><span class="sino" aria-hidden="true">🎃</span><div>
-          <b>Não perca nenhum momento da festa</b>
-          <p class="mudo">Adicione o Project V à Tela de Início para receber os avisos da festa, mesmo quando não estiver com o site aberto.</p></div></div>
-        <div class="avisos-acoes">
-          <button class="botao pequeno" type="button" data-avisos="ios">Como ativar no iPhone</button>
-          <button class="botao secundario pequeno" type="button" data-avisos="depois">Agora não</button></div>`);
-    }
-    if (e === 'bloqueado') {
-      return mostrarCard(`<div class="avisos-linha"><span>🔕 Notificações bloqueadas neste aparelho</span>
-        <a class="link" href="#avisos">Como liberar</a></div>`, true);
-    }
-    const texto = { 'ios-antigo': T.iosAntigo, 'app-embutido': T.appEmbutido }[e];
-    if (texto) {
-      return mostrarCard(`<div class="avisos-linha"><span class="mudo">${texto}</span>
-        <button type="button" class="link" data-avisos="depois" aria-label="Fechar">✕</button></div>`, true);
-    }
     return mostrarCard('');
+  }
+
+  // ------------------------------------------------------ boas-vindas
+  // Primeira visita deste aparelho, sem decisão registrada e com algo a fazer.
+  let boasVindasMostrada = false;
+  function talvezBoasVindas() {
+    const e = atual.estado;
+    const d = decisao();
+    if (!d && e === 'ativado') { decidir('ativar'); return; } // já recebe: nunca interrompe
+    if (!d && e === 'bloqueado') { decidir('negado'); return; } // já negou: não insiste
+    if (d || boasVindasMostrada || ocupado) return;
+    if (!['pronto', 'instalar', 'app-embutido', 'ios-antigo'].includes(e)) return;
+    const principal = $('tela-principal');
+    if (!principal || principal.classList.contains('oculto')) return; // nunca por cima do perfil ou de outra tela
+    if (folha && !folha.classList.contains('oculto')) return;
+    boasVindasMostrada = true;
+    folhaBoasVindas();
+  }
+  function folhaBoasVindas() {
+    abrirFolha(`<button class="fechar-folha" type="button" data-avisos="sem-ativar" aria-label="Fechar">✕</button>
+      <div class="folha-arte boas-vindas-arte" aria-hidden="true">${ARTE.boasVindas}</div>
+      <h3 class="boas-vindas-titulo">Não perca nenhum aviso da noite!</h3>
+      <p class="mudo boas-vindas-texto">Ative as notificações para receber novidades, surpresas e avisos importantes do Project V.</p>
+      <ul class="pilulas" aria-label="Exemplos de avisos">
+        <li><span aria-hidden="true">🔓</span>Jogos liberados</li><li><span aria-hidden="true">🚗</span>Caronas</li><li><span aria-hidden="true">⏳</span>Lembretes</li>
+      </ul>
+      <div class="folha-acoes">
+        <button class="botao largo" type="button" data-avisos="quero" data-foco>Quero receber avisos</button>
+        <button class="botao-discreto" type="button" data-avisos="sem-ativar">Continuar sem ativar</button>
+      </div>`, 'Não perca nenhum aviso da noite!', 'boas-vindas');
+  }
+  // "Quero receber avisos": cada situação segue o seu caminho, sempre dentro do toque.
+  function quero() {
+    const e = atual.estado;
+    if (e === 'instalar') { decidir('tutorial'); folhaIOS(0); return; }
+    if (e === 'ios-antigo' || e === 'app-embutido' || e === 'indisponivel') {
+      decidir('depois');
+      folhaResultado({ icone: '📵', titulo: e === 'app-embutido' ? 'Abra no Safari' : 'Não dá por aqui',
+        texto: { 'ios-antigo': T.iosAntigo, 'app-embutido': T.appEmbutido, indisponivel: T.incompativel }[e],
+        botoes: '<button class="botao largo" type="button" data-avisos="fechar" data-foco>Continuar sem ativar</button>' });
+      return;
+    }
+    if (e === 'bloqueado') { folhaResultado({ icone: '🔕', titulo: 'Notificações bloqueadas', texto: T.negada, extra: ajudaBloqueio() }); return; }
+    ativar();
   }
 
   // --------------------------------------------------------- preferências
@@ -257,7 +286,8 @@
   let folha = null;
   let focoAntes = null;
   let travada = false;
-  function abrirFolha(html, rotulo) {
+  let fecharSozinho = null;
+  function abrirFolha(html, rotulo, tipo = '') {
     if (!folha) {
       folha = document.createElement('div');
       folha.className = 'modal-fundo oculto';
@@ -272,6 +302,7 @@
       });
     }
     const caixa = folha.firstElementChild;
+    caixa.dataset.tipo = tipo;
     caixa.innerHTML = html;
     caixa.setAttribute('aria-label', rotulo);
     if (folha.classList.contains('oculto')) {
@@ -285,6 +316,8 @@
   }
   function fecharFolha() {
     if (!folha) return;
+    if (folha.firstElementChild.dataset.tipo === 'boas-vindas' && !decisao()) decidir('depois');
+    clearTimeout(fecharSozinho);
     travada = false;
     folha.classList.add('oculto');
     document.body.classList.remove('sem-rolagem');
@@ -299,22 +332,6 @@
   }
   const fechar = '<button class="fechar-folha" type="button" data-avisos="fechar" aria-label="Fechar">✕</button>';
 
-  function folhaBeneficios() {
-    abrirFolha(`${fechar}
-      <div class="folha-arte" aria-hidden="true">${ARTE.sino}</div>
-      <h3>Fique por dentro da festa</h3>
-      <ul class="beneficios">
-        <li><span aria-hidden="true">🔓</span> Quando um jogo ou votação abrir</li>
-        <li><span aria-hidden="true">🚗</span> Quando alguém oferecer carona</li>
-        <li><span aria-hidden="true">⏳</span> Lembretes da véspera e da hora de sair de casa</li>
-        <li><span aria-hidden="true">🤫</span> Sem nada pessoal: os avisos nunca dizem quem fez o quê</li>
-      </ul>
-      <p class="fraco">No próximo passo, o ${ehIOS ? 'iPhone' : 'navegador'} vai pedir permissão. Toque em <b>Permitir</b>.</p>
-      <div class="folha-acoes">
-        <button class="botao largo" type="button" data-avisos="continuar" data-foco>Continuar</button>
-        <button class="botao secundario largo" type="button" data-avisos="fechar">Agora não</button>
-      </div>`, 'Ativar notificações');
-  }
   function folhaCarregando(texto) {
     travada = true;
     abrirFolha(`<div class="folha-carregando"><div class="spinner" aria-hidden="true"></div><p data-foco tabindex="-1">${texto}</p></div>`, texto);
@@ -345,10 +362,12 @@
     if (Notification.permission === 'default') folhaCarregando('Aguardando a sua resposta…');
     pedido.then(async (perm) => {
       if (perm === 'denied') {
+        decidir('negado');
         folhaResultado({ icone: '🔕', titulo: 'Notificações bloqueadas', texto: T.negada, extra: ajudaBloqueio() });
         return;
       }
       if (perm !== 'granted') {
+        decidir('depois');
         folhaResultado({ icone: '🔔', titulo: 'Tudo bem', texto: 'Você fechou o pedido sem escolher. Quando quiser, é só tentar de novo.' });
         return;
       }
@@ -386,14 +405,18 @@
       await sub.unsubscribe().catch(() => {});
       return concluir(true);
     }
+    sucesso(r);
+  }
+  // Confirmação só depois do servidor; some sozinha (nada de banner permanente).
+  function sucesso(r) {
     PV.guardado.gravar('pv.avisos.ativo', '1');
-    PV.guardado.apagar('pv.avisos.depois');
+    decidir('ativar');
     const chegou = r.teste && r.teste.entregue;
     folhaResultado({
       icone: '🎃', titulo: 'Notificações ativadas', texto: T.sucesso,
-      extra: `<p class="fraco">${chegou ? 'Mandamos uma notificação de teste para este aparelho. Ela deve aparecer em alguns segundos.'
-        : 'Não conseguimos entregar o teste agora. Use “Testar notificação” em Notificações daqui a pouco.'}</p>`,
+      extra: `<p class="fraco">${chegou ? 'Mandamos um teste para este aparelho.' : 'O teste não saiu agora; você pode testar depois pelo sino 🔔.'}</p>`,
     });
+    fecharSozinho = setTimeout(() => { if (!travada) fecharFolha(); }, 3500);
   }
 
   async function removerEAtivar(id) {
@@ -407,9 +430,7 @@
       else {
         const r = await C().api('POST', '/api/eu/push', { inscricao: assinaturaPendente.toJSON(), instalado: instalado() });
         assinaturaPendente = null;
-        PV.guardado.gravar('pv.avisos.ativo', '1');
-        folhaResultado({ icone: '🎃', titulo: 'Notificações ativadas', texto: T.sucesso,
-          extra: r.teste && r.teste.entregue ? '<p class="fraco">Mandamos uma notificação de teste para este aparelho.</p>' : '' });
+        sucesso(r);
       }
     } catch (erro) {
       if (erro.codigo === 'limite') folhaLimite(erro.dados.aparelhos || [], erro.dados.maximo || 5);
@@ -474,26 +495,22 @@
   // ------------------------------------------------- passo a passo do iPhone
   const PASSOS = [
     {
-      titulo: 'Abra o menu Compartilhar',
-      arte: () => ARTE.passo1,
-      texto: () => (naoSafariIOS
-        ? 'Toque no botão <b>Compartilhar</b> <span class="icone-ios">⬆︎</span>, que fica na barra de endereço deste navegador.'
-        : 'No Safari, toque no botão <b>Compartilhar</b> <span class="icone-ios">⬆︎</span> na barra de baixo. Nas versões mais novas ele pode estar dentro do botão <b>⋯</b>. Se a barra sumiu, role a página um pouco para cima.'),
+      titulo: 'Abra no Safari',
+      arte: () => ARTE.ios1,
+      texto: () => 'Acesse o Project V pelo <b>Safari</b>.',
+      dica: () => (naoSafariIOS || appEmbutido ? 'Você está em outro navegador: copie o seu link de convite e abra no Safari.' : 'Você já está no Safari. É só seguir.'),
     },
     {
       titulo: 'Adicione à Tela de Início',
-      arte: () => ARTE.passo2,
-      texto: () => 'Role a lista e toque em <b>Adicionar à Tela de Início</b> <span class="icone-ios">＋</span>. Se aparecer a opção <b>Abrir como App da Web</b>, deixe ligada. Depois toque em <b>Adicionar</b>: o ícone da abóbora do Project V vai aparecer no seu celular.',
+      arte: () => ARTE.ios2,
+      texto: () => 'Toque em <b>Compartilhar</b> e escolha <b>Adicionar à Tela de Início</b>. Se disponível, habilite <b>Abrir como App da Web</b> e toque em <b>Adicionar</b>.',
+      dica: () => 'Nas versões mais novas, Compartilhar pode estar no botão ⋯.',
     },
     {
-      titulo: 'Abra o Project V pelo novo ícone',
-      arte: () => ARTE.passo3,
-      texto: () => 'Saia do navegador e abra o Project V <b>tocando no ícone</b> da Tela de Início. Voltar para a aba aberta não funciona: os avisos só existem no app do ícone. Seu convite vai junto, você entra direto.',
-    },
-    {
-      titulo: 'Ative as notificações',
-      arte: () => ARTE.passo4,
-      texto: () => 'No app, toque em <b>Ativar notificações</b> e depois em <b>Permitir</b>. Vamos mandar um teste para você ver que está tudo certo.',
+      titulo: 'Ative os avisos',
+      arte: () => ARTE.ios3,
+      texto: () => 'Abra o Project V pelo <b>novo ícone</b> e toque em <b>Ativar notificações</b>. Depois, permita as notificações quando o iPhone perguntar.',
+      dica: () => 'Seu convite vai junto: o ícone já abre com o seu acesso.',
     },
   ];
   let passo = 0;
@@ -508,9 +525,10 @@
       <div class="folha-arte ilustracao ${reduzirMovimento() ? '' : 'entrar'}" aria-hidden="true">${p.arte()}</div>
       <h3 data-foco tabindex="-1">${p.titulo}</h3>
       <p class="mudo passo-texto">${p.texto()}</p>
+      <p class="fraco passo-dica">${p.dica()}</p>
       <div class="folha-acoes lado">
         ${passo > 0 ? '<button class="botao secundario" type="button" data-avisos="ios-voltar">Voltar</button>' : '<span></span>'}
-        <button class="botao" type="button" data-avisos="${ultimo ? 'fechar' : 'ios-proximo'}">${ultimo ? 'Entendi' : 'Próximo'}</button>
+        <button class="botao" type="button" data-avisos="${ultimo ? 'fechar' : 'ios-proximo'}">${ultimo ? 'Entendi, vou fazer' : 'Próximo'}</button>
       </div>`, `Como ativar no iPhone, passo ${passo + 1} de ${PASSOS.length}`);
   }
 
@@ -524,43 +542,53 @@
     sino: `<svg viewBox="0 0 120 90" width="120" height="90"><circle cx="60" cy="45" r="36" fill="#2B2138"/>
       <path d="M60 22c-9 0-15 7-15 16v10l-5 6v2h40v-2l-5-6V38c0-9-6-16-15-16Z" fill="#E8620C"/>
       <circle cx="60" cy="62" r="5" fill="#FF8A3D"/><path class="vibra" d="M36 30q-5 6-5 14M84 30q5 6 5 14" stroke="#B9AEC6" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>`,
-    passo1: `<svg viewBox="0 0 260 160" width="260" height="160">
+    boasVindas: `<svg viewBox="0 0 200 110" width="200" height="110">
+      <circle cx="100" cy="58" r="44" fill="#2B2138"/><circle cx="100" cy="58" r="44" fill="none" stroke="#6B44A0" stroke-width="1.5" stroke-dasharray="3 5"/>
+      <circle cx="152" cy="22" r="10" fill="#F3ECF8" opacity=".9"/><circle cx="157" cy="19" r="9" fill="#120D17"/>
+      <path class="morcego" d="M30 30q6-6 10 0q4-6 10 0q-5 0-10 5q-5-5-10-5Z" fill="#6B44A0"/>
+      <path class="morcego m2" d="M160 70q4-4 7 0q3-4 7 0q-4 0-7 4q-3-4-7-4Z" fill="#6B44A0"/>
+      <path d="M100 32c-10 0-17 8-17 18v11l-6 7v2h46v-2l-6-7V50c0-10-7-18-17-18Z" fill="#E8620C"/>
+      <circle cx="100" cy="75" r="5.5" fill="#FF8A3D"/>
+      <path class="vibra" d="M72 40q-6 8-6 17M128 40q6 8 6 17" stroke="#B9AEC6" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <circle cx="117" cy="38" r="8" fill="#B3122E"/><text x="117" y="42" text-anchor="middle" font-family="Inter,system-ui" font-size="10" font-weight="800" fill="#fff">1</text></svg>`,
+    ios1: `<svg viewBox="0 0 260 160" width="260" height="160">
       <rect x="40" y="6" width="180" height="170" rx="22" fill="#1B1424" stroke="#3A2E4A" stroke-width="2"/>
-      <rect x="54" y="22" width="152" height="70" rx="8" fill="#221A2D"/>
-      <text x="130" y="61" text-anchor="middle" font-family="Inter,system-ui" font-size="13" fill="#85789A">projectv…onrender.com</text>
-      <rect x="54" y="104" width="152" height="40" rx="10" fill="#2B2138"/>
-      <path d="M74 124l6-6M74 124l6 6" stroke="#85789A" stroke-width="2.5" stroke-linecap="round"/>
-      <path d="M104 118l6 6-6 6" stroke="#85789A" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <g class="destaque"><circle cx="130" cy="124" r="17" fill="none" stroke="#E8620C" stroke-width="2.5"/>
-        <rect x="123" y="121" width="14" height="13" rx="2" fill="none" stroke="#FF8A3D" stroke-width="2"/>
-        <path d="M130 111v15M125 116l5-5 5 5" stroke="#FF8A3D" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>
-      <rect x="152" y="117" width="14" height="14" rx="2" fill="none" stroke="#85789A" stroke-width="2"/>
-      <circle cx="183" cy="124" r="2" fill="#85789A"/><circle cx="189" cy="124" r="2" fill="#85789A"/><circle cx="177" cy="124" r="2" fill="#85789A"/>
-      <path class="dedo" d="M138 150c0-6 4-9 7-9s5 2 5 5v8" stroke="#F3ECF8" stroke-width="3" fill="none" stroke-linecap="round"/></svg>`,
-    passo2: `<svg viewBox="0 0 260 160" width="260" height="160">
-      <rect x="30" y="10" width="200" height="150" rx="18" fill="#221A2D" stroke="#3A2E4A" stroke-width="2"/>
-      <rect x="44" y="24" width="172" height="28" rx="8" fill="#2B2138"/><text x="58" y="43" font-family="Inter,system-ui" font-size="12" fill="#85789A">Copiar</text>
-      <rect x="44" y="58" width="172" height="28" rx="8" fill="#2B2138"/><text x="58" y="77" font-family="Inter,system-ui" font-size="12" fill="#85789A">Adicionar aos Favoritos</text>
-      <g class="destaque"><rect x="36" y="94" width="188" height="34" rx="9" fill="#3B1F5C" stroke="#E8620C" stroke-width="2"/>
-        <text x="46" y="116" font-family="Inter,system-ui" font-size="11" font-weight="700" fill="#F3ECF8">Adicionar à Tela de Início</text>
-        <rect x="200" y="102" width="18" height="18" rx="4" fill="none" stroke="#FF8A3D" stroke-width="2"/>
-        <path d="M209 106v10M204 111h10" stroke="#FF8A3D" stroke-width="2" stroke-linecap="round"/></g>
-      <rect x="44" y="134" width="172" height="20" rx="8" fill="#2B2138" opacity=".6"/></svg>`,
-    passo3: `<svg viewBox="0 0 260 160" width="260" height="160">
-      <rect x="40" y="6" width="180" height="170" rx="22" fill="#1B1424" stroke="#3A2E4A" stroke-width="2"/>
-      ${[0, 1, 2, 3].map((c) => [0, 1].map((l) => (c === 2 && l === 1 ? '' : `<rect x="${62 + c * 38}" y="${26 + l * 52}" width="30" height="30" rx="8" fill="#2B2138"/>`)).join('')).join('')}
-      <g class="destaque">${abobora(153, 93, 0.7)}<circle cx="153" cy="93" r="23" fill="none" stroke="#E8620C" stroke-width="2"/></g>
-      <text x="153" y="128" text-anchor="middle" font-family="Inter,system-ui" font-size="10" fill="#F3ECF8">Project V</text>
-      <path class="dedo" d="M160 152c0-6 4-9 7-9s5 2 5 5v8" stroke="#F3ECF8" stroke-width="3" fill="none" stroke-linecap="round"/></svg>`,
-    passo4: `<svg viewBox="0 0 260 160" width="260" height="160">
-      <rect x="40" y="6" width="180" height="170" rx="22" fill="#120D17" stroke="#3A2E4A" stroke-width="2"/>
-      <text x="130" y="44" text-anchor="middle" font-family="Inter,system-ui" font-size="26" font-weight="300" fill="#B9AEC6">17:00</text>
-      <g class="destaque"><rect x="52" y="62" width="156" height="50" rx="12" fill="#2B2138" stroke="#E8620C" stroke-width="1.5"/>
-        ${abobora(74, 87, 0.5)}
-        <text x="90" y="81" font-family="Inter,system-ui" font-size="11" font-weight="700" fill="#F3ECF8">Project V</text>
-        <text x="90" y="97" font-family="Inter,system-ui" font-size="9.5" fill="#B9AEC6">Notificações ativadas!</text></g>
-      <rect x="70" y="124" width="56" height="26" rx="13" fill="#2B2138"/><text x="98" y="141" text-anchor="middle" font-family="Inter,system-ui" font-size="10" fill="#85789A">Não Permitir</text>
-      <rect x="134" y="124" width="56" height="26" rx="13" fill="#E8620C"/><text x="162" y="141" text-anchor="middle" font-family="Inter,system-ui" font-size="10.5" font-weight="700" fill="#120D17">Permitir</text></svg>`,
+      ${[0, 1, 2, 3].map((c) => [0, 1].map((l) => (c === 1 && l === 1 ? '' : `<rect x="${62 + c * 38}" y="${26 + l * 52}" width="30" height="30" rx="8" fill="#2B2138"/>`)).join('')).join('')}
+      <g class="destaque"><rect x="100" y="78" width="30" height="30" rx="8" fill="#F3ECF8"/>
+        <circle cx="115" cy="93" r="11" fill="none" stroke="#6B44A0" stroke-width="2"/>
+        <path d="M119 89l-3 6-5 2 3-6z" fill="#E8620C"/><circle cx="115" cy="93" r="18" fill="none" stroke="#E8620C" stroke-width="2"/></g>
+      <text x="115" y="124" text-anchor="middle" font-family="Inter,system-ui" font-size="10" fill="#F3ECF8">Safari</text>
+      <path class="dedo" d="M122 152c0-6 4-9 7-9s5 2 5 5v8" stroke="#F3ECF8" stroke-width="3" fill="none" stroke-linecap="round"/></svg>`,
+    ios2: `<svg viewBox="0 0 280 160" width="280" height="160">
+      <rect x="8" y="30" width="112" height="100" rx="16" fill="#1B1424" stroke="#3A2E4A" stroke-width="2"/>
+      <rect x="16" y="88" width="96" height="30" rx="9" fill="#2B2138"/>
+      <path d="M30 103l5-5M30 103l5 5" stroke="#85789A" stroke-width="2.2" stroke-linecap="round"/>
+      <g class="destaque"><circle cx="64" cy="103" r="13" fill="none" stroke="#E8620C" stroke-width="2.2"/>
+        <rect x="58" y="101" width="12" height="10" rx="2" fill="none" stroke="#FF8A3D" stroke-width="1.8"/>
+        <path d="M64 92v12M60 96l4-4 4 4" stroke="#FF8A3D" stroke-width="1.9" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>
+      <circle cx="94" cy="103" r="1.8" fill="#85789A"/><circle cx="99" cy="103" r="1.8" fill="#85789A"/><circle cx="89" cy="103" r="1.8" fill="#85789A"/>
+      <circle cx="24" cy="44" r="9" fill="#B3122E"/><text x="24" y="48" text-anchor="middle" font-family="Inter,system-ui" font-size="10" font-weight="800" fill="#fff">1</text>
+      <path d="M126 80h16m-6-6 6 6-6 6" stroke="#6B44A0" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="148" y="14" width="126" height="132" rx="16" fill="#221A2D" stroke="#3A2E4A" stroke-width="2"/>
+      <rect x="158" y="26" width="106" height="22" rx="7" fill="#2B2138"/><rect x="158" y="54" width="106" height="22" rx="7" fill="#2B2138"/>
+      <g class="destaque"><rect x="154" y="84" width="114" height="30" rx="8" fill="#3B1F5C" stroke="#E8620C" stroke-width="2"/>
+        <text x="161" y="103" font-family="Inter,system-ui" font-size="9" font-weight="700" fill="#F3ECF8">Adicionar à Tela de Início</text></g>
+      <rect x="158" y="120" width="106" height="16" rx="7" fill="#2B2138" opacity=".6"/>
+      <circle cx="262" cy="26" r="9" fill="#B3122E"/><text x="262" y="30" text-anchor="middle" font-family="Inter,system-ui" font-size="10" font-weight="800" fill="#fff">2</text></svg>`,
+    ios3: `<svg viewBox="0 0 280 160" width="280" height="160">
+      <rect x="8" y="14" width="112" height="132" rx="16" fill="#1B1424" stroke="#3A2E4A" stroke-width="2"/>
+      <rect x="22" y="30" width="24" height="24" rx="7" fill="#2B2138"/><rect x="52" y="30" width="24" height="24" rx="7" fill="#2B2138"/><rect x="82" y="30" width="24" height="24" rx="7" fill="#2B2138"/>
+      <g class="destaque">${abobora(64, 88, 0.62)}<circle cx="64" cy="88" r="20" fill="none" stroke="#E8620C" stroke-width="2"/></g>
+      <text x="64" y="122" text-anchor="middle" font-family="Inter,system-ui" font-size="9" fill="#F3ECF8">Project V</text>
+      <circle cx="24" cy="128" r="9" fill="#B3122E"/><text x="24" y="132" text-anchor="middle" font-family="Inter,system-ui" font-size="10" font-weight="800" fill="#fff">1</text>
+      <path d="M126 80h16m-6-6 6 6-6 6" stroke="#6B44A0" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="148" y="24" width="126" height="112" rx="16" fill="#221A2D" stroke="#3A2E4A" stroke-width="2"/>
+      <text x="205" y="48" text-anchor="middle" font-family="Inter,system-ui" font-size="9.5" font-weight="700" fill="#F3ECF8">“Project V” quer</text>
+      <text x="205" y="61" text-anchor="middle" font-family="Inter,system-ui" font-size="9.5" font-weight="700" fill="#F3ECF8">enviar notificações</text>
+      <rect x="158" y="76" width="106" height="22" rx="11" fill="#2B2138"/><text x="211" y="91" text-anchor="middle" font-family="Inter,system-ui" font-size="9" fill="#85789A">Não Permitir</text>
+      <g class="destaque"><rect x="158" y="104" width="106" height="24" rx="12" fill="#E8620C"/>
+        <text x="211" y="120" text-anchor="middle" font-family="Inter,system-ui" font-size="10" font-weight="700" fill="#120D17">Permitir</text></g>
+      <circle cx="262" cy="36" r="9" fill="#B3122E"/><text x="262" y="40" text-anchor="middle" font-family="Inter,system-ui" font-size="10" font-weight="800" fill="#fff">2</text></svg>`,
   };
 
   // ----------------------------------------------------------------- toques
@@ -568,11 +596,12 @@
     const b = e.target.closest('[data-avisos]');
     if (!b) return;
     const acao = b.dataset.avisos;
-    if (acao === 'beneficios') folhaBeneficios();
+    if (acao === 'beneficios') ativar(); // botão da tela Notificações: direto ao pedido
+    if (acao === 'quero') quero();
+    if (acao === 'sem-ativar') { decidir('depois'); fecharFolha(); }
     // "continuar" e "ativar-direto" chamam o pedido nativo DENTRO do toque.
-    if (acao === 'continuar' || acao === 'ativar-direto') ativar();
+    if (acao === 'ativar-direto') ativar();
     if (acao === 'fechar') fecharFolha();
-    if (acao === 'depois') { PV.guardado.gravar('pv.avisos.depois', String(Date.now())); desenharCard(); }
     if (acao === 'ios') folhaIOS(0);
     if (acao === 'ios-proximo') folhaIOS(passo + 1);
     if (acao === 'ios-voltar') folhaIOS(passo - 1);
@@ -605,6 +634,7 @@
       // Um registro só, no escopo "/", o mesmo de antes: nunca dois service workers concorrentes.
       try { registro = await navigator.serviceWorker.register('/sw.js', { scope: '/' }); } catch (e) { console.error(e); }
     }
+    iniciado = true;
     atualizar();
   }
   iniciar();

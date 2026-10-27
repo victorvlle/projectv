@@ -226,7 +226,6 @@ body.sem-rolagem { overflow: hidden; }
 @keyframes pulso { 50% { opacity: .65; } }
 @keyframes tocar { 50% { transform: translateY(-4px); } }
 @keyframes vibrar { 50% { transform: scale(1.12); } }
-.passo-texto { min-height: 5.4em; }
 
 /* Tela de preferências (#avisos) */
 .pref-estado { margin-top: 8px; }
@@ -252,7 +251,30 @@ body.sem-rolagem { overflow: hidden; }
 .lista-aparelhos .botao { min-height: 40px; flex: none; }
 .etiqueta { font-style: normal; font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: var(--lima); border: 1px solid rgba(123, 199, 77, .5); border-radius: 6px; padding: 1px 5px; margin-left: 4px; }
 
+/* Boas-vindas (primeira visita) */
+@media (min-width: 640px) {
+  .modal-fundo { place-items: center; }
+  .modal-fundo:not(.oculto) .folha { animation-name: surgir; }
+}
+@keyframes surgir { from { transform: scale(.96); opacity: 0; } }
+.modal-fundo:not(.oculto) { animation: escurecer .2s ease-out; }
+@keyframes escurecer { from { background: rgba(0, 0, 0, 0); } }
+.folha[data-tipo="boas-vindas"] { text-align: center; background: radial-gradient(120% 70% at 50% 0%, rgba(107, 68, 160, .35), transparent 70%), var(--cartao); }
+.boas-vindas-arte { margin-bottom: 6px; }
+.boas-vindas-titulo { font-size: 1.35rem !important; line-height: 1.2; }
+.boas-vindas-texto { margin: 0 auto 14px; max-width: 34ch; }
+.pilulas { list-style: none; padding: 0; margin: 0 0 4px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.pilulas li { display: inline-flex; gap: 6px; align-items: center; padding: 6px 11px; border-radius: 999px; font-size: .8rem; color: var(--texto-2);
+  background: rgba(59, 31, 92, .55); border: 1px solid var(--borda); }
+.botao-discreto { appearance: none; border: 0; background: none; color: var(--texto-3); font: 600 .9rem var(--fonte); min-height: 44px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.botao-discreto:focus-visible { outline: 2px solid var(--laranja-claro); outline-offset: 2px; border-radius: 8px; }
+.folha-arte .morcego { animation: voar 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.folha-arte .morcego.m2 { animation-delay: -1.4s; }
+@keyframes voar { 50% { transform: translate(4px, -5px); } }
+.passo-texto { min-height: 4.2em; margin-bottom: 4px; }
+.passo-dica { margin: 0; min-height: 1.5em; }
+
 @media (prefers-reduced-motion: reduce) {
-  .modal-fundo:not(.oculto) .folha, .ilustracao.entrar svg, .ilustracao .destaque, .ilustracao .dedo, .folha-arte .vibra { animation: none; }
+  .modal-fundo:not(.oculto), .modal-fundo:not(.oculto) .folha, .folha-arte .morcego, .ilustracao.entrar svg, .ilustracao .destaque, .ilustracao .dedo, .folha-arte .vibra { animation: none; }
   .pontos-progresso i { transition: none; }
 }
