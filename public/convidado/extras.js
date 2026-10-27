@@ -64,9 +64,33 @@
     }
   });
 
+  // Voto instantâneo: a tela muda na hora e o servidor confirma por trás. Se der erro, desfaz.
+  // Enquanto houver voto a caminho, as atualizações gerais da tela não bagunçam a lista.
+  let votosPendentes = 0;
+  async function votar(id, quer) {
+    const p = C().estado().playlist;
+    const m = p.musicas.find((x) => x.id === id);
+    if (!m || m.votei === quer) return;
+    m.votei = quer;
+    m.votos += quer ? 1 : -1;
+    desenharPlaylist(p);
+    votosPendentes += 1;
+    try {
+      await C().api('PUT', `/api/playlist/${id}/voto`, { voto: quer });
+    } catch (erro) {
+      m.votei = !quer;
+      m.votos += quer ? -1 : 1;
+      desenharPlaylist(p);
+      if (erro.status !== 401) PV.avisar(erro.message, 'erro');
+    } finally {
+      votosPendentes -= 1;
+    }
+  }
+  const votando = () => votosPendentes > 0;
+
   $('lista-musicas').addEventListener('click', (e) => {
     const v = e.target.closest('[data-votar]');
-    if (v) return acao(() => C().api('PUT', `/api/playlist/${v.dataset.votar}/voto`, { voto: v.dataset.quer === '1' }));
+    if (v) return votar(Number(v.dataset.votar), v.dataset.quer === '1');
     const t = e.target.closest('[data-tirar-musica]');
     if (t && confirm('Tirar essa música das suas sugestões?')) return acao(() => C().api('DELETE', `/api/playlist/${t.dataset.tirarMusica}`), 'Sugestão retirada.');
     return null;
@@ -182,7 +206,7 @@
   });
 
   function desenhar(estado) {
-    if (estado.playlist) desenharPlaylist(estado.playlist);
+    if (estado.playlist && !votando()) desenharPlaylist(estado.playlist);
     if (estado.caronas) desenharCaronas(estado.caronas);
     desenharChegar(estado.festa);
     desenharPos(estado.pos);

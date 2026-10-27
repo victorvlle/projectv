@@ -381,4 +381,16 @@ module.exports = [
           FROM caronas k JOIN convidados c ON c.id = k.motorista_id
     `,
   },
+  {
+    nome: 'enigmas de terça (8h, 13h, 19h) e nova ordem',
+    sql: 'SELECT 1',
+    async depois(c) {
+      const { ENIGMAS } = require('../jogos/conteudo');
+      for (const e of ENIGMAS) {
+        await c.execute({ sql: 'INSERT OR IGNORE INTO enigmas (id, ordem, titulo, pergunta, respostas, dica, abre_em, fecha_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          args: [e.id, e.ordem, e.titulo, e.pergunta, JSON.stringify(e.respostas), e.dica, Date.parse(e.abre), Date.parse(e.fecha)] });
+        await c.execute({ sql: 'UPDATE enigmas SET ordem = ? WHERE id = ?', args: [e.ordem, e.id] });
+      }
+    },
+  },
 ];

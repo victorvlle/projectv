@@ -55,6 +55,8 @@ Atualizado em 27/10/2026.
 - [x] Enigmas de filmes de terror (clássicos e recentes): 3 por dia (8h, 13h, 19h) de qua a sex, 9 no total (+10 e bônus 10/5/3, um aviso por dia ao meio-dia) e Colaborar conta ponto (carona +5, música +5, bebida levada +5 com confirmação)
 - [x] Enigmas em modo prova: revelar inicia relógio do servidor (2 min, 5 tentativas), sair da página encerra; perguntas mais difíceis sem dica
 - [x] Pontos retroativos: quem já tinha sugerido música ou oferecido carona ganha os +5 (uma vez)
+- [x] Enigmas de terça (8h, 13h, 19h): 12 no total; cada enigma fecha quando o próximo abre
+- [x] Voto na playlist instantâneo (a tela muda na hora; desfaz se o servidor recusar)
 - [x] Testes automatizados: 85 passando; 56 ataques barrados
 - [x] Deploy no Render + Turso: https://projectv-pec1.onrender.com (`/saude` responde `banco: turso`, verificado em 24/10)
 

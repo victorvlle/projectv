@@ -378,3 +378,4 @@ body.sem-rolagem { overflow: hidden; }
 .enigma.encerrado { opacity: .8; border-color: rgba(179, 18, 46, .5); }
 .enigma-relogio { font-size: 1.3rem; font-weight: 800; color: var(--laranja-claro); font-variant-numeric: tabular-nums; }
 .enigma-relogio.acabando { color: #FF6B81; }
+.enigma-prazo { margin: 8px 0 0; font-size: .85rem; color: var(--laranja-claro); font-weight: 600; }

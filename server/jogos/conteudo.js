@@ -45,10 +45,25 @@ const PONTOS_MALDICAO = 5;
 // até a festa começar. Respostas aceitas comparadas sem acento, maiúsculas, artigos e pontuação.
 const FECHA_ENIGMAS = '2026-10-31T17:00:00-04:00';
 const PERIODOS = [['manha', 'manhã', '08:00'], ['tarde', 'tarde', '13:00'], ['noite', 'noite', '19:00']];
-const DIAS = [['quarta', 'Quarta', '2026-10-28'], ['quinta', 'Quinta', '2026-10-29'], ['sexta', 'Sexta', '2026-10-30']];
+const DIAS = [['terca', 'Terça', '2026-10-27'], ['quarta', 'Quarta', '2026-10-28'], ['quinta', 'Quinta', '2026-10-29'], ['sexta', 'Sexta', '2026-10-30']];
 // Enigmas de filmes de terror: recentes e clássicos misturados. Resposta = nome do filme
 // (título brasileiro ou original). Nada de spoiler do final.
 const TEXTOS_ENIGMAS = {
+  'terca-manha': {
+    pergunta: 'Três estudantes, uma câmera e uma floresta em Maryland. O mapa foi parar no riacho, montinhos de pedras aparecem na porta da barraca de manhã e a última cena é num porão, com alguém virado para a parede. Qual é o filme?',
+    respostas: ['a bruxa de blair', 'bruxa de blair', 'the blair witch project', 'blair witch', 'blair witch project', 'projeto bruxa de blair'],
+    dica: '',
+  },
+  'terca-tarde': {
+    pergunta: 'Um fim de semana na casa dos pais da namorada, um jardineiro que corre à noite e uma colher batendo numa xícara de chá que te faz afundar num lugar escuro sem saída. Qual é o filme de 2017?',
+    respostas: ['corra', 'get out', 'corra!'],
+    dica: '',
+  },
+  'terca-noite': {
+    pergunta: 'Uma mãe que constrói casas em miniatura, uma filha que estala a língua de um jeito que ninguém esquece e um rei do inferno chamado Paimon esperando por um corpo. Qual é o filme de 2018?',
+    respostas: ['hereditario', 'hereditary'],
+    dica: '',
+  },
   'quarta-manha': {
     pergunta: 'Vinte e sete anos de sono separam cada despertar. Tudo começa com um barquinho de papel descendo a enxurrada e termina com sete amigos fazendo um pacto de sangue. Qual é o filme?',
     respostas: ['it', 'it a coisa', 'a coisa', 'it capitulo 1', 'it capitulo um', 'it capitulo 2', 'it capitulo dois', 'it chapter one'],

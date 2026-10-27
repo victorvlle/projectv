@@ -9,6 +9,10 @@ let s; let admin; let h;
 test.before(async () => {
   s = await subir(); admin = await s.tokenAdmin(); h = criarAjudas(s, admin);
   await h.festaEm(Date.now() + 3 * 24 * 3600 * 1000);
+  // Os horários reais dos enigmas dependem do dia em que o teste roda: empurra todos para
+  // daqui a 30 dias; cada teste abre só o que usa.
+  const base = Date.now() + 30 * 24 * 3600 * 1000;
+  await require('../server/dados/banco').rodar('UPDATE enigmas SET abre_em = ? + ordem * 3600000, fecha_em = ? + 100 * 3600000', [base, base]);
 });
 test.after(async () => { await s.fechar(); });
 
@@ -106,11 +110,11 @@ test('enigma: limite de tentativas; bônus e tempo configuráveis; fechado mostr
   assert.equal((await s.req('PUT', '/api/admin/enigmas-bonus', { token: admin, corpo: { bonus: [99, 1] } })).status, 400);
   assert.equal((await s.req('PUT', '/api/admin/enigmas-tempo', { token: admin, corpo: { segundos: 10 } })).status, 400);
   assert.equal((await s.req('PUT', '/api/admin/enigmas-tempo', { token: admin, corpo: { segundos: 60 } })).status, 200);
-  await s.req('PUT', '/api/admin/enigmas/quinta', { token: admin, corpo: { abreEm: agoraISO(-2), fechaEm: agoraISO(24) } });
+  await s.req('PUT', '/api/admin/enigmas/quinta', { token: admin, corpo: { abreEm: agoraISO(-0.5), fechaEm: agoraISO(24) } });
   const rv = (await revelar(p2.token, 'quinta')).json.enigmas.enigmas.find((e) => e.id === 'quinta');
   assert.ok(rv.expiraEm <= Date.now() + 61000, 'tempo novo vale');
   assert.equal((await resp(p2.token, 'quinta', 'O Chamado')).json.resultado.pontos, 30, 'bônus novo vale para o próximo acerto');
-  await s.req('PUT', '/api/admin/enigmas/quinta', { token: admin, corpo: { fechaEm: agoraISO(-1) } });
+  await s.req('PUT', '/api/admin/enigmas/quinta', { token: admin, corpo: { fechaEm: agoraISO(-0.2) } });
   const fechado = (await s.req('GET', '/api/enigmas', { token: p1.token })).json.enigmas.enigmas.find((e) => e.id === 'quinta');
   assert.equal(fechado.estado, 'fechado');
   assert.equal(fechado.resposta, 'o chamado');
@@ -172,18 +176,32 @@ test('ranking com empate divide a posição e o extrato mostra de onde vieram os
   assert.ok(empatados.every((x) => x.posicao === 1));
 });
 
-test('três enigmas por dia (8h, 13h e 19h), de quarta a sexta, e um aviso só por dia', async () => {
-  const lista = await enigmasDados.lista();
-  assert.equal(lista.length, 9);
-  const horas = new Set(lista.map((e) => new Date(e.abreEm - 4 * 3600 * 1000).toISOString().slice(11, 16)));
-  assert.ok(['08:00', '13:00', '19:00'].every((h) => horas.has(h)) || lista.some((e) => e.id === 'quarta'), 'turnos');
-  const sexta = lista.filter((e) => e.id.startsWith('sexta')).map((e) => [e.titulo, new Date(e.abreEm - 4 * 3600 * 1000).toISOString().slice(0, 16)]);
-  assert.deepEqual(sexta, [['Sexta · manhã', '2026-10-30T08:00'], ['Sexta · tarde', '2026-10-30T13:00'], ['Sexta · noite', '2026-10-30T19:00']]);
+test('três enigmas por dia (8h, 13h e 19h), de terça a sexta; cada um fecha quando o próximo abre', async () => {
+  const { ENIGMAS } = require('../server/jogos/conteudo');
+  assert.equal(ENIGMAS.length, 12);
+  const terca = ENIGMAS.filter((e) => e.id.startsWith('terca')).map((e) => [e.titulo, e.abre]);
+  assert.deepEqual(terca, [['Terça · manhã', '2026-10-27T08:00:00-04:00'], ['Terça · tarde', '2026-10-27T13:00:00-04:00'], ['Terça · noite', '2026-10-27T19:00:00-04:00']]);
+  // Fecha quando o próximo abre
+  const banco2 = require('../server/dados/banco');
+  const t0 = Date.now() + 40 * 24 * 3600 * 1000;
+  for (const [id, h2] of [['terca', 0], ['terca-tarde', 5], ['terca-noite', 11]]) {
+    await banco2.rodar('UPDATE enigmas SET abre_em = ?, fecha_em = ? WHERE id = ?', [t0 + h2 * 3600000, t0 + 200 * 3600000, id]);
+  }
+  const l = await enigmasDados.lista();
+  const pega = (id) => l.find((e) => e.id === id);
+  assert.equal(pega('terca').fechaEm, pega('terca-tarde').abreEm);
+  assert.equal(pega('terca-tarde').fechaEm, pega('terca-noite').abreEm);
+  // Um aviso por dia, com os horários
   const notif = require('../server/notificacoes');
+  for (const e of ENIGMAS) await banco2.rodar('UPDATE enigmas SET abre_em = ?, fecha_em = ? WHERE id = ?', [Date.parse(e.abre), Date.parse(e.fecha), e.id]);
   const { lista: ag } = await notif._modelos().agendados();
   const dias = ag.filter((a) => a.chave.startsWith('enigma-dia-'));
-  assert.ok(dias.some((d) => d.chave === 'enigma-dia-2026-10-30' && /3 enigmas no site da festa, abrindo às 8h, 13h e 19h/.test(d.corpo)));
+  assert.ok(dias.some((d) => d.chave === 'enigma-dia-2026-10-27' && /3 enigmas no site da festa, abrindo às 8h, 13h e 19h/.test(d.corpo)));
   for (const d of dias) assert.equal(notif.problemaNoAviso(d), null, d.corpo);
+  // Na prática: o de terça de manhã fecha às 13h, quando abre o da tarde
+  const real = await enigmasDados.lista();
+  assert.equal(new Date(real.find((e) => e.id === 'terca').fechaEm - 4 * 3600000).toISOString().slice(0, 16), '2026-10-27T13:00');
+  assert.equal(new Date(real.find((e) => e.id === 'sexta-noite').fechaEm - 4 * 3600000).toISOString().slice(0, 16), '2026-10-31T17:00');
 });
 
 test('quem sugeriu música ou ofereceu carona antes dos pontos existirem também ganha (sem duplicar)', async () => {
@@ -195,7 +213,7 @@ test('quem sugeriu música ou ofereceu carona antes dos pontos existirem também
   await banco2.rodar("DELETE FROM pontos_log WHERE convidado_id = ?", [antigo.id]);
   assert.equal(await h.pontosDe(antigo.token), 0);
   const migracoes = require('../server/dados/migracoes');
-  const degrau = migracoes[migracoes.length - 1];
+  const degrau = migracoes.find((d) => d.nome.startsWith('pontos de colaboração'));
   for (let i = 0; i < 2; i++) { // rodar duas vezes não duplica
     for (const sql of degrau.sql.split(/;\s*\n/).map((x) => x.trim()).filter(Boolean)) await banco2.rodar(sql);
   }

@@ -450,7 +450,7 @@ async function despacharSociais(agora = Date.now()) {
     if (!cfg || depoisDaFesta || (emFesta && !cfg.duranteFesta)) { await zerar(Number(p.ultimo_envio)); continue; }
     if (!emFesta && madrugada(agora)) continue; // segura até as 8h
     if (agora - Number(p.ultimo_envio) < INTERVALO_MS) continue;
-    if (agora - Number(p.desde || agora) < LOTE_MS) continue; // espera o lote juntar
+    if (agora - Math.min(Number(p.desde || agora), agora) < LOTE_MS) continue; // espera o lote juntar
     // Reserva o lote: se outro processo já pegou (ou chegou evento novo), não manda duplicado.
     const r = await zerar(agora);
     if (!r.rowsAffected) continue;

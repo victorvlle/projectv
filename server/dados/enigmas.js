@@ -1,4 +1,4 @@
-// Enigmas de filmes de terror: 3 por dia (quarta a sexta). Acerto +10; os 3 primeiros de cada enigma ganham bônus.
+// Enigmas de filmes de terror: 3 por dia (terça a sexta). Cada um fecha quando o próximo abre. Acerto +10; os 3 primeiros de cada enigma ganham bônus.
 //
 // CONTRA COLA ("modo prova")
 //  - O texto do enigma só sai do servidor quando a pessoa toca em "Revelar". A partir daí o
@@ -39,12 +39,19 @@ async function tempoLimiteS() {
   return Number.isInteger(t) && t >= 30 && t <= 900 ? t : TEMPO_PADRAO_S;
 }
 
+// Quando o próximo enigma abre, o anterior fecha (ninguém responde atrasado).
+// O fechamento efetivo é o menor entre o fecha_em gravado e a abertura do próximo.
 async function lista() {
-  const linhas = await banco.tudo('SELECT * FROM enigmas ORDER BY ordem');
-  return linhas.map((l) => ({
+  const linhas = await banco.tudo('SELECT * FROM enigmas ORDER BY abre_em, ordem');
+  const todos = linhas.map((l) => ({
     id: l.id, ordem: Number(l.ordem), titulo: l.titulo, pergunta: l.pergunta, respostas: JSON.parse(l.respostas),
-    dica: l.dica, abreEm: Number(l.abre_em), fechaEm: Number(l.fecha_em),
+    dica: l.dica, abreEm: Number(l.abre_em), fechaEm: Number(l.fecha_em), fechaGravado: Number(l.fecha_em),
   }));
+  for (let i = 0; i < todos.length - 1; i++) {
+    const proximo = todos.slice(i + 1).find((x) => x.abreEm > todos[i].abreEm);
+    if (proximo) todos[i].fechaEm = Math.min(todos[i].fechaEm, proximo.abreEm);
+  }
+  return todos.sort((a, b) => a.ordem - b.ordem);
 }
 
 const estadoDe = (e, agora) => (agora < e.abreEm ? 'em-breve' : agora < e.fechaEm ? 'aberto' : 'fechado');
@@ -192,7 +199,7 @@ async function editar(id, campos) {
     return ms;
   };
   const abreEm = data(campos.abreEm, e.abreEm);
-  const fechaEm = data(campos.fechaEm, e.fechaEm);
+  const fechaEm = data(campos.fechaEm, e.fechaGravado);
   if (titulo.length < 2 || pergunta.length < 10) throw new ErroValidacao('Escreva o título e o enigma.');
   if (!respostas.length) throw new ErroValidacao('Informe pelo menos uma resposta aceita.');
   if (fechaEm <= abreEm) throw new ErroValidacao('O enigma precisa fechar depois de abrir.');

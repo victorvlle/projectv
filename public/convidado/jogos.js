@@ -220,6 +220,7 @@
     // Ainda não revelado
     const min = Math.round(e.tempoS / 60 * 10) / 10;
     return `<article class="cartao enigma pronto">${cab}
+      <p class="enigma-prazo">⏳ Disponível até ${esc(PV.dataCurta(x.fechaEm))}, quando abre o próximo.</p>
       <p class="enigma-regras">Ao revelar, você tem <b>${e.tempoS % 60 ? `${e.tempoS} segundos` : `${min} ${min === 1 ? 'minuto' : 'minutos'}`}</b> e ${e.maxTentativas} tentativas.
         <b>Não saia desta página</b> (nem troque de app, recarregue ou bloqueie a tela): se sair, o enigma é encerrado para você.</p>
       <button class="botao largo" type="button" data-revelar="${esc(x.id)}">Revelar enigma</button></article>`;
@@ -229,7 +230,7 @@
     if (!e) return;
     enigmasAtuais = e;
     const b = e.bonus;
-    pintar('enigma-intro', `Enigmas de filmes de terror, dos clássicos aos de 2026: três por dia, de quarta a sexta, de manhã (8h), à tarde (13h) e à noite (19h). Responda com o nome do filme. Acertou: +${e.pontos} pontos; os três primeiros de cada enigma ganham bônus: 1º +${b[0]}, 2º +${b[1]}, 3º +${b[2]}.`);
+    pintar('enigma-intro', `Enigmas de filmes de terror, dos clássicos aos de 2026: três por dia, até sexta, de manhã (8h), à tarde (13h) e à noite (19h). Cada enigma fecha quando o próximo abre. Responda com o nome do filme. Acertou: +${e.pontos} pontos; os três primeiros de cada enigma ganham bônus: 1º +${b[0]}, 2º +${b[1]}, 3º +${b[2]}.`);
     const peso = (x) => (x.fase === 'respondendo' ? -1 : x.estado === 'aberto' && x.fase === 'nao-revelado' ? 0 : x.estado === 'em-breve' ? 1 : 2);
     const ordenados = [...e.enigmas].sort((a, b2) => peso(a) - peso(b2) || (peso(a) === 2 ? b2.abreEm - a.abreEm : a.abreEm - b2.abreEm));
     const proximo = ordenados.find((x) => x.estado === 'em-breve');
