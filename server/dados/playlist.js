@@ -50,13 +50,15 @@ async function sugerir(convidadoId, { titulo, artista }) {
   }
   const r = await banco.um('SELECT COUNT(*) AS n FROM playlist_musicas WHERE convidado_id = ?', [convidadoId]);
   if (Number(r.n) >= MAX_SUGESTOES) throw new ErroValidacao(`Você já sugeriu ${MAX_SUGESTOES} músicas. Tire uma para sugerir outra.`);
+  let novo;
   try {
-    await banco.rodar('INSERT INTO playlist_musicas (convidado_id, titulo, artista, chave, criado_em) VALUES (?, ?, ?, ?, ?)',
+    novo = await banco.rodar('INSERT INTO playlist_musicas (convidado_id, titulo, artista, chave, criado_em) VALUES (?, ?, ?, ?, ?)',
       [convidadoId, t, a, chave, Date.now()]);
   } catch (erro) {
     if (/UNIQUE/i.test(erro.message)) return sugerir(convidadoId, { titulo, artista }); // corrida: vira voto
     throw erro;
   }
+  await require('./colaboracao').musicaAdicionada(convidadoId, Number(novo.lastInsertRowid), t);
   await require('../notificacoes').evento('musica', convidadoId);
   return { jaExistia: false };
 }
@@ -82,6 +84,7 @@ async function remover(musicaId, convidadoId = null) {
     { sql: 'DELETE FROM playlist_votos WHERE musica_id = ?', args: [m.id] },
     { sql: 'DELETE FROM playlist_musicas WHERE id = ?', args: [m.id] },
   ]);
+  await require('./colaboracao').musicaRetirada(m.id);
 }
 
 module.exports = { listar, sugerir, votar, remover, chaveDe, MAX_SUGESTOES };

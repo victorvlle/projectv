@@ -32,6 +32,7 @@
       <button data-aba="convidados" class="ativa">Convidados</button>
       <button data-aba="bebidas">Bebidas</button>
       <button data-aba="extras">Extras</button>
+      <button data-aba="jogos">Jogos</button>
       <button data-aba="atividades">Atividades</button>
       <button data-aba="avisos">Avisos</button>
       <button data-aba="telao">Telão</button>
@@ -101,6 +102,30 @@
         <div id="lista-atividades" class="lista"></div>
       </section>
 
+      <!-- JOGOS: Previsões, Maldição, Enigmas e pontos -->
+      <section data-painel="jogos" class="oculto">
+        <div class="cartao">
+          <h3>🔮 Previsões</h3>
+          <div id="j-previsoes"></div>
+        </div>
+        <div class="cartao" style="margin-top:12px">
+          <h3>💀 A Maldição</h3>
+          <div id="j-maldicao"></div>
+        </div>
+        <div class="cartao" style="margin-top:12px">
+          <h3>🧩 Enigma do dia</h3>
+          <div id="j-enigmas"></div>
+        </div>
+        <div class="cartao" style="margin-top:12px">
+          <h3>🍻 Bebida levada (+5)</h3>
+          <div id="j-bebidas"></div>
+        </div>
+        <div class="cartao" style="margin-top:12px">
+          <h3>🏆 Ranking</h3>
+          <div id="j-ranking" class="lista"></div>
+        </div>
+      </section>
+
       <!-- AVISOS (notificações no celular) -->
       <section data-painel="avisos" class="oculto">
         <div class="resumo" id="resumo-avisos"></div>
@@ -159,6 +184,8 @@
             <button data-modo="atividades">🔒 Atividades</button>
             <button data-modo="mensagem">💬 Mensagem</button>
             <button data-modo="pos">🌙 Votação do pós</button>
+            <button data-modo="previsoes">🔮 Previsões</button>
+            <button data-modo="ranking">🏆 Ranking</button>
           </div>
           <label for="msg-telao">Mensagem (modo Mensagem)</label>
           <input id="msg-telao" maxlength="140" placeholder="Ex.: A pizza chegou!">
@@ -218,5 +245,6 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="/comum/api.js"></script>
   <script src="/admin/admin.js"></script>
+  <script src="/admin/jogos.js"></script>
 </body>
 </html>

@@ -278,3 +278,103 @@ body.sem-rolagem { overflow: hidden; }
   .modal-fundo:not(.oculto), .modal-fundo:not(.oculto) .folha, .folha-arte .morcego, .ilustracao.entrar svg, .ilustracao .destaque, .ilustracao .dedo, .folha-arte .vibra { animation: none; }
   .pontos-progresso i { transition: none; }
 }
+
+/* ------------------------------------------------------------------ jogos */
+.oculto-visual { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Previsões */
+.prev-aviso { margin-top: 8px; }
+.prev-aviso p { margin: 4px 0 0; font-size: .9rem; }
+.prev-aviso.aberta { border-color: rgba(232, 98, 12, .5); }
+.prev-aviso.publicada { border-color: rgba(123, 199, 77, .5); }
+.prev-contagem { margin-top: 10px !important; }
+.prev-contagem b { color: var(--laranja-claro); font-size: 1.1rem; }
+.prev-progresso { height: 8px; border-radius: 4px; background: var(--fundo-2); overflow: hidden; margin-top: 6px; }
+.prev-progresso i { display: block; height: 100%; background: linear-gradient(90deg, var(--roxo-claro), var(--laranja)); transition: width .4s ease; }
+.lista-prev { display: grid; gap: 12px; margin: 14px 0 24px; }
+.prev-card { background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: 14px; transition: border-color .3s; }
+.prev-card.feita { border-color: rgba(107, 68, 160, .7); }
+.prev-topo { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; }
+.prev-topo h2 { font-size: 1rem; line-height: 1.3; flex: 1; margin: 2px 0 0; }
+.prev-num { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: .8rem; font-weight: 800;
+  background: var(--fundo-2); border: 1px solid var(--borda); color: var(--texto-2); }
+.prev-ok { color: var(--lima); font-weight: 800; }
+.prev-opcoes { display: flex; flex-wrap: wrap; gap: 8px; }
+.prev-opcao { appearance: none; min-height: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--borda); background: var(--fundo-2);
+  color: var(--texto); font: 600 .9rem var(--fonte); cursor: pointer; }
+.prev-opcao.minha { background: var(--roxo); border-color: var(--laranja); box-shadow: 0 0 0 1px var(--laranja) inset; }
+.prev-opcao.certa { border-color: var(--lima); box-shadow: 0 0 0 2px rgba(123, 199, 77, .6) inset; }
+.prev-opcao:disabled { cursor: default; opacity: .85; }
+.prev-opcao:disabled:not(.minha):not(.certa) { opacity: .5; }
+.prev-pessoa { appearance: none; width: 100%; min-height: 52px; display: flex; align-items: center; gap: 10px; padding: 6px 12px 6px 6px;
+  border-radius: 14px; border: 1px dashed var(--borda); background: var(--fundo-2); color: var(--texto); font: 600 .95rem var(--fonte); cursor: pointer; text-align: left; }
+.prev-pessoa.minha { border-style: solid; border-color: var(--laranja); background: rgba(59, 31, 92, .6); }
+.prev-pessoa .avatar { width: 40px; height: 40px; font-size: 22px; flex: none; }
+.prev-pessoa .avatar.vazio { color: var(--texto-3); font-family: var(--fonte); font-weight: 800; }
+.prev-pessoa .trocar { margin-left: auto; font-size: .8rem; color: var(--laranja-claro); }
+.prev-pessoa:disabled { cursor: default; }
+.prev-resultado { margin: 10px 0 0; font-size: .9rem; color: var(--texto-2); }
+.prev-resultado.acertou { color: var(--lima); }
+.prev-resultado.errou b { color: var(--texto); }
+.folha-pessoas #pessoas-busca { margin: 4px 0 10px; }
+.pessoas-lista { display: grid; gap: 6px; max-height: 52vh; overflow-y: auto; margin-bottom: 6px; }
+.pessoa-opcao { appearance: none; display: flex; align-items: center; gap: 10px; min-height: 50px; padding: 4px 10px 4px 4px; border-radius: 12px;
+  border: 1px solid var(--borda); background: var(--fundo-2); color: var(--texto); font: 600 .95rem var(--fonte); cursor: pointer; text-align: left; }
+.pessoa-opcao .avatar { width: 40px; height: 40px; font-size: 22px; flex: none; }
+.pessoa-opcao.minha { border-color: var(--laranja); background: rgba(59, 31, 92, .6); }
+.pessoa-opcao em { color: var(--texto-3); font-style: normal; font-weight: 500; }
+
+/* Enigmas */
+.lista-enigmas { display: grid; gap: 12px; margin: 8px 0 24px; }
+.enigma.aberto { border-color: rgba(232, 98, 12, .55); background: linear-gradient(160deg, rgba(59, 31, 92, .45), var(--cartao)); }
+.enigma.resolvido { border-color: rgba(123, 199, 77, .45); }
+.enigma.bloqueado { opacity: .75; }
+.enigma-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.enigma-topo h2 { font-size: 1.05rem; margin: 0; }
+.enigma-acert { font-size: .75rem; color: var(--texto-3); white-space: nowrap; }
+.enigma-texto { font-size: 1.02rem; line-height: 1.5; margin: 10px 0 12px; }
+.enigma-form { display: flex; gap: 8px; }
+.enigma-form input { flex: 1; min-width: 0; }
+.enigma-form .botao { flex: none; }
+.enigma-rodape { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-top: 8px; font-size: .85rem; }
+.enigma-rodape summary { cursor: pointer; color: var(--laranja-claro); font-weight: 600; }
+.enigma-rodape details p { margin: 4px 0 0; }
+.enigma-ok { color: var(--lima); font-weight: 700; margin: 0; }
+.enigma-retorno { min-height: 1.3em; margin: 6px 0 0; font-size: .88rem; }
+.enigma-retorno.erro { color: #FF6B81; }
+
+/* Ranking */
+.rank-eu { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; margin-top: 8px; }
+.rank-eu small { display: block; font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: var(--texto-3); }
+.rank-eu b { font-size: 1.6rem; color: var(--laranja-claro); }
+.rank-lista { list-style: none; margin: 14px 0; padding: 0; display: grid; gap: 6px; }
+.rank-linha { display: flex; align-items: center; gap: 10px; padding: 8px 12px 8px 8px; border-radius: 14px; background: var(--cartao); border: 1px solid var(--borda); }
+.rank-linha.eu { border-color: var(--laranja); background: rgba(59, 31, 92, .55); }
+.rank-linha.top1 { box-shadow: 0 0 0 1px rgba(255, 196, 0, .35), 0 6px 18px rgba(255, 196, 0, .08); }
+.rank-pos { width: 34px; text-align: center; font-weight: 800; color: var(--texto-2); flex: none; }
+.rank-linha .avatar { width: 38px; height: 38px; font-size: 21px; flex: none; }
+.rank-nome { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.rank-pts { font-weight: 800; color: var(--laranja-claro); font-variant-numeric: tabular-nums; }
+.rank-sep { text-align: center; color: var(--texto-3); }
+.rank-extrato { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; }
+.rank-extrato li { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--borda); }
+
+/* Maldição no celular */
+.maldicao-cartao { border-color: rgba(179, 18, 46, .7); background: linear-gradient(160deg, rgba(179, 18, 46, .25), var(--cartao)); }
+.alerta-maldicao { position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; padding: 20px;
+  background: radial-gradient(circle at 50% 40%, #4A0716, #0A0406 70%); animation: sangrar 1.2s ease-out; }
+@keyframes sangrar { from { opacity: 0; } }
+.maldicao-caixa { width: 100%; max-width: 420px; text-align: center; }
+.maldicao-icone { font-size: 4.5rem; line-height: 1; animation: tremer .5s ease-in-out 3; }
+@keyframes tremer { 25% { transform: rotate(-8deg); } 75% { transform: rotate(8deg); } }
+.maldicao-caixa h2 { font-family: var(--fonte-terror); font-weight: 400; font-size: 2.6rem; color: #FF6B81; margin: 10px 0; }
+.maldicao-castigo { font-size: 1.25rem; font-weight: 700; line-height: 1.4; margin: 0 0 12px; }
+.maldicao-tempo { color: var(--texto-2); font-variant-numeric: tabular-nums; min-height: 1.5em; }
+@media (prefers-reduced-motion: reduce) {
+  .alerta-maldicao, .maldicao-icone, .prev-progresso i { animation: none; transition: none; }
+}
+.enigma.pronto { border-color: rgba(232, 98, 12, .55); }
+.enigma-regras { font-size: .92rem; color: var(--texto-2); margin: 10px 0 12px; }
+.enigma.encerrado { opacity: .8; border-color: rgba(179, 18, 46, .5); }
+.enigma-relogio { font-size: 1.3rem; font-weight: 800; color: var(--laranja-claro); font-variant-numeric: tabular-nums; }
+.enigma-relogio.acabando { color: #FF6B81; }

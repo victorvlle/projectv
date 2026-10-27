@@ -3,7 +3,7 @@
   'use strict';
   const $ = (id) => document.getElementById(id);
   const telas = ['tela-carregando', 'tela-bloqueio', 'tela-perfil', 'tela-principal', 'tela-contribuicoes',
-    'tela-playlist', 'tela-caronas', 'tela-chegar', 'tela-pos', 'tela-avisos'];
+    'tela-playlist', 'tela-caronas', 'tela-chegar', 'tela-pos', 'tela-avisos', 'tela-previsoes', 'tela-enigma', 'tela-ranking', 'tela-maldicao'];
   let telaAtual = 'tela-carregando';
   function mostrar(qual) {
     telaAtual = qual;
@@ -115,7 +115,7 @@
         <div><div class="nome">Contribuições</div>
         <div class="quando">${faltaTotal ? `Liberado · ${faltaTotal} ${faltaTotal === 1 ? 'item precisa' : 'itens precisam'} de alguém` : 'Liberado · tudo garantido'}</div></div>
       </a>`;
-    const extras = window.PVExtras ? window.PVExtras.cards(estado) : '';
+    const extras = (window.PVExtras ? window.PVExtras.cards(estado) : '') + (window.PVJogos ? window.PVJogos.cards(estado) : '');
     $('atividades').innerHTML = cardContrib + extras + estado.atividades.map((a) => {
       const recem = liberadasAntes && liberadasAgora.has(a.id) && !liberadasAntes.has(a.id);
       if (a.estado === 'liberada') {
@@ -136,6 +136,7 @@
 
     desenharBebidas();
     if (window.PVExtras) window.PVExtras.desenhar(estado);
+    if (window.PVJogos) window.PVJogos.desenhar(estado);
 
     const f = estado.festa;
     const itens = [['Quando', PV.periodo(f.inicioMs, f.fimMs)],
@@ -333,11 +334,12 @@
 
   // ------------------------------------------------------------- navegação
   // #contribuicoes abre a tela de contribuições; o "voltar" do celular funciona.
-  const TELAS_ATIVIDADE = { pos: true };
+  const TELAS_ATIVIDADE = { pos: true, previsoes: true, maldicao: true };
   // Telas extras: hash -> id da tela. #pos só abre quando a atividade foi liberada.
   const TELAS = {
     '#contribuicoes': 'tela-contribuicoes', '#playlist': 'tela-playlist',
     '#caronas': 'tela-caronas', '#chegar': 'tela-chegar', '#pos': 'tela-pos', '#avisos': 'tela-avisos',
+    '#previsoes': 'tela-previsoes', '#enigma': 'tela-enigma', '#ranking': 'tela-ranking', '#maldicao': 'tela-maldicao',
   };
   function irPara(hash) {
     if (!eu || !eu.perfilCompleto) return;
@@ -366,6 +368,13 @@
   // Ponte para extras.js (playlist, caronas, como chegar, pós).
   window.PVConvidado = {
     api, emojiDe,
+    atualizarParte: (parte, valor) => { if (estado) { estado[parte] = valor; desenhar(); } },
+    // Aviso que precisa chegar mesmo com a página sumindo da tela (keepalive).
+    sinal: (url) => {
+      try {
+        fetch(url, { method: 'POST', keepalive: true, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: '{}' });
+      } catch (_) { /* sem rede: o relógio do servidor ainda encerra no fim do tempo */ }
+    },
     eu: () => eu,
     estado: () => estado,
     recarregar: () => carregarFesta().catch(() => {}),
@@ -412,6 +421,8 @@
       eventos: {
         atualizar: recarregar,
         'sessao:encerrada': bloquear,
+        // Fui amaldiçoado: o celular mostra o aviso (jogos.js), além do telão.
+        'maldicao:voce': (d) => document.dispatchEvent(new CustomEvent('pv:maldicao', { detail: d })),
       },
     });
   }

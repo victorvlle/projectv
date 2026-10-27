@@ -52,3 +52,69 @@ body { overflow: hidden; cursor: default; }
 .pos-barra i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--roxo-claro), var(--laranja)); transition: width .8s ease; }
 .pos-linha.lider .pos-barra i { background: linear-gradient(90deg, var(--laranja), var(--lima)); }
 .pos-num { font-size: 5vh; font-weight: 800; color: var(--laranja-claro); text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Previsões */
+.prev-pergunta { font-size: 7vh; text-align: center; max-width: 88vw; line-height: 1.1; margin-bottom: 4vh; }
+.prev-corpo { width: min(84vw, 150vh); display: grid; gap: 3vh; }
+.prev-dica { font-size: 3.4vh; color: var(--texto-2); text-align: center; }
+.avatar.mini { width: 5vh; height: 5vh; font-size: 3vh; margin-right: 1vw; vertical-align: middle; display: inline-flex; }
+.prev-revela { display: flex; align-items: center; gap: 3vw; justify-content: center; padding: 2.5vh 3vw; border-radius: 3vh;
+  background: linear-gradient(120deg, rgba(123, 199, 77, .18), rgba(59, 31, 92, .6)); border: 2px solid var(--lima); animation: entrar .6s ease both; }
+.prev-revela .avatar.grande { width: 16vh; height: 16vh; font-size: 10vh; }
+.prev-revela small { display: block; font-size: 2.4vh; text-transform: uppercase; letter-spacing: .2em; color: var(--texto-2); }
+.prev-revela b { font-size: 8vh; color: var(--lima); line-height: 1.05; }
+.prev-revela p { font-size: 2.8vh; color: var(--texto); margin: 1vh 0 0; }
+
+/* Ranking */
+.podio { display: flex; align-items: flex-end; justify-content: center; gap: 3vw; margin-bottom: 3vh; }
+.degrau { display: flex; flex-direction: column; align-items: center; text-align: center; width: 22vw; }
+.degrau .avatar { width: 13vh; height: 13vh; font-size: 8vh; margin-bottom: 1vh; }
+.degrau b { font-size: 3.6vh; line-height: 1.1; }
+.degrau .pts { font-size: 3vh; color: var(--laranja-claro); font-weight: 800; margin: .5vh 0 1vh; }
+.degrau .bloco { width: 100%; border-radius: 2vh 2vh 0 0; display: grid; place-items: center; font-size: 6vh; font-weight: 800;
+  background: linear-gradient(180deg, var(--roxo-claro), var(--roxo)); border: 1px solid var(--borda); }
+.degrau.d1 .bloco { height: 24vh; background: linear-gradient(180deg, #E8A10C, #8A4B0A); }
+.degrau.d2 .bloco { height: 17vh; }
+.degrau.d3 .bloco { height: 12vh; }
+.rank-telao { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 1.5vh 3vw; width: min(84vw, 150vh); }
+.rank-telao li { display: flex; align-items: center; gap: 1.5vw; font-size: 3vh; padding: 1vh 1.5vw; border-radius: 1.5vh; background: rgba(34, 26, 45, .85); border: 1px solid var(--borda); }
+.rank-telao .avatar { width: 6vh; height: 6vh; font-size: 3.6vh; }
+.rank-telao .p { width: 5vh; color: var(--texto-2); font-weight: 800; }
+.rank-telao .n { flex: 1; font-weight: 700; }
+.rank-telao .pts { color: var(--laranja-claro); font-weight: 800; }
+
+/* Maldição */
+.maldicao-palco { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; overflow: hidden;
+  background: radial-gradient(circle at 50% 45%, #5A0012, #050204 72%); }
+.maldicao-palco[data-fase="alerta"] { animation: piscar .5s steps(2) 8; }
+@keyframes piscar { 50% { background: radial-gradient(circle at 50% 45%, #C81432, #280008 70%); } }
+.fase { display: none; flex-direction: column; align-items: center; text-align: center; }
+.fase.ativa { display: flex; animation: entrar .5s ease both; }
+.bruxa { width: 58vh; height: 58vh; }
+.bruxa svg { width: 100%; height: 100%; overflow: visible; }
+.bruxa .anel { animation: pulsar-anel 1s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+.bruxa .anel2 { animation: girar 6s linear infinite; transform-origin: center; transform-box: fill-box; }
+.bruxa .voo { animation: voar-bruxa 4s ease-in-out both; }
+@keyframes pulsar-anel { 50% { opacity: .35; transform: scale(1.03); } }
+@keyframes voar-bruxa { from { transform: translate(-22%, 10%) rotate(-6deg); } to { transform: none; } }
+.alerta-texto { font-size: 11vh; color: #FF3355; text-shadow: 0 0 5vh rgba(255, 30, 60, .9); margin: 1vh 0 0; }
+.suspense-texto { font-size: 10vh; color: var(--texto); text-shadow: 0 0 5vh rgba(232, 98, 12, .7); margin-bottom: 5vh; }
+.roleta-janela { width: 32vh; height: 32vh; border-radius: 50%; display: grid; place-items: center; border: 1vh solid var(--laranja);
+  box-shadow: 0 0 8vh rgba(232, 98, 12, .7), inset 0 0 6vh rgba(0, 0, 0, .6); background: #1B1424; }
+.roleta-janela .avatar { width: 26vh; height: 26vh; font-size: 18vh; background: transparent; border: 0; }
+.roleta-janela .avatar.pula { animation: pular .12s ease-out; }
+@keyframes pular { from { transform: scale(.82); opacity: .4; } }
+.revela-topo { display: flex; gap: 3vw; }
+.revela-topo .avatar { width: 30vh; height: 30vh; font-size: 20vh; border: 1vh solid #FF3355; box-shadow: 0 0 10vh rgba(255, 30, 60, .8); animation: tremer-telao .5s ease-in-out 3; }
+@keyframes tremer-telao { 25% { transform: rotate(-6deg) scale(1.04); } 75% { transform: rotate(6deg) scale(1.04); } }
+.revela-nome { font-family: var(--fonte-terror); font-weight: 400; font-size: 13vh; color: #FF3355; margin: 3vh 0 1vh; text-shadow: 0 0 6vh rgba(255, 30, 60, .8); line-height: 1; }
+.revela-castigo { font-size: 6vh; font-weight: 800; max-width: 86vw; line-height: 1.2; margin: 0 0 4vh; }
+.revela-contagem b { display: block; font-size: 16vh; line-height: 1; color: var(--laranja-claro); font-variant-numeric: tabular-nums; }
+.revela-contagem small { font-size: 3vh; color: var(--texto-2); text-transform: uppercase; letter-spacing: .2em; }
+.maldicao-palco.acabando .revela-contagem b { color: #FF3355; animation: pulsar 1s ease-in-out infinite; }
+.cumprida-texto { font-size: 13vh; color: var(--lima); text-shadow: 0 0 6vh rgba(123, 199, 77, .7); margin: 0; }
+.cumprida-pontos { font-size: 7vh; font-weight: 800; color: var(--laranja-claro); }
+.botao-som { position: fixed; right: 16px; top: 16px; z-index: 120; }
+@media (prefers-reduced-motion: reduce) {
+  .maldicao-palco[data-fase="alerta"], .bruxa .anel, .bruxa .anel2, .bruxa .voo, .revela-topo .avatar, .roleta-janela .avatar.pula { animation: none; }
+}

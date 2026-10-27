@@ -11,7 +11,15 @@ const { avisar } = require('./tempo-real');
 const INTERVALO_MS = 5000;
 let timer = null;
 
+// A cada volta: abre atividades agendadas e roda o sorteio da Maldição.
 async function verificar(agora = Date.now()) {
+  const abertas = await abrirAgendadas(agora);
+  const m = await require('./dados/maldicao').tic(agora);
+  if (m) await require('./jogos/anunciar').maldicaoSorteada(m);
+  return abertas;
+}
+
+async function abrirAgendadas(agora = Date.now()) {
   const abrindo = await banco.tudo(
     "SELECT id FROM atividades WHERE estado = 'agendada' AND abre_em IS NOT NULL AND abre_em <= ?", [agora]);
   if (!abrindo.length) return 0;

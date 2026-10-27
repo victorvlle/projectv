@@ -71,3 +71,12 @@ h3 { font-size: 1.05rem; margin-bottom: 6px; }
 .linha-teste select { flex: 1; min-width: 160px; }
 .ok-envio { color: var(--lima); }
 .falhou { color: #ff6b84; }
+
+/* Jogos */
+.intensidades button small { display: block; font-size: .7rem; font-weight: 500; color: var(--texto-3); }
+.intensidades button.ativo { border-color: var(--laranja); color: var(--texto); background: var(--roxo); }
+.aviso-inline { padding: 8px 10px; border-radius: 10px; background: rgba(232, 98, 12, .12); border: 1px solid rgba(232, 98, 12, .45); font-size: .88rem; }
+.enigma-admin label { display: block; margin-top: 8px; }
+.enigma-admin summary { cursor: pointer; color: var(--laranja-claro); font-weight: 600; }
+.botao.perigo { background: linear-gradient(180deg, #D3203F, var(--sangue)); }
+.det-prev summary { cursor: pointer; color: var(--laranja-claro); font-weight: 600; }

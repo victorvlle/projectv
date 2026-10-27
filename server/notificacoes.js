@@ -32,7 +32,7 @@ const { ErroValidacao } = require('./dados/convidados');
 
 const MAX_POR_CONVIDADO = 5;
 // Destinos que um toque na notificação pode abrir. Qualquer outro vira a página inicial.
-const DESTINOS = new Set(['/', '/#contribuicoes', '/#playlist', '/#caronas', '/#chegar', '/#pos', '/#avisos']);
+const DESTINOS = new Set(['/', '/#contribuicoes', '/#playlist', '/#caronas', '/#chegar', '/#pos', '/#avisos', '/#previsoes', '/#enigma', '/#ranking', '/#maldicao']);
 const destinoSeguro = (u) => (DESTINOS.has(u) ? u : '/');
 const HOSTS_PERMITIDOS = [
   /^fcm\.googleapis\.com$/, /^android\.googleapis\.com$/,
@@ -361,7 +361,7 @@ async function registro24h() {
 }
 
 async function historico(limite = 30) {
-  const linhas = await banco.tudo("SELECT * FROM push_enviados WHERE chave NOT LIKE 'teste:%' ORDER BY enviado_em DESC LIMIT ?", [limite]);
+  const linhas = await banco.tudo("SELECT * FROM push_enviados WHERE chave NOT LIKE 'teste:%' AND para >= 0 ORDER BY enviado_em DESC LIMIT ?", [limite]);
   return linhas.map((l) => ({
     chave: l.chave, titulo: l.titulo, corpo: l.corpo, para: Number(l.para), entregues: Number(l.entregues),
     falhas: Number(l.falhas || 0), enviadoEm: Number(l.enviado_em),
@@ -372,6 +372,8 @@ async function historico(limite = 30) {
 const HORA = 3600 * 1000;
 function horaManaus(ms) { return new Date(ms - 4 * HORA).getUTCHours(); }
 const madrugada = (ms) => horaManaus(ms) < 8; // 0h às 7h59
+// Relógio trocável só nos testes (para não depender da hora em que os testes rodam).
+let relogio = () => Date.now();
 
 // ------------------------------------------------- quem está olhando qual tela
 // Só memória e só enquanto a aba está visível: é o "agora" de cada conexão.
@@ -464,13 +466,46 @@ async function despacharSociais(agora = Date.now()) {
 
 // ------------------------------------------------------- atividade liberada
 const TEXTOS_LIBERADA = {
-  previsoes: ['Project V: Previsões abertas', 'As apostas sobre a festa estão abertas até sábado às 17h.'],
+  previsoes: ['Project V: Previsões abertas', 'As apostas sobre a festa estão abertas até sábado às 17h. Cada acerto vale 10 pontos.'],
   pos: ['Project V: votação do pós aberta', 'Vote no lugar para onde o grupo vai depois da meia-noite.'],
 };
-async function atividadeLiberada(atividade) {
+const URL_LIBERADA = { pos: '/#pos', previsoes: '/#previsoes' };
+// Liberada de madrugada (ex.: Previsões às 00:00 de sexta): o aviso espera até as 8h.
+async function atividadeLiberada(atividade, agora = relogio()) {
   const [titulo, corpo] = TEXTOS_LIBERADA[atividade.id]
     || [`Project V: ${atividade.nome} liberado`.slice(0, 60), `A atividade ${atividade.nome} já está disponível no site da festa.`];
-  return enviar({ titulo, corpo, url: atividade.id === 'pos' ? '/#pos' : '/', chave: `liberou:${atividade.id}` });
+  const url = URL_LIBERADA[atividade.id] || '/';
+  if (madrugada(agora)) {
+    const problema = problemaNoAviso({ titulo, corpo, url });
+    if (problema) throw new ErroValidacao(problema);
+    await banco.rodar('INSERT OR IGNORE INTO push_enviados (chave, titulo, corpo, para, entregues, enviado_em) VALUES (?, ?, ?, -1, 0, ?)',
+      [`adiado:liberou:${atividade.id}`, titulo, corpo, agora]);
+    return { adiado: true, para: 0, entregues: 0 };
+  }
+  return enviar({ titulo, corpo, url, chave: `liberou:${atividade.id}` });
+}
+// Manda os avisos de liberação que esperaram a madrugada passar (uma vez cada).
+async function despacharAdiados(agora = relogio()) {
+  if (madrugada(agora)) return 0;
+  const linhas = await banco.tudo("SELECT * FROM push_enviados WHERE chave LIKE 'adiado:liberou:%' AND para = -1");
+  let n = 0;
+  for (const l of linhas) {
+    const r = await banco.rodar('UPDATE push_enviados SET para = 0 WHERE chave = ? AND para = -1', [l.chave]);
+    if (!r.rowsAffected) continue;
+    const id = l.chave.slice('adiado:liberou:'.length);
+    await enviar({ titulo: l.titulo, corpo: l.corpo, url: URL_LIBERADA[id] || '/', chave: `liberou:${id}` })
+      .catch((e) => console.error('[push] adiado:', e.message));
+    n += 1;
+  }
+  return n;
+}
+
+// ------------------------------------------------------------------ maldição
+// Aviso pessoal para quem foi sorteado (e o parceiro, no castigo duplo). Uma vez por sorteio.
+async function amaldicoado(m) {
+  const ids = [m.convidadoId, m.parceiro && m.parceiro.id].filter(Boolean);
+  return enviar({ titulo: 'Project V: você foi amaldiçoado', corpo: 'Olhe o telão: o seu castigo de bebida está esperando por você.',
+    url: '/#maldicao', tag: `maldicao-${m.id}`, para: { ids }, chave: `maldicao:${m.id}` });
 }
 
 // ----------------------------------------------------------------- agendados
@@ -488,6 +523,23 @@ async function agendados() {
       titulo: 'Project V começou', corpo: 'A festa de Halloween começou. Acompanhe as atividades pelo site.' },
     { chave: 'campeao-pos', quando: info.fimMs, janela: 2 * HORA, url: '/#pos', dinamico: true },
   ];
+  // Enigmas: 3 por dia. Um aviso só por dia, ao meio-dia, com os horários daquele dia.
+  const enigmas = await banco.tudo('SELECT id, abre_em, fecha_em FROM enigmas ORDER BY abre_em').catch(() => []);
+  const porDia = new Map();
+  for (const e of enigmas) {
+    const dia = new Date(Number(e.abre_em) - 4 * HORA).toISOString().slice(0, 10);
+    if (!porDia.has(dia)) porDia.set(dia, []);
+    porDia.get(dia).push(e);
+  }
+  for (const [dia, lista2] of porDia) {
+    const meioDia = Date.parse(`${dia}T12:00:00-04:00`);
+    if (meioDia >= Math.min(...lista2.map((e) => Number(e.fecha_em)))) continue;
+    const horas = lista2.map((e) => horaTexto(Number(e.abre_em)));
+    const juntar = (h) => (h.length > 1 ? `${h.slice(0, -1).join(', ')} e ${h.at(-1)}` : h[0]);
+    lista.push({ chave: `enigma-dia-${dia}`, nome: `Enigmas de ${dia.slice(8, 10)}/${dia.slice(5, 7)}`, quando: meioDia, janela: 6 * HORA, url: '/#enigma',
+      titulo: 'Project V: enigmas do dia',
+      corpo: `Hoje tem ${lista2.length === 1 ? 'um enigma' : `${lista2.length} enigmas`} no site da festa, abrindo às ${juntar(horas)}. Os três primeiros a acertar cada um ganham bônus.` });
+  }
   return { info, lista };
 }
 
@@ -523,6 +575,7 @@ async function textoDinamico(chave) {
 }
 
 async function verificarAgendados(agora = Date.now()) {
+  await despacharAdiados(agora);
   const { lista } = await agendados();
   let enviados = 0;
   for (const a of lista) {
@@ -558,6 +611,7 @@ async function programados() {
   const mapa = new Map(feitos.map((f) => [f.chave.slice(7), f]));
   const nomes = { vespera: 'Lembrete da véspera', contribuicoes: 'O que falta nas Contribuições', faltam2h: 'Faltam 2 horas',
     portoes: 'Portões abertos', 'campeao-pos': 'Campeão do pós' };
+  for (const a of lista) if (a.nome) nomes[a.chave] = a.nome;
   return lista.map((a) => {
     const f = mapa.get(a.chave);
     return { chave: a.chave, nome: nomes[a.chave], quando: a.quando, enviado: Boolean(f), enviadoEm: f ? Number(f.enviado_em) : null,
@@ -600,5 +654,6 @@ module.exports = {
   verificarAgendados, atividadeLiberada, tic, tocar, iniciar, parar, enderecoPermitido, nomeDoAparelho,
   marcarTela, sairTela, olhando, caixa, MAX_POR_CONVIDADO, DESTINOS, problemaNoAviso, textoTeste, MAX_POR_HORA, ESPERA_TESTE_MS,
   _modelos: () => ({ SOCIAIS, TEXTOS_LIBERADA, agendados, textoDinamico }),
+  amaldicoado, despacharAdiados, _definirRelogio: (fn) => { relogio = fn || (() => Date.now()); },
   _zerarSociais: async () => { await banco.rodar('DELETE FROM push_fila'); telas.clear(); },
 };

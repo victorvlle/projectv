@@ -12,6 +12,12 @@ const bebidas = require('../dados/bebidas');
 const playlist = require('../dados/playlist');
 const caronas = require('../dados/caronas');
 const pos = require('../dados/pos');
+const previsoes = require('../dados/previsoes');
+const maldicao = require('../dados/maldicao');
+const enigmas = require('../dados/enigmas');
+const pontos = require('../dados/pontos');
+const colaboracao = require('../dados/colaboracao');
+const anunciar = require('../jogos/anunciar');
 const notificacoes = require('../notificacoes');
 const { porId } = require('../atividades/catalogo');
 const banco = require('../dados/banco');
@@ -139,11 +145,16 @@ router.put('/telao', assincrono(async (req, res) => {
 
 // Dados do telão (mesma sessão do admin; o telão roda no notebook do organizador).
 router.get('/telao', assincrono(async (req, res) => {
-  const [info, ativs, lista, telao] = await Promise.all([
-    festa.info(), atividades.paraConvidado(), convidados.confirmados(), festa.telao(),
+  const [info, ativs, lista, telao, rank, mal] = await Promise.all([
+    festa.info(), atividades.paraConvidado(), convidados.confirmados(), festa.telao(), pontos.ranking(), maldicao.atual(),
   ]);
   const confirmados = lista.map((c) => ({ nome: c.nome, avatar: c.avatar }));
-  res.json({ ok: true, agora: Date.now(), festa: info, atividades: ativs, confirmados, telao, pos: await pos.resultado() });
+  res.json({
+    ok: true, agora: Date.now(), festa: info, atividades: ativs, confirmados, telao, pos: await pos.resultado(),
+    previsao: await previsoes.paraTelao(telao.previsao),
+    ranking: rank.slice(0, 10).map((r) => ({ nome: r.nome, avatar: r.avatar, pontos: r.pontos, posicao: r.posicao })),
+    maldicao: mal,
+  });
 }));
 
 // ------------------------------------------------------- lista de bebidas
@@ -231,6 +242,58 @@ router.post('/avisos/teste', assincrono(async (req, res) => {
   });
   if (r.pulado) return res.status(429).json({ ok: false, erro: `Já foi um teste para ${alvo.nome} há pouco. Espere alguns minutos.` });
   return res.json({ ok: true, nome: alvo.nome, ...r });
+}));
+
+// ----------------------------------------------------------------- jogos
+router.get('/jogos', assincrono(async (_req, res) => {
+  const [prev, mal, enig, rank, beb] = await Promise.all([
+    previsoes.paraAdmin(), maldicao.paraAdmin(), enigmas.paraAdmin(), pontos.ranking(), colaboracao.bebidasParaAdmin(),
+  ]);
+  res.json({ ok: true, agora: Date.now(), previsoes: prev, maldicao: mal, enigmas: enig, ranking: rank, bebidas: beb });
+}));
+const jogosMudou = (res, oque = 'jogos') => { avisar.atualizar(oque); res.json({ ok: true }); };
+
+router.post('/previsoes/encerrar', assincrono(async (_req, res) => { await previsoes.encerrar(); jogosMudou(res, 'previsoes'); }));
+router.post('/previsoes/reabrir', assincrono(async (_req, res) => { await previsoes.reabrir(); jogosMudou(res, 'previsoes'); }));
+router.put('/previsoes/:id/resposta', assincrono(async (req, res) => {
+  await previsoes.definirResposta(req.params.id, (req.body || {}).resposta ?? null);
+  jogosMudou(res, 'previsoes');
+}));
+router.post('/previsoes/publicar', assincrono(async (_req, res) => {
+  const r = await previsoes.publicar();
+  avisar.atualizar('ranking');
+  res.json({ ok: true, ...r });
+}));
+router.post('/previsoes/despublicar', assincrono(async (_req, res) => { await previsoes.despublicar(); jogosMudou(res, 'ranking'); }));
+
+router.put('/maldicao', assincrono(async (req, res) => {
+  const b = req.body || {};
+  const cfg = await maldicao.configurar({ ligada: b.ligada, intensidade: b.intensidade, minMin: b.minMin, maxMin: b.maxMin });
+  avisar.admin('atualizar', { oque: 'maldicao' });
+  res.json({ ok: true, config: cfg });
+}));
+// `id` vem do painel, um por clique: clique duplo não sorteia duas vezes.
+router.post('/maldicao/sortear', assincrono(async (req, res) => {
+  const id = String((req.body || {}).id || '');
+  if (!/^[A-Za-z0-9-]{8,64}$/.test(id)) return res.status(400).json({ ok: false, erro: 'Clique sem identificação. Recarregue o painel.' });
+  const r = await maldicao.sortear({ origem: 'manual', chave: `manual:${id}` });
+  if (!r.repetido) await anunciar.maldicaoSorteada(r.maldicao);
+  return res.json({ ok: true, repetido: r.repetido, maldicao: r.maldicao });
+}));
+router.post('/maldicao/:id/resolver', assincrono(async (req, res) => {
+  const r = await maldicao.resolver(req.params.id, (req.body || {}).estado);
+  if (!r.jaResolvida) anunciar.maldicaoResolvida(r.maldicao);
+  res.json({ ok: true, ...r });
+}));
+
+router.put('/enigmas/:id', assincrono(async (req, res) => { await enigmas.editar(req.params.id, req.body || {}); jogosMudou(res, 'enigmas'); }));
+router.put('/enigmas-bonus', assincrono(async (req, res) => { await enigmas.definirBonus((req.body || {}).bonus); jogosMudou(res); }));
+router.put('/enigmas-tempo', assincrono(async (req, res) => { await enigmas.definirTempo((req.body || {}).segundos); jogosMudou(res, 'enigmas'); }));
+
+router.put('/colaboracao/bebida/:convidadoId', assincrono(async (req, res) => {
+  const r = await colaboracao.confirmarBebida(req.params.convidadoId, (req.body || {}).levou === true);
+  avisar.atualizar('ranking');
+  res.json({ ok: true, ...r });
 }));
 
 // ---------------------------------------------------------------- backup

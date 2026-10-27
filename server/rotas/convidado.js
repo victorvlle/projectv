@@ -8,6 +8,10 @@ const bebidas = require('../dados/bebidas');
 const playlist = require('../dados/playlist');
 const caronas = require('../dados/caronas');
 const pos = require('../dados/pos');
+const previsoes = require('../dados/previsoes');
+const enigmas = require('../dados/enigmas');
+const pontos = require('../dados/pontos');
+const maldicao = require('../dados/maldicao');
 const notificacoes = require('../notificacoes');
 const seg = require('../seguranca');
 const { AVATARES } = require('../avatares');
@@ -113,15 +117,16 @@ router.put('/eu/perfil', soConvidado, assincrono(async (req, res) => {
 // servidor: a contagem regressiva calcula a diferença e ignora o relógio do celular.
 router.get('/festa', soConvidado, assincrono(async (req, res) => {
   const eu = req.convidado.id;
-  const [info, ativs, lista, beb, musicas, carros, noite] = await Promise.all([
+  const [info, ativs, lista, beb, musicas, carros, noite, prev, enig, rank] = await Promise.all([
     festa.info(), atividades.paraConvidado(), convidados.confirmados(), bebidas.paraConvidado(eu),
-    playlist.listar(eu), caronas.listar(eu), pos.paraConvidado(eu),
+    playlist.listar(eu), caronas.listar(eu), pos.paraConvidado(eu), previsoes.paraConvidado(eu), enigmas.paraConvidado(eu),
+    pontos.paraConvidado(eu),
   ]);
   // O id interno dos outros convidados não sai: só nome, monstro e "sou eu".
   const confirmados = lista.map((c) => ({ nome: c.nome, avatar: c.avatar, souEu: c.id === req.convidado.id }));
   res.json({
     ok: true, agora: Date.now(), festa: info, atividades: ativs, confirmados, bebidas: beb,
-    playlist: musicas, caronas: carros, pos: noite,
+    playlist: musicas, caronas: carros, pos: noite, previsoes: prev, enigmas: enig, ranking: rank,
   });
 }));
 
@@ -197,6 +202,51 @@ router.delete('/caronas/reserva', soConvidado, freiarExtras, assincrono(async (r
 router.put('/pos/voto', soConvidado, freiarExtras, assincrono(async (req, res, next) => {
   await pos.votar(req.convidado.id, (req.body || {}).opcaoId);
   ok('pos')(req, res, next);
+}));
+
+// -------------------------------------------------------------- jogos
+const freioJogos = seg.criarFreio({ maximo: 30, janelaMs: 60 * 1000 });
+function freiarJogos(req, res, next) {
+  if (freioJogos.tentar(req.convidado.id)) return next();
+  return res.status(429).json({ ok: false, erro: 'Calma! Espere um pouco e tente de novo.' });
+}
+
+router.get('/previsoes', soConvidado, assincrono(async (req, res) => {
+  res.json({ ok: true, previsoes: await previsoes.paraConvidado(req.convidado.id) });
+}));
+router.put('/previsoes/:id', soConvidado, freiarJogos, assincrono(async (req, res) => {
+  await previsoes.responder(req.convidado.id, req.params.id, (req.body || {}).escolha ?? null);
+  res.json({ ok: true, previsoes: await previsoes.paraConvidado(req.convidado.id) });
+}));
+
+router.get('/enigmas', soConvidado, assincrono(async (req, res) => {
+  res.json({ ok: true, enigmas: await enigmas.paraConvidado(req.convidado.id) });
+}));
+// Revelar começa o relógio do servidor; sair da página com o enigma aberto encerra para a pessoa.
+router.post('/enigmas/:id/revelar', soConvidado, freiarJogos, assincrono(async (req, res) => {
+  res.json({ ok: true, enigmas: await enigmas.revelar(req.convidado.id, req.params.id) });
+}));
+router.post('/enigmas/:id/saiu', soConvidado, assincrono(async (req, res) => {
+  const encerrou = await enigmas.saiu(req.convidado.id, req.params.id);
+  res.json({ ok: true, encerrou });
+}));
+router.post('/enigmas/:id/resposta', soConvidado, freiarJogos, assincrono(async (req, res) => {
+  const r = await enigmas.responder(req.convidado.id, req.params.id, (req.body || {}).resposta);
+  if (r.acertou && !r.jaTinha) avisar.atualizar('ranking');
+  res.json({ ok: true, resultado: r, enigmas: await enigmas.paraConvidado(req.convidado.id) });
+}));
+
+router.get('/ranking', soConvidado, assincrono(async (req, res) => {
+  res.json({ ok: true, ranking: await pontos.paraConvidado(req.convidado.id) });
+}));
+
+// Maldição em cena que é minha (para o celular mostrar o aviso depois de reconectar).
+router.get('/maldicao/minha', soConvidado, assincrono(async (req, res) => {
+  const a = await maldicao.atual();
+  if (!a) return res.json({ ok: true, maldicao: null });
+  const m = await maldicao.buscar(a.id);
+  const minha = m.convidadoId === req.convidado.id || (m.parceiro && m.parceiro.id === req.convidado.id);
+  return res.json({ ok: true, maldicao: minha ? { id: m.id, castigo: m.castigo, sorteadaEm: m.sorteadaEm, fases: maldicao.FASES } : null });
 }));
 
 module.exports = router;

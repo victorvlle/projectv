@@ -12,7 +12,7 @@ const { ErroValidacao } = require('./convidados');
 
 const ORDEM = ['config', 'convidados', 'atividades', 'bebidas_itens', 'bebidas_compromissos', 'pontos_log',
   'playlist_musicas', 'playlist_votos', 'caronas', 'caronas_reservas', 'pos_opcoes', 'pos_votos',
-  'push_inscricoes', 'push_enviados', 'push_fila', 'push_log'];
+  'push_inscricoes', 'push_enviados', 'push_fila', 'push_log', 'previsoes_perguntas', 'previsoes_palpites', 'maldicoes', 'enigmas', 'enigma_tentativas'];
 
 async function tabelas() {
   const rs = await banco.tudo(

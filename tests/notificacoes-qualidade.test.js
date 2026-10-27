@@ -143,3 +143,22 @@ test('teste do admin: no máximo 1 a cada 10 min por pessoa', async () => {
   const g = (await s.req('GET', '/api/admin/avisos', { token: admin })).json;
   assert.ok(g.registro.some((r) => r.chave === 'teste:admin' && r.ok === 1));
 });
+
+test('atividade liberada de madrugada: o aviso espera até as 8h e sai uma vez', async () => {
+  await limpar();
+  const c = await convidado('Dorminhoco');
+  await banco.rodar("DELETE FROM push_enviados WHERE chave LIKE '%liberou:previsoes%'");
+  const r = await notif.atividadeLiberada({ id: 'previsoes', nome: 'Previsões' }, M('2026-10-30T00:00:05-04:00'));
+  assert.equal(r.adiado, true);
+  assert.equal(notif.caixa.filter((m) => m.endpoint === c.sub.endpoint).length, 0, 'ninguém é acordado');
+  assert.equal(await notif.despacharAdiados(M('2026-10-30T03:00:00-04:00')), 0);
+  const [a, b] = await Promise.all([notif.despacharAdiados(M('2026-10-30T08:01:00-04:00')), notif.despacharAdiados(M('2026-10-30T08:01:00-04:00'))]);
+  assert.equal(a + b, 1);
+  const msgs = notif.caixa.filter((m) => m.endpoint === c.sub.endpoint);
+  assert.equal(msgs.length, 1);
+  assert.equal(msgs[0].titulo, 'Project V: Previsões abertas');
+  assert.equal(msgs[0].url, '/#previsoes');
+  // Liberar de novo depois não repete
+  await notif.atividadeLiberada({ id: 'previsoes', nome: 'Previsões' }, M('2026-10-30T10:00:00-04:00'));
+  assert.equal(notif.caixa.filter((m) => m.endpoint === c.sub.endpoint).length, 1);
+});

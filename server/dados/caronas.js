@@ -60,6 +60,7 @@ async function oferecer(convidadoId, dados) {
   }
   await banco.rodar('INSERT INTO caronas (motorista_id, vagas, trajeto, saindo, obs, criado_em) VALUES (?, ?, ?, ?, ?, ?)',
     [convidadoId, o.vagas, o.trajeto, o.saindo, o.obs, Date.now()]);
+  await require('./colaboracao').caronaOferecida(convidadoId);
   await require('../notificacoes').evento('carona', convidadoId);
 }
 
@@ -70,11 +71,14 @@ async function cancelarOferta(convidadoId) {
 }
 
 async function removerOferta(id) {
+  const dono = await banco.um('SELECT motorista_id FROM caronas WHERE id = ?', [Number(id)]);
   const r = await banco.lote([
     { sql: 'DELETE FROM caronas_reservas WHERE carona_id = ?', args: [Number(id)] },
     { sql: 'DELETE FROM caronas WHERE id = ?', args: [Number(id)] },
   ]);
   if (!r[1].rowsAffected) throw new ErroValidacao('Carona não encontrada.', 404);
+  // Tirou a carona: os pontos dela saem junto (oferecer e tirar não vira farra de pontos).
+  if (dono) await require('./colaboracao').caronaRetirada(dono.motorista_id);
 }
 
 async function reservar(convidadoId, caronaId) {

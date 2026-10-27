@@ -1,6 +1,6 @@
 # Status do desenvolvimento
 
-Atualizado em 26/10/2026.
+Atualizado em 27/10/2026.
 
 ## Concluído e verificado (Etapa B — fundação)
 
@@ -48,14 +48,20 @@ Atualizado em 26/10/2026.
 - [x] Alerta "Possível spam" do Chrome (Android): fim da notificação automática ao ativar; textos específicos começando com "Project V";
       checagem de qualidade em todo envio; teto de 4 avisos/pessoa/hora; teste sob pedido (1 a cada 10 min); registro por aparelho (push_log);
       testes automatizados: 62 passando. Causa provável, não confirmada: falta conferir o texto marcado e retestar num Android real
+- [x] Ranking (celular, telão com pódio, admin), pontos com chave única (sem duplicar)
+- [x] Previsões: 10 perguntas, palpite privado e alterável, encerrar/resultados/publicar no admin, revelação no telão (+10 por acerto)
+- [x] A Maldição: sorteio no servidor (intervalos Leve/Moderado/Caos ou próprio), telão com alerta, bruxa, risada, roleta,
+      revelação e 60 s; aviso no celular e push ao sorteado; confirmação no admin (+5)
+- [x] Enigmas de filmes de terror (clássicos e recentes): 3 por dia (8h, 13h, 19h) de qua a sex, 9 no total (+10 e bônus 10/5/3, um aviso por dia ao meio-dia) e Colaborar conta ponto (carona +5, música +5, bebida levada +5 com confirmação)
+- [x] Enigmas em modo prova: revelar inicia relógio do servidor (2 min, 5 tentativas), sair da página encerra; perguntas mais difíceis sem dica
+- [x] Testes automatizados: 84 passando; 56 ataques barrados
 - [x] Deploy no Render + Turso: https://projectv-pec1.onrender.com (`/saude` responde `banco: turso`, verificado em 24/10)
 
 ## Pendente (Etapa C, em ordem)
 
-- [ ] Previsões / Apostas (fecham no início da festa)
-- [ ] A Maldição (só bebida, intensidade e pausa)
+- [ ] Adivinhe a fantasia (deixado para depois)
+
 - [ ] Correio das Trevas (fila de aprovação, autor protegido)
-- [ ] Ranking geral e coroação
 - [ ] Concurso de Fantasia
 - [ ] Mural de Fotos ao Vivo (sharp, fotos no banco)
 - [ ] Quiz de Terror Relâmpago
@@ -76,4 +82,5 @@ Atualizado em 26/10/2026.
 - Confirmar número de convidados, TV/projetor e internet no local
 - Monitor no UptimeRobot (a cada 5 min em /saude) para os avisos agendados saírem com o Render free; pausar depois da festa
 - Ver o texto da notificação marcada como spam e retestar no Android depois de publicar (PDF de diagnóstico, seção 7)
-- Testar as notificações num Android e num iPhone de verdade (roteiro no PDF de entrega das notificações)
+- Testar as notificações num Android e num iPhone de verdade
+- Testar o som da Maldição na TV da festa (clicar em "Ativar som" no telão) (roteiro no PDF de entrega das notificações)

@@ -256,4 +256,118 @@ module.exports = [
       CREATE INDEX IF NOT EXISTS idx_push_log_pessoa ON push_log (convidado_id, em)
     `,
   },
+  {
+    nome: 'jogos: previsões, maldição e enigmas',
+    sql: `
+      CREATE TABLE IF NOT EXISTS previsoes_perguntas (
+        id TEXT PRIMARY KEY,
+        ordem INTEGER NOT NULL,
+        texto TEXT NOT NULL,
+        tipo TEXT NOT NULL CHECK (tipo IN ('convidado', 'opcoes')),
+        opcoes TEXT NOT NULL DEFAULT '[]',
+        resposta TEXT
+      );
+      CREATE TABLE IF NOT EXISTS previsoes_palpites (
+        convidado_id TEXT NOT NULL REFERENCES convidados(id) ON DELETE CASCADE,
+        pergunta_id TEXT NOT NULL REFERENCES previsoes_perguntas(id) ON DELETE CASCADE,
+        escolha TEXT NOT NULL,
+        atualizado_em INTEGER NOT NULL,
+        PRIMARY KEY (convidado_id, pergunta_id)
+      );
+      CREATE TABLE IF NOT EXISTS maldicoes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        convidado_id TEXT NOT NULL REFERENCES convidados(id) ON DELETE CASCADE,
+        parceiro_id TEXT REFERENCES convidados(id) ON DELETE SET NULL,
+        castigo TEXT NOT NULL,
+        estado TEXT NOT NULL DEFAULT 'sorteada' CHECK (estado IN ('sorteada', 'cumprida', 'cancelada')),
+        origem TEXT NOT NULL,
+        chave TEXT NOT NULL UNIQUE,
+        sorteada_em INTEGER NOT NULL,
+        resolvida_em INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS idx_maldicoes_quando ON maldicoes (sorteada_em);
+      CREATE TABLE IF NOT EXISTS enigmas (
+        id TEXT PRIMARY KEY,
+        ordem INTEGER NOT NULL,
+        titulo TEXT NOT NULL,
+        pergunta TEXT NOT NULL,
+        respostas TEXT NOT NULL,
+        dica TEXT NOT NULL DEFAULT '',
+        abre_em INTEGER NOT NULL,
+        fecha_em INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS enigma_tentativas (
+        enigma_id TEXT NOT NULL REFERENCES enigmas(id) ON DELETE CASCADE,
+        convidado_id TEXT NOT NULL REFERENCES convidados(id) ON DELETE CASCADE,
+        tentativas INTEGER NOT NULL DEFAULT 0,
+        acertou_em INTEGER,
+        posicao INTEGER,
+        PRIMARY KEY (enigma_id, convidado_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_pontos_atividade ON pontos_log (atividade)
+    `,
+    async depois(c) {
+      const { PERGUNTAS, ENIGMAS } = require('../jogos/conteudo');
+      for (const p of PERGUNTAS) {
+        await c.execute({ sql: 'INSERT OR IGNORE INTO previsoes_perguntas (id, ordem, texto, tipo, opcoes) VALUES (?, ?, ?, ?, ?)',
+          args: [p.id, p.ordem, p.texto, p.tipo, JSON.stringify(p.opcoes || [])] });
+      }
+      for (const e of ENIGMAS) {
+        await c.execute({ sql: 'INSERT OR IGNORE INTO enigmas (id, ordem, titulo, pergunta, respostas, dica, abre_em, fecha_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          args: [e.id, e.ordem, e.titulo, e.pergunta, JSON.stringify(e.respostas), e.dica, Date.parse(e.abre), Date.parse(e.fecha)] });
+      }
+    },
+  },
+  {
+    nome: 'enigmas: três por dia (manhã, tarde e noite)',
+    sql: 'SELECT 1',
+    // Acrescenta os enigmas novos e passa os 3 antigos (meia-noite) para o turno da manhã,
+    // só se o admin ainda não tiver mexido neles. Nunca apaga respostas nem pontos.
+    async depois(c) {
+      const { ENIGMAS } = require('../jogos/conteudo');
+      const antigos = { quarta: ['Enigma de quarta', '2026-10-28T00:00:00-04:00'], quinta: ['Enigma de quinta', '2026-10-29T00:00:00-04:00'],
+        sexta: ['Enigma de sexta', '2026-10-30T00:00:00-04:00'] };
+      for (const e of ENIGMAS) {
+        await c.execute({ sql: 'INSERT OR IGNORE INTO enigmas (id, ordem, titulo, pergunta, respostas, dica, abre_em, fecha_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          args: [e.id, e.ordem, e.titulo, e.pergunta, JSON.stringify(e.respostas), e.dica, Date.parse(e.abre), Date.parse(e.fecha)] });
+        await c.execute({ sql: 'UPDATE enigmas SET ordem = ? WHERE id = ?', args: [e.ordem, e.id] });
+        const velho = antigos[e.id];
+        if (velho) {
+          await c.execute({ sql: 'UPDATE enigmas SET titulo = ? WHERE id = ? AND titulo = ?', args: [e.titulo, e.id, velho[0]] });
+          await c.execute({ sql: 'UPDATE enigmas SET abre_em = ? WHERE id = ? AND abre_em = ?', args: [Date.parse(e.abre), e.id, Date.parse(velho[1])] });
+        }
+      }
+    },
+  },
+  {
+    nome: 'enigmas: filmes de terror (recentes e clássicos)',
+    sql: 'SELECT 1',
+    // Troca o texto, as respostas e a dica só dos enigmas que o admin ainda não editou.
+    async depois(c) {
+      const { ENIGMAS } = require('../jogos/conteudo');
+      const ANTIGOS = {"quarta": "Tenho rosto, mas não tenho cabeça. Tenho dentes, mas não mordo. Uma noite por ano acendem uma vela dentro de mim e eu sorrio no escuro. Quem sou eu?", "quarta-tarde": "Durmo de dia pendurado de cabeça para baixo e à noite saio para voar. Não sou pássaro e enxergo com os ouvidos. Quem sou eu?", "quarta-noite": "Tenho oito pernas, construo a minha casa com fios e espero o jantar cair nela. Quem sou eu?", "quinta": "Quanto mais você tira de mim, maior eu fico. O coveiro me conhece bem. O que sou eu?", "quinta-tarde": "Não tenho carne nem pele, só ossos. Moro dentro de todo mundo, mas só saio para passear no Halloween. Quem sou eu?", "quinta-noite": "Uso capa, fujo do alho, durmo num caixão e não apareço no espelho. Quem sou eu?", "sexta": "Ando sem pés, falo sem boca, atravesso paredes e assusto quem dorme. Na casa velha, quem você chama quando ouve um barulho e não vê ninguém?", "sexta-tarde": "Borbulho em cima do fogo, a bruxa me mexe com uma colher enorme e tudo o que cai em mim vira poção. O que sou eu?", "sexta-noite": "Apareço inteira uma vez por mês, e quando estou cheia os lobisomens uivam para mim. Quem sou eu?"};
+      for (const e of ENIGMAS) {
+        if (!ANTIGOS[e.id]) continue;
+        await c.execute({ sql: 'UPDATE enigmas SET pergunta = ?, respostas = ?, dica = ? WHERE id = ? AND pergunta = ?',
+          args: [e.pergunta, JSON.stringify(e.respostas), e.dica, e.id, ANTIGOS[e.id]] });
+      }
+    },
+  },
+  {
+    nome: 'enigmas: modo prova (relógio e saída da página) e perguntas mais difíceis',
+    sql: 'SELECT 1',
+    async depois(c) {
+      const cols = new Set((await c.execute("SELECT name FROM pragma_table_info('enigma_tentativas')")).rows.map((r) => r.name));
+      if (!cols.has('revelado_em')) await c.execute('ALTER TABLE enigma_tentativas ADD COLUMN revelado_em INTEGER');
+      if (!cols.has('saiu_em')) await c.execute('ALTER TABLE enigma_tentativas ADD COLUMN saiu_em INTEGER');
+      // Textos mais difíceis, sem dica, só nos enigmas que o admin não editou.
+      const { ENIGMAS } = require('../jogos/conteudo');
+      const ANTERIORES = {"quarta": "Moro no esgoto de uma cidadezinha do Maine, ofereço balões vermelhos às crianças e volto a cada 27 anos. Um grupo de amigos chamado Clube dos Perdedores decide me enfrentar. Qual é o filme?", "quarta-tarde": "Mississippi, 1932. Dois irmãos gêmeos voltam para casa e abrem um bar de blues numa serraria. A música é tão boa que atrai visitantes que só entram se forem convidados. Qual é o filme de 2025?", "quarta-noite": "Um escritor aceita cuidar de um hotel vazio nas montanhas durante o inverno, com a esposa e o filho. No corredor aparecem duas gêmeas, lá fora há um labirinto de cerca viva e ninguém deve entrar no quarto 237. Qual é o filme?", "quinta": "Quem assiste a uma fita de vídeo estranha recebe um telefonema e passa a ter só sete dias de vida. A menina de cabelo comprido sai do poço… e da televisão. Qual é o filme?", "quinta-tarde": "Numa madrugada, às 2h17, todas as crianças de uma mesma turma saem correndo de casa de braços abertos e desaparecem. Só um aluno fica. Qual é o filme de 2025?", "quinta-noite": "Uma menina de 12 anos muda de comportamento, a cama treme e a voz que sai dela já não é a dela. A mãe, desesperada, procura dois padres. Qual é o clássico de 1973?", "sexta": "Uma universitária tem pesadelos com uma tragédia que a avó escapou décadas atrás e descobre que a Morte voltou para cobrar a família inteira. Qual é o filme de 2025?", "sexta-tarde": "Na noite de 31 de outubro, um homem de macacão e máscara branca, sem expressão, foge do hospício e volta à cidade onde tudo começou, quando ele ainda era criança. A babá Laurie que se cuide. Qual é o clássico de 1978?", "sexta-noite": "Um rapaz tímido compra numa loja de mágica uma varinha que realiza um desejo quando é quebrada. Ele deseja que a amiga o ame mais do que tudo… e o desejo é atendido. Qual é o terror de 2026?"};
+      for (const e of ENIGMAS) {
+        if (!ANTERIORES[e.id]) continue;
+        await c.execute({ sql: 'UPDATE enigmas SET pergunta = ?, respostas = ?, dica = ? WHERE id = ? AND pergunta = ?',
+          args: [e.pergunta, JSON.stringify(e.respostas), e.dica, e.id, ANTERIORES[e.id]] });
+      }
+    },
+  },
 ];

@@ -56,15 +56,51 @@
       <p class="rodape-cena" id="pos-telao-rodape"></p>
     </section>
 
+    <section class="cena oculto" data-cena="previsoes">
+      <p class="rotulo" id="prev-rotulo">Previsões</p>
+      <h1 class="prev-pergunta" id="prev-pergunta"></h1>
+      <div class="prev-corpo" id="prev-corpo"></div>
+    </section>
+
+    <section class="cena oculto" data-cena="ranking">
+      <h1 class="terror titulo-cena">Ranking da noite 🏆</h1>
+      <div class="podio" id="podio"></div>
+      <ol class="rank-telao" id="rank-telao"></ol>
+    </section>
+
     <section class="cena oculto" data-cena="mensagem">
       <h1 class="terror mensagem" id="mensagem"></h1>
     </section>
   </div>
 
+  <!-- A Maldição: aparece por cima de qualquer cena -->
+  <div id="maldicao" class="maldicao-palco oculto" aria-live="assertive">
+    <div class="fase fase-alerta">
+      <div class="bruxa" id="bruxa"></div>
+      <p class="alerta-texto terror">A Maldição despertou</p>
+    </div>
+    <div class="fase fase-suspense">
+      <p class="suspense-texto terror">Alguém foi amaldiçoado…</p>
+      <div class="roleta"><div class="roleta-janela"><span class="avatar" id="roleta-atual"></span></div></div>
+    </div>
+    <div class="fase fase-revela">
+      <div class="revela-topo"><span class="avatar" id="revela-avatar"></span><span class="avatar oculto" id="revela-parceiro"></span></div>
+      <h1 class="revela-nome" id="revela-nome"></h1>
+      <p class="revela-castigo" id="revela-castigo"></p>
+      <div class="revela-contagem"><b id="revela-seg">60</b><small id="revela-rotulo">segundos para cumprir</small></div>
+    </div>
+    <div class="fase fase-cumprida">
+      <p class="cumprida-texto terror">Maldição cumprida</p>
+      <p class="cumprida-pontos" id="cumprida-pontos">+5 pontos</p>
+    </div>
+  </div>
+
+  <button id="ativar-som" class="botao botao-som oculto" type="button">🔊 Ativar som</button>
   <button id="tela-cheia" class="botao secundario pequeno botao-flutuante oculto" type="button">Tela cheia</button>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="/comum/api.js"></script>
   <script src="/telao/telao.js"></script>
+  <script src="/telao/maldicao.js"></script>
 </body>
 </html>

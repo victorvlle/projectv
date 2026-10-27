@@ -8,7 +8,7 @@ const CAMPOS_TEXTO = {
   // Como chegar
   chegadaEndereco: 160, chegadaPortaria: 300, chegadaEstacionamento: 300, chegadaObs: 400,
 };
-const MODOS_TELAO = new Set(['contagem', 'confirmados', 'atividades', 'mensagem', 'pos']);
+const MODOS_TELAO = new Set(['contagem', 'confirmados', 'atividades', 'mensagem', 'pos', 'previsoes', 'ranking']);
 
 async function ler(chave) {
   const l = await banco.um('SELECT valor FROM config WHERE chave = ?', [chave]);
@@ -69,10 +69,15 @@ function paraManaus(ms) {
 }
 
 async function telao() {
-  return { modo: (await ler('telaoModo')) || 'contagem', mensagem: (await ler('telaoMensagem')) || '' };
+  return { modo: (await ler('telaoModo')) || 'contagem', mensagem: (await ler('telaoMensagem')) || '', previsao: Number((await ler('telaoPrevisao')) || 0) };
 }
 
-async function definirTelao({ modo, mensagem }) {
+async function definirTelao({ modo, mensagem, previsao }) {
+  if (previsao !== undefined) {
+    const n = Number(previsao);
+    if (!Number.isInteger(n) || n < 0 || n > 50) throw new ErroValidacao('Pergunta inválida.');
+    await gravar('telaoPrevisao', n);
+  }
   if (modo !== undefined) {
     if (!MODOS_TELAO.has(modo)) throw new ErroValidacao('Modo de telão desconhecido.');
     await gravar('telaoModo', modo);

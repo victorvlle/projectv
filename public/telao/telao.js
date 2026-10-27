@@ -9,6 +9,7 @@
   let cenaAtual = null;
 
   const emojiDe = (id) => (avatares.find((a) => a.id === id) || {}).emoji || '❔';
+  window.PVTelao = { emojiDe };
 
   function pedirLogin() {
     PV.guardado.apagar('pv.admin');
@@ -79,8 +80,44 @@
       }).join('');
       $('pos-telao-rodape').textContent = p.encerrada ? 'Votação encerrada!' : p.aberta ? `${p.total} ${p.total === 1 ? 'voto' : 'votos'} · vote pelo celular` : 'A votação abre às 23h';
     }
+    desenharPrevisao(estado.previsao);
+    desenharRanking(estado.ranking || []);
     trocarCena(estado.telao.modo);
+    if (estado.maldicao && window.PVMaldicao) window.PVMaldicao.iniciar(estado.maldicao);
     tic();
+  }
+
+  // Previsões: uma pergunta por vez (o admin avança). Votos só aparecem depois de fechar.
+  function desenharPrevisao(p) {
+    if (!p) return;
+    if (p.estado === 'aberta' || p.estado === 'aguardando') {
+      $('prev-rotulo').textContent = 'Previsões';
+      $('prev-pergunta').textContent = p.estado === 'aberta' ? 'As apostas estão abertas' : 'As Previsões abrem em breve';
+      $('prev-corpo').innerHTML = `<p class="prev-dica">${p.estado === 'aberta' ? `Aposte pelo celular até ${PV.esc(PV.dataCurta(p.fechaEm))}. Cada acerto vale 10 pontos.` : 'Fique de olho no site.'}</p>`;
+      return;
+    }
+    $('prev-rotulo').textContent = `Previsão ${p.indice + 1} de ${p.total}`;
+    $('prev-pergunta').textContent = p.texto;
+    const total = p.votos.reduce((s, v) => s + v.n, 0) || 1;
+    const barras = p.votos.map((v) => `<div class="pos-linha ${v.certa ? 'lider' : ''}">
+        <div class="pos-nome">${v.avatar ? `<span class="avatar mini">${emojiDe(v.avatar)}</span>` : ''}${v.certa ? '✓ ' : ''}${PV.esc(v.nome)}</div>
+        <div class="pos-barra"><i style="width:${Math.round((v.n / total) * 100)}%"></i></div>
+        <div class="pos-num">${v.n}</div></div>`).join('') || '<p class="prev-dica">Ninguém apostou nesta.</p>';
+    const revelacao = p.revelada ? `<div class="prev-revela">
+        ${p.respostaAvatar ? `<span class="avatar grande">${emojiDe(p.respostaAvatar)}</span>` : ''}
+        <div><small>Resposta</small><b>${PV.esc(p.resposta)}</b>
+        <p>${p.acertaram.length ? `Acertaram: ${p.acertaram.map((a) => PV.esc(a.nome)).join(', ')}` : 'Ninguém acertou!'}</p></div></div>` : '';
+    $('prev-corpo').innerHTML = `${revelacao}<div class="grade-pos">${barras}</div>`;
+  }
+
+  function desenharRanking(r) {
+    const podio = r.filter((x) => x.posicao <= 3).slice(0, 3);
+    const ordem = [podio[1], podio[0], podio[2]].filter(Boolean);
+    $('podio').innerHTML = r.some((x) => x.pontos > 0) ? ordem.map((x) => `<div class="degrau d${x.posicao}">
+        <span class="avatar">${emojiDe(x.avatar)}</span><b>${PV.esc(x.nome)}</b><span class="pts">${x.pontos} pts</span>
+        <div class="bloco">${x.posicao}º</div></div>`).join('') : '<p class="prev-dica">Ninguém pontuou ainda.</p>';
+    $('rank-telao').innerHTML = r.filter((x) => x.posicao > 3).slice(0, 7).map((x) => `<li><span class="p">${x.posicao}º</span>
+      <span class="avatar">${emojiDe(x.avatar)}</span><span class="n">${PV.esc(x.nome)}</span><span class="pts">${x.pontos}</span></li>`).join('');
   }
 
   const dois = (n) => String(n).padStart(2, '0');
@@ -121,8 +158,13 @@
       tipo: 'telao', token,
       aoConectar: recarregar,
       aoNegar: pedirLogin,
-      eventos: { atualizar: recarregar },
+      eventos: {
+        atualizar: recarregar,
+        maldicao: (m) => window.PVMaldicao && window.PVMaldicao.iniciar(m),
+        'maldicao:resolvida': (d) => window.PVMaldicao && window.PVMaldicao.resolvida(d),
+      },
     });
+    if (window.PVMaldicao) window.PVMaldicao.mostrarBotaoSom();
   }
 
   if (token) ligar();

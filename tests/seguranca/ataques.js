@@ -343,6 +343,38 @@ async function main() {
     const manifestoRuim = await req('GET', '/manifest/..%2f..%2fpackage.json.webmanifest');
     barrado(GN, 'Usar o manifesto do atalho para ler arquivos', manifestoRuim.status === 404, `HTTP ${manifestoRuim.status}`);
 
+    // ================================================== 8d. JOGOS
+    const GJ = 'Jogos';
+    await req('PUT', '/api/admin/atividades/previsoes', { token: admin, corpo: { estado: 'liberada' } });
+    const pubConv = await req('POST', '/api/admin/previsoes/publicar', { token: tA });
+    const sorteConv = await req('POST', '/api/admin/maldicao/sortear', { token: tA, corpo: { id: 'ataque-123456' } });
+    const pontoConv = await req('PUT', '/api/admin/colaboracao/bebida/qualquer', { token: tA, corpo: { levou: true } });
+    barrado(GJ, 'Convidado publicar resultados, sortear maldição ou se dar pontos', [pubConv, sorteConv, pontoConv].every((r) => r.status === 401),
+      `HTTP ${pubConv.status}, ${sorteConv.status}, ${pontoConv.status}`);
+    await req('PUT', '/api/previsoes/longnecks', { token: tV, corpo: { escolha: 'mais-10' } });
+    const espiar = await req('GET', '/api/previsoes', { token: tA });
+    const palpiteVazou = /"votos"|"resposta"/.test(JSON.stringify(espiar.json)) || (espiar.json.previsoes.perguntas.find((q) => q.id === 'longnecks') || {}).minha === 'mais-10';
+    barrado(GJ, 'Ver os palpites dos outros nas Previsões enquanto estão abertas', !palpiteVazou, 'só o próprio palpite volta do servidor');
+    const enigmaTexto = JSON.stringify((await req('GET', '/api/enigmas', { token: tA })).json).toLowerCase();
+    barrado(GJ, 'Ler a resposta do enigma pelo site', !enigmaTexto.includes('"it"') && !enigmaTexto.includes('respostas'), 'a resposta nunca sai do servidor enquanto o enigma está aberto');
+    await req('PUT', '/api/admin/enigmas/quarta', { token: admin, corpo: { abreEm: Date.now() - 60000, fechaEm: Date.now() + 86400000 } });
+    const semRevelar = await req('POST', '/api/enigmas/quarta/resposta', { token: tA, corpo: { resposta: 'it' } });
+    barrado(GJ, 'Responder o enigma sem revelar (pular o relógio)', semRevelar.status === 409, `HTTP ${semRevelar.status}`);
+    await req('POST', '/api/enigmas/quarta/revelar', { token: tV });
+    let chutes = 0;
+    for (let i = 0; i < 25; i++) {
+      const r = await req('POST', '/api/enigmas/quarta/resposta', { token: tV, corpo: { resposta: `chute${i}` } });
+      if (r.status === 200) chutes++;
+    }
+    barrado(GJ, 'Chutar a resposta do enigma até acertar (25 tentativas)', chutes <= 5, `${chutes} chutes aceitos (limite de 5 por enigma, dentro do tempo)`);
+    const pontosDeV = async () => (await req('GET', '/api/ranking', { token: tV })).json.ranking.eu.pontos;
+    await req('DELETE', '/api/caronas/reserva', { token: tV });
+    const antesV = await pontosDeV();
+    await Promise.all([1, 2, 3, 4].map(() => req('PUT', '/api/caronas/minha', { token: tV, corpo: { vagas: 2, trajeto: 'ida', saindo: 'X' } })));
+    for (let i = 0; i < 3; i++) await req('PUT', '/api/caronas/minha', { token: tV, corpo: { vagas: 3 + i, trajeto: 'ida', saindo: 'X' } });
+    const ganhoV = (await pontosDeV()) - antesV;
+    barrado(GJ, 'Ganhar pontos repetidos oferecendo a mesma carona várias vezes', ganhoV <= 5, `+${ganhoV} ponto(s) com 7 ofertas (carona vale +5 uma vez)`);
+
     // =========================================== 9. FORÇA BRUTA (por último: esgota os freios)
     const GF = 'Força bruta';
     // Força bruta em códigos

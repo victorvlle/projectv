@@ -541,7 +541,8 @@
 
   // -------------------------------------------------------------- carregar
   async function carregar() {
-    const [r, b, x, av] = await Promise.all([api('GET', '/estado'), api('GET', '/bebidas'), api('GET', '/extras'), api('GET', '/avisos')]);
+    const [r, b, x, av, jg] = await Promise.all([api('GET', '/estado'), api('GET', '/bebidas'), api('GET', '/extras'), api('GET', '/avisos'), api('GET', '/jogos')]);
+    if (window.PVAdminJogos) window.PVAdminJogos.desenhar(jg);
     extras = x;
     avisos = av;
     PV.relogio.sincronizar(r.agora);
@@ -556,6 +557,9 @@
     desenharAtividades();
     desenharTelao();
   }
+
+  // Ponte para jogos.js (aba Jogos).
+  window.PVAdmin = { api, acao, emojiDe, recarregar: () => carregar().catch(() => {}), msParaLocal, localParaIso };
 
   async function iniciarPainel() {
     $('tela-login').classList.add('oculto');
