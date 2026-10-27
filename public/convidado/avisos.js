@@ -502,7 +502,7 @@
     {
       titulo: 'Adicione à Tela de Início',
       arte: () => ARTE.ios2,
-      texto: () => 'Toque em <b>Compartilhar</b> e escolha <b>Adicionar à Tela de Início</b>. Se disponível, habilite <b>Abrir como App da Web</b> e toque em <b>Adicionar</b>.',
+      texto: () => 'Toque em <b>Compartilhar</b> e escolha <b>Adicionar à Tela de Início</b>. Deixe <b>Abrir como App da Web</b> LIGADO e toque em <b>Adicionar</b>. Desligado, vira só um favorito e os avisos não funcionam.',
       dica: () => 'No iOS 26: toque no ⋯ (canto de baixo) › Compartilhar. Na lista que abrir, role para baixo até Adicionar à Tela de Início; se não estiver lá, toque em Ver Mais.',
     },
     {
