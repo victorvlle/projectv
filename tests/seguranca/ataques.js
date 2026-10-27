@@ -335,7 +335,7 @@ async function main() {
     const testeAlheio = await req('POST', '/api/eu/push/teste', { token: tA, corpo: { endpoint: 'https://fcm.googleapis.com/fcm/send/v0' } });
     barrado(GN, 'Disparar notificação de teste no celular de outra pessoa', testeAlheio.status === 404, `HTTP ${testeAlheio.status}`);
     const idRep = `rep-${Date.now()}`;
-    const reps = await Promise.all([1, 2, 3].map(() => req('POST', '/api/admin/avisos', { token: admin, corpo: { id: idRep, corpo: 'Repetido' } })));
+    const reps = await Promise.all([1, 2, 3].map(() => req('POST', '/api/admin/avisos', { token: admin, corpo: { id: idRep, corpo: 'Aviso repetido para conferir a trava.' } })));
     const saiu = reps.filter((r) => r.status === 200 && !r.json.pulado).length;
     barrado(GN, 'Mandar o mesmo aviso 3 vezes (clique repetido / requisição reenviada)', saiu === 1, `${saiu} envio de fato; os outros foram ignorados`);
     const deFora = await req('POST', '/api/eu/push', { token: tA, corpo: { inscricao: { endpoint: 'https://fcm.googleapis.com/fcm/send/fora', keys: { p256dh: 'B'.repeat(87), auth: 'a'.repeat(22) } } }, headers: { Origin: 'https://site-malicioso.com' } });

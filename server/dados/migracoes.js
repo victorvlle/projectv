@@ -241,4 +241,19 @@ module.exports = [
       if (!(await cols('push_enviados')).has('falhas')) await c.execute('ALTER TABLE push_enviados ADD COLUMN falhas INTEGER NOT NULL DEFAULT 0');
     },
   },
+  {
+    nome: 'notificações: registro por aparelho (frequência e auditoria)',
+    sql: `
+      CREATE TABLE IF NOT EXISTS push_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        chave TEXT NOT NULL,
+        convidado_id TEXT NOT NULL,
+        inscricao_id INTEGER,
+        resultado TEXT NOT NULL,
+        codigo INTEGER,
+        em INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_push_log_pessoa ON push_log (convidado_id, em)
+    `,
+  },
 ];

@@ -411,10 +411,9 @@
   function sucesso(r) {
     PV.guardado.gravar('pv.avisos.ativo', '1');
     decidir('ativar');
-    const chegou = r.teste && r.teste.entregue;
     folhaResultado({
       icone: '🎃', titulo: 'Notificações ativadas', texto: T.sucesso,
-      extra: `<p class="fraco">${chegou ? 'Mandamos um teste para este aparelho.' : 'O teste não saiu agora; você pode testar depois pelo sino 🔔.'}</p>`,
+      extra: '<p class="fraco">Quer conferir? Toque no sino 🔔 e em “Testar notificação”.</p>',
     });
     fecharSozinho = setTimeout(() => { if (!travada) fecharFolha(); }, 3500);
   }
@@ -447,7 +446,7 @@
       await C().api('POST', '/api/eu/push/teste', { endpoint: sub.endpoint });
       retorno('Teste enviado! Ele deve aparecer em alguns segundos. Se não aparecer, confira se o modo silencioso ou “Não perturbe” está ligado.', 'ok');
     } catch (erro) {
-      retorno(erro.status === 404 ? T.expirou : 'Não conseguimos enviar o teste agora. Tente de novo em instantes.', 'erro');
+      retorno(erro.status === 404 ? T.expirou : erro.status === 429 ? erro.message : 'Não conseguimos enviar o teste agora. Tente de novo em instantes.', 'erro');
       if (erro.status === 404) atualizar();
     } finally {
       setTimeout(() => { botao.disabled = false; }, 4000);

@@ -38,30 +38,41 @@ const idEnvio = () => `t-${Date.now()}-${Math.random().toString(36).slice(2, 10)
 
 // ------------------------------------------------------------ v2: aparelhos, limite, teste, fila
 
-test('ativar é idempotente e o teste vai só para o aparelho que ativou', async () => {
+test('ativar é idempotente, não dispara notificação sozinho; teste só quando pedido, só no aparelho e com limite', async () => {
   await limpar();
   const c = await convidado('Dois Celulares', false);
   const cel1 = inscricao(); const cel2 = inscricao();
   const r1 = await s.req('POST', '/api/eu/push', { token: c.token, corpo: { inscricao: cel1, instalado: true } });
   assert.equal(r1.status, 200);
   assert.equal(r1.json.novo, true);
-  assert.equal(r1.json.teste.entregue, true);
   const r1b = await s.req('POST', '/api/eu/push', { token: c.token, corpo: { inscricao: cel1 } });
   assert.equal(r1b.json.novo, false, 'reativar no mesmo aparelho não duplica');
   await s.req('POST', '/api/eu/push', { token: c.token, corpo: { inscricao: cel2 } });
-  const testes = notif.caixa.filter((m) => m.tag === 'boas-vindas');
-  assert.deepEqual(testes.map((m) => m.endpoint), [cel1.endpoint, cel1.endpoint, cel2.endpoint]);
-  assert.equal(testes[0].titulo, 'Project V');
-  assert.equal(testes[0].corpo, 'Notificações ativadas! Você está na lista para receber os avisos da festa.');
+  assert.equal(notif.caixa.length, 0, 'nenhuma notificação automática ao ativar');
   const sit = (await s.req('POST', '/api/eu/push/situacao', { token: c.token, corpo: { endpoint: cel2.endpoint } })).json;
   assert.equal(sit.total, 2);
   assert.equal(sit.inscrito, true);
   assert.equal(sit.aparelhos.filter((a) => a.esteAparelho).length, 1);
-  // Teste manual pela tela de preferências
-  const t = await s.req('POST', '/api/eu/push/teste', { token: c.token, corpo: { endpoint: cel1.endpoint } });
-  assert.equal(t.json.teste.entregue, true);
+  // Teste pedido: só no aparelho, texto específico e válido
+  const t1 = await s.req('POST', '/api/eu/push/teste', { token: c.token, corpo: { endpoint: cel1.endpoint } });
+  assert.equal(t1.json.teste.entregue, true);
+  assert.deepEqual(notif.caixa.map((m) => m.endpoint), [cel1.endpoint]);
+  const msg = notif.caixa[0];
+  assert.equal(msg.titulo, 'Project V: teste de avisos');
+  assert.match(msg.corpo, /^Teste pedido por você às \d{1,2}h(\d{2})?\. Os avisos da festa de Halloween/);
+  assert.equal(notif.problemaNoAviso({ titulo: msg.titulo, corpo: msg.corpo, url: msg.url }), null);
+  // Repetir logo em seguida: segurado (sem notificação repetida)
+  for (let i = 0; i < 3; i++) {
+    const de = await s.req('POST', '/api/eu/push/teste', { token: c.token, corpo: { endpoint: cel1.endpoint } });
+    assert.equal(de.status, 429);
+  }
+  assert.equal(notif.caixa.length, 1);
+  // Outro aparelho tem o próprio limite
+  assert.equal((await s.req('POST', '/api/eu/push/teste', { token: c.token, corpo: { endpoint: cel2.endpoint } })).status, 200);
   const outro = await s.req('POST', '/api/eu/push/teste', { token: c.token, corpo: { endpoint: 'https://fcm.googleapis.com/fcm/send/naoeh' } });
   assert.equal(outro.status, 404);
+  const log = await banco.tudo("SELECT resultado FROM push_log WHERE convidado_id = ? AND chave LIKE 'teste:%'", [c.id]);
+  assert.equal(log.length, 2);
 });
 
 test('limite de 5 aparelhos: recusa o 6º, lista os aparelhos e deixa remover um', async () => {
@@ -125,11 +136,11 @@ test('admin: envio manual com id não duplica, teste para uma pessoa, lista de i
   await limpar();
   const c = await convidado('Alvo do Teste');
   const id = idEnvio();
-  const corpo = { id, titulo: 'Uma vez', corpo: 'Só uma vez' };
+  const corpo = { id, titulo: 'Uma vez', corpo: 'Só uma vez, para conferir a trava.' };
   const [r1, r2] = await Promise.all([
     s.req('POST', '/api/admin/avisos', { token: admin, corpo }), s.req('POST', '/api/admin/avisos', { token: admin, corpo })]);
   assert.equal([r1.json.pulado, r2.json.pulado].filter(Boolean).length, 1);
-  assert.equal(recebeu(c.sub).filter((m) => m.corpo === 'Só uma vez').length, 1);
+  assert.equal(recebeu(c.sub).filter((m) => m.corpo === 'Só uma vez, para conferir a trava.').length, 1);
   assert.equal((await s.req('POST', '/api/admin/avisos', { token: admin, corpo: { corpo: 'sem id' } })).status, 400);
 
   const g = (await s.req('GET', '/api/admin/avisos', { token: admin })).json;
@@ -150,7 +161,7 @@ test('endereço fora da lista que entrou por backup antigo nunca recebe requisi�
   const c = await convidado('Backup Velho', false);
   await banco.rodar('INSERT INTO push_inscricoes (convidado_id, endpoint, p256dh, auth, criado_em) VALUES (?, ?, ?, ?, ?)',
     [c.id, 'https://169.254.169.254/latest', 'B'.repeat(87), 'a'.repeat(22), Date.now()]);
-  const r = await notif.enviar({ titulo: 'x', corpo: 'y', para: { ids: [c.id] } });
+  const r = await notif.enviar({ titulo: 'Project V: teste interno', corpo: 'Mensagem interna de verificação da festa.', para: { ids: [c.id] } });
   assert.equal(r.entregues, 0);
   assert.equal(notif.caixa.length, 0);
   assert.equal(await notif.estaInscrito(c.id, 'https://169.254.169.254/latest'), false);

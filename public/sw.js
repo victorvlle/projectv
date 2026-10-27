@@ -11,14 +11,19 @@ self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 self.addEventListener('push', (evento) => {
   let dados = {};
   try { dados = evento.data ? evento.data.json() : {}; } catch (_) { dados = { corpo: evento.data && evento.data.text() }; }
-  const titulo = dados.titulo || '🎃 Project V';
+  // O servidor sempre manda título e texto específicos. O texto abaixo só aparece se a
+  // mensagem chegar corrompida (o navegador exige mostrar algo para todo push recebido).
+  const titulo = typeof dados.titulo === 'string' && dados.titulo ? dados.titulo : 'Project V';
+  const corpo = typeof dados.corpo === 'string' && dados.corpo ? dados.corpo : 'Abra o site da festa de Halloween para ver o aviso.';
   evento.waitUntil(self.registration.showNotification(titulo, {
-    body: dados.corpo || '',
+    body: corpo,
+    lang: 'pt-BR',
     icon: '/icones/icone-192.png',
     badge: '/icones/badge-96.png',
     tag: dados.tag || 'projectv',
-    renotify: true,
-    vibrate: [120, 60, 120],
+    // Um aviso que substitui outro do mesmo tipo não toca de novo.
+    renotify: false,
+    timestamp: Date.now(),
     data: { url: destinoSeguro(dados.url) },
   }));
 });

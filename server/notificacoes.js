@@ -41,6 +41,46 @@ const HOSTS_PERMITIDOS = [
   /\.notify\.windows\.com$/,
 ];
 
+// --------------------------------------------------------- qualidade do conteúdo
+// Toda notificação passa por aqui antes de sair. O Chrome no Android analisa o texto
+// (título, corpo) no próprio aparelho e avisa "possível spam" quando parece genérico,
+// enganoso ou apelativo. Regras: título identifica o Project V, texto específico da
+// festa, sem palavras de propaganda, sem urgência falsa, sem link no texto.
+const APELATIVO = /\b(gr[aá]tis|ganhe|ganhou|pr[eê]mio|urgente|urg[eê]ncia|clique aqui|toque aqui|[uú]ltima chance|imperd[ií]vel|oferta|promo[cç][aã]o|desconto|sorteio|vencedor|parab[eé]ns|corra|n[aã]o perca|exclusivo|agora mesmo)\b/i;
+function problemaNoAviso({ titulo, corpo, url }) {
+  const ti = String(titulo || ''); const co = String(corpo || '');
+  if (!/^Project V\b/.test(ti)) return 'O título precisa começar com "Project V".';
+  if (ti.length > 60) return 'Título longo demais (máximo 60 caracteres).';
+  if (co.length < 15 || co.length > 180) return 'A mensagem precisa ter entre 15 e 180 caracteres.';
+  if (APELATIVO.test(`${ti} ${co}`)) return 'Evite palavras de propaganda ou urgência (grátis, urgente, prêmio, não perca…): o Chrome pode marcar como spam.';
+  if (/https?:\/\/|www\./i.test(`${ti} ${co}`)) return 'Não coloque links no texto: o toque na notificação já abre a tela certa.';
+  if ((`${ti} ${co}`.match(/!/g) || []).length > 1) return 'Use no máximo um ponto de exclamação.';
+  const letras = co.replace(/[^A-Za-zÀ-ÿ]/g, '');
+  if (letras.length > 10 && letras === letras.toUpperCase()) return 'Não escreva a mensagem toda em maiúsculas.';
+  if (!DESTINOS.has(url)) return 'Destino inválido.';
+  return null;
+}
+// Teto por pessoa: mesmo com todos os tipos somados, ninguém recebe mais que isto por hora.
+// Testes que a própria pessoa pede têm um limite próprio (1 a cada 10 min por aparelho).
+const MAX_POR_HORA = Number(process.env.PUSH_MAX_POR_HORA || 4);
+const ESPERA_TESTE_MS = 10 * 60 * 1000;
+
+async function registrar(linhas) {
+  if (!linhas.length) return;
+  const em = Date.now();
+  await banco.lote(linhas.map((l) => ({
+    sql: 'INSERT INTO push_log (chave, convidado_id, inscricao_id, resultado, codigo, em) VALUES (?, ?, ?, ?, ?, ?)',
+    args: [l.chave, l.convidadoId, l.inscricaoId ?? null, l.resultado, l.codigo ?? null, em],
+  })));
+}
+async function recebidosNaUltimaHora(ids) {
+  if (!ids.length) return new Map();
+  const linhas = await banco.tudo(
+    `SELECT convidado_id, COUNT(DISTINCT chave) AS n FROM push_log
+      WHERE resultado = 'ok' AND chave NOT LIKE 'teste:%' AND em > ? GROUP BY convidado_id`, [Date.now() - 3600 * 1000]);
+  return new Map(linhas.map((l) => [l.convidado_id, Number(l.n)]));
+}
+
 // ------------------------------------------------------------------- envio
 // Em teste (PUSH_FALSO=1) nada sai pela rede: os envios ficam em `caixa`.
 const caixa = [];
@@ -49,6 +89,7 @@ if (process.env.PUSH_FALSO === '1') {
   transporte = async (inscricao, carga) => {
     caixa.push({ endpoint: inscricao.endpoint, ...JSON.parse(carga) });
     if (inscricao.endpoint.includes('/morta')) { const e = new Error('Gone'); e.statusCode = 410; throw e; }
+    if (inscricao.endpoint.includes('/instavel')) { const e = new Error('Server error'); e.statusCode = 500; throw e; }
     return { statusCode: 201 };
   };
 }
@@ -189,6 +230,8 @@ async function inscritos() {
 // para: 'todos' | { ids: [...] } ; exceto: [ids] ; endpoint: só este aparelho
 // chave: trava contra envio repetido (a mesma chave nunca sai duas vezes).
 async function enviar({ titulo, corpo, url = '/', tag, para = 'todos', exceto = [], chave = null, endpoint = null }) {
+  const problema = problemaNoAviso({ titulo, corpo, url });
+  if (problema) throw new ErroValidacao(problema);
   await prepararChaves();
   if (chave) {
     // Reinício, dois processos ou clique duplo: o INSERT OR IGNORE garante uma vez só.
@@ -203,6 +246,20 @@ async function enviar({ titulo, corpo, url = '/', tag, para = 'todos', exceto = 
   if (exceto.length) linhas = linhas.filter((l) => !exceto.includes(l.convidado_id));
   if (endpoint) linhas = linhas.filter((l) => l.endpoint === endpoint);
 
+  const registro = chave || `avulso:${Date.now()}:${Math.random().toString(36).slice(2, 7)}`;
+  const log = [];
+  // Teto por hora (não vale para testes, que já têm o próprio limite).
+  let limitados = 0;
+  if (!registro.startsWith('teste:')) {
+    const contagem = await recebidosNaUltimaHora([...new Set(linhas.map((l) => l.convidado_id))]);
+    const passou = new Set([...contagem].filter(([, n]) => n >= MAX_POR_HORA).map(([id]) => id));
+    if (passou.size) {
+      for (const l of linhas.filter((x) => passou.has(x.convidado_id))) log.push({ chave: registro, convidadoId: l.convidado_id, inscricaoId: l.id, resultado: 'limite' });
+      limitados = passou.size;
+      linhas = linhas.filter((l) => !passou.has(l.convidado_id));
+    }
+  }
+
   const carga = JSON.stringify({ titulo, corpo, url: destinoSeguro(url), tag: tag || chave || 'projectv' });
   let entregues = 0;
   let falhas = 0;
@@ -212,51 +269,95 @@ async function enviar({ titulo, corpo, url = '/', tag, para = 'todos', exceto = 
     await Promise.all(linhas.slice(i, i + 10).map(async (l) => {
       // Segunda barreira contra SSRF: mesmo uma linha antiga/restaurada de backup
       // com endereço estranho nunca recebe requisição do servidor.
-      if (!enderecoPermitido(l.endpoint)) { mortas.push(l.id); return; }
+      const item = { chave: registro, convidadoId: l.convidado_id, inscricaoId: l.id };
+      if (!enderecoPermitido(l.endpoint)) { mortas.push(l.id); log.push({ ...item, resultado: 'invalida' }); return; }
+      // Uma tentativa só: erro temporário não vira repetição (nada de loop de retry).
       try {
         await transporte({ endpoint: l.endpoint, keys: { p256dh: l.p256dh, auth: l.auth } }, carga);
         entregues += 1;
+        log.push({ ...item, resultado: 'ok' });
       } catch (erro) {
-        if (erro.statusCode === 404 || erro.statusCode === 410) mortas.push(l.id);
-        else { falhas += 1; console.error('[push] falha ao enviar:', erro.statusCode || '', erro.message); }
+        if (erro.statusCode === 404 || erro.statusCode === 410) { mortas.push(l.id); log.push({ ...item, resultado: 'expirada', codigo: erro.statusCode }); }
+        else {
+          falhas += 1;
+          log.push({ ...item, resultado: 'falha', codigo: erro.statusCode || null });
+          console.error('[push] falha ao enviar:', erro.statusCode || '', erro.message);
+        }
       }
     }));
   }
   if (mortas.length) {
     await banco.lote(mortas.map((id) => ({ sql: 'DELETE FROM push_inscricoes WHERE id = ?', args: [id] })));
   }
+  await registrar(log).catch((e) => console.error('[push] registro:', e.message));
   const pessoas = new Set(linhas.map((l) => l.convidado_id)).size;
-  const registro = chave || `avulso:${Date.now()}:${Math.random().toString(36).slice(2, 7)}`;
   await banco.rodar(
     `INSERT INTO push_enviados (chave, titulo, corpo, para, entregues, falhas, enviado_em) VALUES (?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(chave) DO UPDATE SET para = excluded.para, entregues = excluded.entregues, falhas = excluded.falhas`,
     [registro, titulo, corpo, pessoas, entregues, falhas + mortas.length, Date.now()]);
-  if (linhas.length) console.log(`[push] "${titulo}" → ${entregues}/${linhas.length} aparelhos (${falhas} falhas, ${mortas.length} expirados)`);
-  return { para: pessoas, aparelhos: linhas.length, entregues, falhas, expiradas: mortas.length };
+  if (linhas.length || limitados) {
+    console.log(`[push] ${registro} → ${entregues}/${linhas.length} aparelhos (${falhas} falhas, ${mortas.length} expirados, ${limitados} pessoas no limite/h)`);
+  }
+  return { para: pessoas, aparelhos: linhas.length, entregues, falhas, expiradas: mortas.length, limitados };
 }
 
 const enviarPara = (convidadoId, aviso) => enviar({ ...aviso, para: { ids: [convidadoId] } });
 
-// Teste num aparelho só (o que acabou de ativar, ou o que a pessoa escolheu).
-// Não grava no histórico geral: é conversa entre o servidor e aquele celular.
-const TESTE = { titulo: 'Project V', corpo: 'Notificações ativadas! Você está na lista para receber os avisos da festa.' };
+// Teste num aparelho só, SÓ quando a pessoa pede (botão "Testar notificação").
+// Nada de envio automático ao ativar: mensagem de confirmação genérica logo depois de
+// aceitar a permissão é o padrão típico de sites de spam.
+// No máximo 1 teste a cada 10 min por aparelho (trava no banco, vale entre reinícios).
+function textoTeste(agora = Date.now()) {
+  return {
+    titulo: 'Project V: teste de avisos',
+    corpo: `Teste pedido por você às ${horaTexto(agora)}. Os avisos da festa de Halloween vão chegar assim.`,
+  };
+}
 async function testarAparelho(convidadoId, endpoint) {
   await prepararChaves();
   const l = await banco.um('SELECT * FROM push_inscricoes WHERE convidado_id = ? AND endpoint = ?', [convidadoId, String(endpoint || '')]);
   if (!l) return { entregue: false, motivo: 'nao-inscrito' };
   if (!enderecoPermitido(l.endpoint)) return { entregue: false, motivo: 'invalido' };
+  const agora = Date.now();
+  const chave = `teste:aparelho:${l.id}:${Math.floor(agora / ESPERA_TESTE_MS)}`;
+  const { titulo, corpo } = textoTeste(agora);
+  const trava = await banco.rodar(
+    'INSERT OR IGNORE INTO push_enviados (chave, titulo, corpo, para, entregues, enviado_em) VALUES (?, ?, ?, 1, 0, ?)',
+    [chave, titulo, corpo, agora]);
+  if (!trava.rowsAffected) return { entregue: false, motivo: 'espera' };
+  const item = { chave, convidadoId, inscricaoId: l.id };
   try {
     await transporte({ endpoint: l.endpoint, keys: { p256dh: l.p256dh, auth: l.auth } },
-      JSON.stringify({ ...TESTE, url: '/#avisos', tag: 'boas-vindas' }));
+      JSON.stringify({ titulo, corpo, url: '/#avisos', tag: 'teste' }));
+    await banco.rodar('UPDATE push_enviados SET entregues = 1 WHERE chave = ?', [chave]);
+    await registrar([{ ...item, resultado: 'ok' }]).catch(() => {});
     return { entregue: true };
   } catch (erro) {
     if (erro.statusCode === 404 || erro.statusCode === 410) {
       await banco.rodar('DELETE FROM push_inscricoes WHERE id = ?', [l.id]);
+      await registrar([{ ...item, resultado: 'expirada', codigo: erro.statusCode }]).catch(() => {});
       return { entregue: false, motivo: 'expirada' };
     }
+    await registrar([{ ...item, resultado: 'falha', codigo: erro.statusCode || null }]).catch(() => {});
     console.error('[push] teste falhou:', erro.statusCode || '', erro.message);
     return { entregue: false, motivo: 'falha' };
   }
+}
+
+// Registro por aparelho das últimas 24 h (inclui testes), para auditar repetição.
+async function registro24h() {
+  const linhas = await banco.tudo(
+    `SELECT chave, resultado, COUNT(*) AS n, MAX(em) AS ultimo FROM push_log WHERE em > ?
+      GROUP BY chave, resultado ORDER BY ultimo DESC LIMIT 200`, [Date.now() - 24 * 3600 * 1000]);
+  const mapa = new Map();
+  for (const l of linhas) {
+    const k = l.chave.startsWith('teste:aparelho:') ? 'teste:aparelho' : l.chave.startsWith('teste:admin:') ? 'teste:admin' : l.chave;
+    const r = mapa.get(k) || { chave: k, ok: 0, falha: 0, expirada: 0, limite: 0, invalida: 0, ultimo: 0 };
+    r[l.resultado] = (r[l.resultado] || 0) + Number(l.n);
+    r.ultimo = Math.max(r.ultimo, Number(l.ultimo));
+    mapa.set(k, r);
+  }
+  return [...mapa.values()].sort((x, y) => y.ultimo - x.ultimo).slice(0, 40);
 }
 
 async function historico(limite = 30) {
@@ -292,22 +393,22 @@ const SOCIAIS = {
   contribuicao: {
     url: '/#contribuicoes', tela: 'contribuicoes',
     texto: (n) => (n === 1
-      ? ['🍻 Nova contribuição', 'Alguém adicionou uma contribuição! Veja o que ainda falta.']
-      : ['🍻 Novas contribuições', `${n} contribuições novas! Veja o que ainda falta.`]),
+      ? ['Project V: nova contribuição', 'Alguém adicionou uma contribuição à lista da festa. Veja o que ainda falta.']
+      : ['Project V: novas contribuições', `${n} contribuições novas na lista da festa. Veja o que ainda falta.`]),
     duranteFesta: false,
   },
   carona: {
     url: '/#caronas', tela: 'caronas',
     texto: (n) => (n === 1
-      ? ['🚗 Nova carona', 'Alguém ofereceu carona! Precisa de uma vaga?']
-      : ['🚗 Novas caronas', `${n} caronas novas! Precisa de uma vaga?`]),
+      ? ['Project V: nova carona', 'Alguém ofereceu carona para a festa. Veja as vagas disponíveis.']
+      : ['Project V: novas caronas', `${n} caronas novas para a festa. Veja as vagas disponíveis.`]),
     duranteFesta: true,
   },
   musica: {
     url: '/#playlist', tela: 'playlist',
     texto: (n) => (n === 1
-      ? ['🎵 Música nova', 'Alguém adicionou uma música. Vote nas melhores!']
-      : ['🎵 Músicas novas', `${n} músicas novas na playlist. Vote nas melhores!`]),
+      ? ['Project V: música nova', 'Alguém sugeriu uma música para a playlist da festa. Vote nas suas preferidas.']
+      : ['Project V: músicas novas', `${n} músicas novas na playlist da festa. Vote nas suas preferidas.`]),
     duranteFesta: false,
   },
 };
@@ -355,7 +456,7 @@ async function despacharSociais(agora = Date.now()) {
     try { autores = JSON.parse(p.autores); } catch (_) { /* fila corrompida: ninguém fica de fora */ }
     const n = Number(p.n);
     const [titulo, corpo] = cfg.texto(n);
-    await enviar({ titulo, corpo, url: cfg.url, tag: `social-${p.tipo}`, exceto: [...new Set([...autores, ...olhando(cfg.tela)])] });
+    await enviar({ titulo, corpo, url: cfg.url, tag: `social-${p.tipo}`, chave: `social:${p.tipo}:${agora}`, exceto: [...new Set([...autores, ...olhando(cfg.tela)])] });
     enviados += 1;
   }
   return enviados;
@@ -363,11 +464,12 @@ async function despacharSociais(agora = Date.now()) {
 
 // ------------------------------------------------------- atividade liberada
 const TEXTOS_LIBERADA = {
-  previsoes: ['🔮 As Previsões abriram!', 'Aposte no que vai rolar na festa. Fecha às 17h de sábado.'],
-  pos: ['🌙 A votação do pós abriu!', 'Para onde a noite continua depois da meia-noite? Vote agora.'],
+  previsoes: ['Project V: Previsões abertas', 'As apostas sobre a festa estão abertas até sábado às 17h.'],
+  pos: ['Project V: votação do pós aberta', 'Vote no lugar para onde o grupo vai depois da meia-noite.'],
 };
 async function atividadeLiberada(atividade) {
-  const [titulo, corpo] = TEXTOS_LIBERADA[atividade.id] || [`🔓 ${atividade.nome} foi liberado!`, 'Abra o Project V e participe.'];
+  const [titulo, corpo] = TEXTOS_LIBERADA[atividade.id]
+    || [`Project V: ${atividade.nome} liberado`.slice(0, 60), `A atividade ${atividade.nome} já está disponível no site da festa.`];
   return enviar({ titulo, corpo, url: atividade.id === 'pos' ? '/#pos' : '/', chave: `liberou:${atividade.id}` });
 }
 
@@ -378,12 +480,12 @@ async function agendados() {
   const info = await festa.info();
   const lista = [
     { chave: 'vespera', quando: info.inicioMs - 22 * HORA, janela: 6 * HORA, url: '/',
-      titulo: '🎃 Amanhã é o Project V!', corpo: `${PV_periodo(info)}. Já escolheu a fantasia?` },
+      titulo: 'Project V é amanhã', corpo: `Festa de Halloween: ${PV_periodo(info)}. Veja as informações da festa.` },
     { chave: 'contribuicoes', quando: info.inicioMs - 7 * HORA, janela: 4 * HORA, url: '/#contribuicoes', dinamico: true },
-    { chave: 'faltam2h', quando: info.inicioMs - 2 * HORA, janela: HORA, url: '/',
-      titulo: '⏳ Faltam 2 horas!', corpo: `Hoje às ${horaTexto(info.inicioMs)}. Fantasia pronta? Te espero lá. 💀` },
+    { chave: 'faltam2h', quando: info.inicioMs - 2 * HORA, janela: HORA, url: '/#chegar',
+      titulo: `Project V começa às ${horaTexto(info.inicioMs)}`, corpo: 'Faltam 2 horas para a festa de Halloween. Veja como chegar.' },
     { chave: 'portoes', quando: info.inicioMs, janela: HORA, url: '/',
-      titulo: '🎃 Os portões estão abertos!', corpo: 'O Project V começou. Abra o site para acompanhar a noite.' },
+      titulo: 'Project V começou', corpo: 'A festa de Halloween começou. Acompanhe as atividades pelo site.' },
     { chave: 'campeao-pos', quando: info.fimMs, janela: 2 * HORA, url: '/#pos', dinamico: true },
   ];
   return { info, lista };
@@ -396,7 +498,7 @@ function horaTexto(ms) {
 }
 function PV_periodo(info) {
   const fim = horaTexto(info.fimMs);
-  return `Sábado, das ${horaTexto(info.inicioMs)} ${fim === 'meia-noite' ? 'à' : 'às'} ${fim}`;
+  return `sábado, das ${horaTexto(info.inicioMs)} ${fim === 'meia-noite' ? 'à' : 'às'} ${fim}`;
 }
 
 async function textoDinamico(chave) {
@@ -406,7 +508,7 @@ async function textoDinamico(chave) {
     const faltando = b.itens.filter((i) => i.falta > 0).sort((x, y) => y.falta - x.falta);
     if (!faltando.length) return null; // tudo garantido: não incomoda ninguém
     const partes = faltando.slice(0, 2).map((i) => `${i.falta} ${i.falta === 1 ? i.unidade.replace(/^(\S+?)s\b/, '$1') : i.unidade} de ${i.nome}`);
-    return ['🍻 Ainda falta bebida!', `Faltam ${partes.join(' e ')} nas Contribuições. Bora fechar a lista?`];
+    return ['Project V: lista de contribuições', `Ainda faltam ${partes.join(' e ')} para a festa. Veja o que você pode levar.`];
   }
   if (chave === 'campeao-pos') {
     const pos = require('./dados/pos');
@@ -414,8 +516,8 @@ async function textoDinamico(chave) {
     if (!r.liberada || !r.total) return null;
     const lideres = r.opcoes.filter((o) => r.lideres.includes(o.id)).map((o) => o.nome);
     return lideres.length === 1
-      ? ['👑 Temos um pós!', `O pós de hoje é o ${lideres[0]}. Partiu!`]
-      : ['👑 Deu empate no pós!', `Empate entre ${lideres.join(' e ')}. Decidam aí!`];
+      ? ['Project V: resultado do pós', `O lugar mais votado para depois da festa foi ${lideres[0]}.`]
+      : ['Project V: empate no pós', `Deu empate na votação do pós entre ${lideres.join(' e ')}.`];
   }
   return null;
 }
@@ -437,8 +539,15 @@ async function verificarAgendados(agora = Date.now()) {
       }
       [titulo, corpo] = t;
     }
-    const r = await enviar({ titulo, corpo, url: a.url, chave: `agenda:${a.chave}` });
-    if (!r.pulado) enviados += 1;
+    try {
+      const r = await enviar({ titulo, corpo, url: a.url, chave: `agenda:${a.chave}` });
+      if (!r.pulado) enviados += 1;
+    } catch (erro) {
+      // Texto montado com dados do admin que não passou na checagem: registra e não tenta de novo.
+      console.error(`[push] agenda:${a.chave} recusado:`, erro.message);
+      await banco.rodar('INSERT OR IGNORE INTO push_enviados (chave, titulo, corpo, para, entregues, enviado_em) VALUES (?, ?, ?, 0, 0, ?)',
+        [`agenda:${a.chave}`, '(sem envio)', `recusado: ${erro.message}`.slice(0, 180), agora]);
+    }
   }
   return enviados;
 }
@@ -487,8 +596,9 @@ function parar() { clearInterval(timer); timer = null; }
 
 module.exports = {
   chavePublica, inscrever, desinscrever, removerAparelho, removerDoConvidado, estaInscrito, situacao, listarAparelhos,
-  resumo, inscritos, enviar, enviarPara, testarAparelho, historico, programados, evento, despacharSociais,
+  resumo, inscritos, enviar, enviarPara, testarAparelho, historico, registro24h, programados, evento, despacharSociais,
   verificarAgendados, atividadeLiberada, tic, tocar, iniciar, parar, enderecoPermitido, nomeDoAparelho,
-  marcarTela, sairTela, olhando, caixa, MAX_POR_CONVIDADO, DESTINOS,
+  marcarTela, sairTela, olhando, caixa, MAX_POR_CONVIDADO, DESTINOS, problemaNoAviso, textoTeste, MAX_POR_HORA, ESPERA_TESTE_MS,
+  _modelos: () => ({ SOCIAIS, TEXTOS_LIBERADA, agendados, textoDinamico }),
   _zerarSociais: async () => { await banco.rodar('DELETE FROM push_fila'); telas.clear(); },
 };

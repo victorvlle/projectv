@@ -341,6 +341,15 @@
       : '<option value="">Ninguém ativou ainda</option>';
     if (avisos.inscritos.some((i) => i.id === escolhido)) $('teste-para').value = escolhido;
     $('teste-enviar').disabled = !avisos.inscritos.length;
+    const NOMES = { 'agenda:vespera': 'Véspera', 'agenda:contribuicoes': 'Contribuições', 'agenda:faltam2h': 'Faltam 2 horas',
+      'agenda:portoes': 'Portões', 'agenda:campeao-pos': 'Campeão do pós', 'teste:aparelho': 'Testes pedidos pelos convidados',
+      'teste:admin': 'Testes do organizador' };
+    const nomeDe = (k) => NOMES[k] || (k.startsWith('manual:') ? 'Aviso do organizador' : k.startsWith('liberou:') ? `Liberou ${k.slice(8)}`
+      : k.startsWith('social:') ? `Movimento dos amigos (${k.split(':')[1]})` : k);
+    $('registro-avisos').innerHTML = (avisos.registro || []).map((r) => `
+      <div class="item"><div class="item-nome">${PV.esc(nomeDe(r.chave))}</div>
+        <div class="item-sub">${PV.dataCurta(r.ultimo)} · ${r.ok} entregue(s)${r.falha ? ` · <span class="falhou">${r.falha} falha(s)</span>` : ''}${r.expirada ? ` · ${r.expirada} expirada(s)` : ''}${r.limite ? ` · ${r.limite} segurado(s) pelo limite/h` : ''}</div></div>`).join('')
+      || '<p class="fraco">Nada nas últimas 24 horas.</p>';
     $('programados').innerHTML = avisos.programados.map((p) => `
       <div class="item"><div class="item-nome">${PV.esc(p.nome)}
         ${p.enviado ? '<span class="selo ok">enviado</span>' : '<span class="selo pendente">pendente</span>'}</div>
@@ -364,12 +373,14 @@
     if (corpo.length < 2) { PV.avisar('Escreva a mensagem.', 'erro'); return; }
     const r = avisos ? avisos.resumo : { pessoas: 0, aparelhos: 0 };
     const sel = $('aviso-url');
-    envioPendente = { id: novoId(), titulo: $('aviso-titulo').value.trim() || '🎃 Project V', corpo, url: sel.value };
+    const tituloBruto = $('aviso-titulo').value.trim();
+    envioPendente = { id: novoId(), titulo: tituloBruto, corpo, url: sel.value };
+    const tituloFinal = !tituloBruto ? 'Project V' : /^project v\b/i.test(tituloBruto) ? tituloBruto : `Project V: ${tituloBruto}`;
     $('aviso-revisar').disabled = true;
     const box = $('confirmar-aviso');
     box.innerHTML = r.aparelhos ? `
       <p><b>Vai para ${r.pessoas} pessoa(s), em ${r.aparelhos} aparelho(s).</b></p>
-      <div class="previa"><b>${PV.esc(envioPendente.titulo)}</b><span>${PV.esc(corpo)}</span><small>Ao tocar: ${PV.esc(sel.options[sel.selectedIndex].text)}</small></div>
+      <div class="previa"><b>${PV.esc(tituloFinal)}</b><span>${PV.esc(corpo)}</span><small>Ao tocar: ${PV.esc(sel.options[sel.selectedIndex].text)}</small></div>
       <div class="linha-teste"><button class="botao" type="button" id="aviso-confirmar">Confirmar envio</button>
         <button class="botao secundario" type="button" id="aviso-cancelar">Cancelar</button></div>`
       : `<p>Ninguém ativou as notificações ainda: não há para quem mandar.</p>

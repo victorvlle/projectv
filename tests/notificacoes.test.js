@@ -60,16 +60,16 @@ test('aviso do admin chega a quem ativou; não a quem não ativou nem a desativa
   const b = await convidado('Sem push', false);
   const d = await convidado('Desativado');
   await s.req('PATCH', `/api/admin/convidados/${d.id}`, { token: admin, corpo: { ativo: false } });
-  const r = await s.req('POST', '/api/admin/avisos', { token: admin, corpo: { id: idEnvio(), titulo: '🍕', corpo: 'A pizza chegou!', url: '/#playlist' } });
+  const r = await s.req('POST', '/api/admin/avisos', { token: admin, corpo: { id: idEnvio(), titulo: 'pizza', corpo: 'A pizza chegou na churrasqueira.', url: '/#playlist' } });
   assert.equal(r.status, 200);
   assert.equal(recebeu(a.sub).length, 1);
-  assert.equal(recebeu(a.sub)[0].corpo, 'A pizza chegou!');
-  assert.ok(notif.caixa.some((m) => m.endpoint === a.sub.endpoint && m.tag === 'boas-vindas'), 'confirmação ao ativar');
+  assert.equal(recebeu(a.sub)[0].corpo, 'A pizza chegou na churrasqueira.');
+  assert.ok(!notif.caixa.some((m) => m.endpoint === a.sub.endpoint && m.tag === 'teste'), 'ativar não dispara notificação automática');
   assert.equal(recebeu(a.sub)[0].url, '/#playlist');
   assert.equal(recebeu(d.sub).length, 0);
   void b;
   assert.equal((await s.req('POST', '/api/admin/avisos', { token: a.token, corpo: { id: idEnvio(), corpo: 'hack' } })).status, 401);
-  const destinoRuim = await s.req('POST', '/api/admin/avisos', { token: admin, corpo: { id: idEnvio(), corpo: 'x2', url: 'https://golpe.com' } });
+  const destinoRuim = await s.req('POST', '/api/admin/avisos', { token: admin, corpo: { id: idEnvio(), corpo: 'Destino de teste para a festa', url: 'https://golpe.com' } });
   assert.equal(destinoRuim.status, 200);
   assert.equal(notif.caixa.at(-1).url, '/');
   // O desativado perdeu a inscrição de vez
@@ -93,9 +93,9 @@ test('movimento dos amigos: agrupado, sem avisar o autor, silencioso de madrugad
   await notif.despacharSociais(M('2026-10-27T09:00:00-04:00'));
   await notif.despacharSociais(M('2026-10-27T09:00:01-04:00'));
   const titulos = recebeu(outro.sub).map((m) => m.titulo).sort();
-  assert.deepEqual(titulos, ['🍻 Nova contribuição', '🎵 Música nova']);
+  assert.deepEqual(titulos, ['Project V: música nova', 'Project V: nova contribuição']);
   assert.equal(recebeu(autor.sub).length, 0, 'o autor não recebe aviso da própria ação');
-  assert.match(recebeu(outro.sub).find((m) => m.titulo.includes('Música')).corpo, /Vote nas melhores/);
+  assert.match(recebeu(outro.sub).find((m) => m.titulo.includes('música')).corpo, /Vote nas suas preferidas/);
 
   // Mais 3 músicas logo depois: espera o intervalo de 20 min e manda UM aviso agrupado
   for (let i = 0; i < 3; i++) await s.req('POST', '/api/playlist', { token: autor.token, corpo: { titulo: `Outra ${i}`, artista: 'X' } });
@@ -116,7 +116,7 @@ test('durante a festa: contribuição e música não avisam; carona avisa', asyn
   await s.req('PUT', '/api/caronas/minha', { token: a.token, corpo: { vagas: 2, trajeto: 'volta', saindo: 'Singolare' } });
   await notif.despacharSociais(M('2026-10-31T21:00:00-04:00'));
   await notif.despacharSociais(M('2026-10-31T21:00:01-04:00'));
-  assert.deepEqual(recebeu(b.sub).map((m) => m.titulo), ['🚗 Nova carona']);
+  assert.deepEqual(recebeu(b.sub).map((m) => m.titulo), ['Project V: nova carona']);
 });
 
 test('atividade liberada avisa uma vez só', async () => {
@@ -129,7 +129,7 @@ test('atividade liberada avisa uma vez só', async () => {
   await new Promise((r) => setTimeout(r, 100));
   const msgs = recebeu(c.sub);
   assert.equal(msgs.length, 1);
-  assert.equal(msgs[0].titulo, '🔓 Quiz de Terror Relâmpago foi liberado!');
+  assert.equal(msgs[0].titulo, 'Project V: Quiz de Terror Relâmpago liberado');
   await s.req('PUT', '/api/admin/atividades/quiz', { token: admin, corpo: { estado: 'bloqueada' } });
 });
 
@@ -138,23 +138,23 @@ test('agendados: véspera, contribuições (com o que falta), faltam 2h; cada um
   const c = await convidado('Lembrado');
   await notif.verificarAgendados(M('2026-10-30T19:05:00-04:00'));
   await notif.verificarAgendados(M('2026-10-30T19:10:00-04:00'));
-  assert.deepEqual(recebeu(c.sub).map((m) => m.titulo), ['🎃 Amanhã é o Project V!']);
-  assert.match(recebeu(c.sub)[0].corpo, /Sábado, das 17h à meia-noite/);
+  assert.deepEqual(recebeu(c.sub).map((m) => m.titulo), ['Project V é amanhã']);
+  assert.match(recebeu(c.sub)[0].corpo, /sábado, das 17h à meia-noite/);
 
   await notif.verificarAgendados(M('2026-10-31T10:01:00-04:00'));
   const contrib = recebeu(c.sub).at(-1);
-  assert.equal(contrib.titulo, '🍻 Ainda falta bebida!');
-  assert.match(contrib.corpo, /Faltam .+ nas Contribuições/);
+  assert.equal(contrib.titulo, 'Project V: lista de contribuições');
+  assert.match(contrib.corpo, /Ainda faltam .+ para a festa/);
 
   await notif.verificarAgendados(M('2026-10-31T15:00:00-04:00'));
   await notif.verificarAgendados(M('2026-10-31T17:00:30-04:00'));
-  assert.deepEqual(recebeu(c.sub).slice(-2).map((m) => m.titulo), ['⏳ Faltam 2 horas!', '🎃 Os portões estão abertos!']);
+  assert.deepEqual(recebeu(c.sub).slice(-2).map((m) => m.titulo), ['Project V começa às 17h', 'Project V começou']);
 
   // Servidor que acordou muito depois não manda aviso velho
   await limpar();
   await banco.rodar("DELETE FROM push_enviados WHERE chave = 'agenda:faltam2h'");
   await notif.verificarAgendados(M('2026-10-31T20:00:00-04:00'));
-  assert.equal(recebeu(c.sub).filter((m) => m.titulo.includes('2 horas')).length, 0);
+  assert.equal(recebeu(c.sub).filter((m) => m.corpo.includes('2 horas')).length, 0);
 
   const prog = (await s.req('GET', '/api/admin/avisos', { token: admin })).json;
   assert.ok(prog.programados.find((p) => p.chave === 'vespera').enviado);
@@ -167,7 +167,7 @@ test('inscrição morta é apagada; link regenerado corta os avisos do aparelho 
   const c = await convidado('Trocou de celular', false);
   const morta = inscricao('/morta');
   await s.req('POST', '/api/eu/push', { token: c.token, corpo: { inscricao: morta } });
-  await s.req('POST', '/api/admin/avisos', { token: admin, corpo: { id: idEnvio(), corpo: 'teste' } });
+  await s.req('POST', '/api/admin/avisos', { token: admin, corpo: { id: idEnvio(), corpo: 'Teste de envio para a festa' } });
   assert.equal(await notif.estaInscrito(c.id, morta.endpoint), false);
 
   const r = await convidado('Repassou');

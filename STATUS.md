@@ -45,6 +45,9 @@ Atualizado em 26/10/2026.
 - [x] Boas-vindas das notificações: modal na primeira visita de cada aparelho ("Quero receber avisos" / "Continuar sem ativar"),
       Android direto ao pedido, tutorial de 3 passos no iPhone, sem banner fixo na home (só "Reconectar" quando preciso);
       inscrições existentes preservadas; 13 cenários testados em navegador simulado
+- [x] Alerta "Possível spam" do Chrome (Android): fim da notificação automática ao ativar; textos específicos começando com "Project V";
+      checagem de qualidade em todo envio; teto de 4 avisos/pessoa/hora; teste sob pedido (1 a cada 10 min); registro por aparelho (push_log);
+      testes automatizados: 62 passando. Causa provável, não confirmada: falta conferir o texto marcado e retestar num Android real
 - [x] Deploy no Render + Turso: https://projectv-pec1.onrender.com (`/saude` responde `banco: turso`, verificado em 24/10)
 
 ## Pendente (Etapa C, em ordem)
@@ -72,4 +75,5 @@ Atualizado em 26/10/2026.
 
 - Confirmar número de convidados, TV/projetor e internet no local
 - Monitor no UptimeRobot (a cada 5 min em /saude) para os avisos agendados saírem com o Render free; pausar depois da festa
+- Ver o texto da notificação marcada como spam e retestar no Android depois de publicar (PDF de diagnóstico, seção 7)
 - Testar as notificações num Android e num iPhone de verdade (roteiro no PDF de entrega das notificações)

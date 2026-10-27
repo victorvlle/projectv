@@ -197,9 +197,9 @@ router.delete('/pos/opcoes/:id', assincrono(async (req, res) => { await pos.remo
 
 // --------------------------------------------------------------- avisos
 router.get('/avisos', assincrono(async (_req, res) => {
-  const [resumo, programados, historico, inscritos] = await Promise.all([
-    notificacoes.resumo(), notificacoes.programados(), notificacoes.historico(), notificacoes.inscritos()]);
-  res.json({ ok: true, resumo, programados, historico, inscritos });
+  const [resumo, programados, historico, inscritos, registro] = await Promise.all([
+    notificacoes.resumo(), notificacoes.programados(), notificacoes.historico(), notificacoes.inscritos(), notificacoes.registro24h()]);
+  res.json({ ok: true, resumo, programados, historico, inscritos, registro, maxPorHora: notificacoes.MAX_POR_HORA });
 }));
 // `id` vem do painel (um por envio): clicar duas vezes ou repetir a requisição não manda de novo.
 const ID_ENVIO = /^[A-Za-z0-9-]{8,64}$/;
@@ -208,7 +208,9 @@ router.post('/avisos', assincrono(async (req, res) => {
   if (!ID_ENVIO.test(String(b.id || ''))) return res.status(400).json({ ok: false, erro: 'Envio sem identificação. Recarregue o painel.' });
   if (!freioAvisos.tentar('admin')) return res.status(429).json({ ok: false, erro: 'Muitos avisos seguidos. Espere um minuto.' });
   const { limparTexto } = require('../dados/convidados');
-  const titulo = limparTexto(b.titulo, 60) || '🎃 Project V';
+  // Todo aviso se identifica: "Project V: <título>" (o Chrome mostra só o domínio).
+  let titulo = limparTexto(b.titulo, 48);
+  titulo = !titulo ? 'Project V' : /^Project V\b/i.test(titulo) ? titulo.replace(/^project v/i, 'Project V') : `Project V: ${titulo}`;
   const corpo = limparTexto(b.corpo, 180);
   if (corpo.length < 2) return res.status(400).json({ ok: false, erro: 'Escreva a mensagem.' });
   const url = notificacoes.DESTINOS.has(b.url) ? b.url : '/';
@@ -221,11 +223,14 @@ router.post('/avisos/teste', assincrono(async (req, res) => {
   const id = String((req.body || {}).convidadoId || '');
   const alvo = (await notificacoes.inscritos()).find((i) => i.id === id);
   if (!alvo) return res.status(404).json({ ok: false, erro: 'Essa pessoa não tem avisos ativados.' });
+  // No máximo 1 teste a cada 10 min por pessoa (trava no banco).
   const r = await notificacoes.enviar({
-    titulo: 'Project V', corpo: 'Teste do organizador: seus avisos estão funcionando. 🎃', url: '/#avisos',
-    tag: 'teste-admin', para: { ids: [id] }, chave: `teste:${Date.now()}:${id}`,
+    titulo: 'Project V: teste do organizador', corpo: 'O organizador está conferindo se os avisos da festa chegam no seu aparelho.',
+    url: '/#avisos', tag: 'teste-admin', para: { ids: [id] },
+    chave: `teste:admin:${id}:${Math.floor(Date.now() / notificacoes.ESPERA_TESTE_MS)}`,
   });
-  res.json({ ok: true, nome: alvo.nome, ...r });
+  if (r.pulado) return res.status(429).json({ ok: false, erro: `Já foi um teste para ${alvo.nome} há pouco. Espere alguns minutos.` });
+  return res.json({ ok: true, nome: alvo.nome, ...r });
 }));
 
 // ---------------------------------------------------------------- backup

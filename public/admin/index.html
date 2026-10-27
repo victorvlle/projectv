@@ -107,9 +107,11 @@
         <form id="form-aviso" class="cartao">
           <h3>Mandar aviso para todo mundo</h3>
           <label for="aviso-titulo">Título</label>
-          <input id="aviso-titulo" maxlength="60" placeholder="🎃 Project V">
+          <input id="aviso-titulo" maxlength="48" placeholder="Ex.: pizza chegou">
+          <p class="fraco" style="margin:4px 0 0">Sai como “Project V: …”. Escreva algo específico da festa; evite propaganda e urgência
+            (grátis, urgente, não perca…) e links: o Chrome pode marcar como spam. Cada pessoa recebe no máximo 4 avisos por hora.</p>
           <label for="aviso-corpo">Mensagem</label>
-          <textarea id="aviso-corpo" rows="2" maxlength="180" placeholder="Ex.: A pizza chegou! 🍕" required></textarea>
+          <textarea id="aviso-corpo" rows="2" maxlength="180" placeholder="Ex.: A pizza chegou na churrasqueira. Venha pegar a sua." required></textarea>
           <label for="aviso-url">Ao tocar, abre</label>
           <select id="aviso-url">
             <option value="/">Página inicial</option>
@@ -139,6 +141,11 @@
         <div class="cartao" style="margin-top:12px">
           <h3>Enviados</h3>
           <div id="historico-avisos" class="lista"></div>
+        </div>
+        <div class="cartao" style="margin-top:12px">
+          <h3>Registro por aparelho (24 h)</h3>
+          <p class="fraco" style="margin:0 0 8px">Inclui testes. Serve para conferir se algo saiu repetido.</p>
+          <div id="registro-avisos" class="lista"></div>
         </div>
       </section>
 

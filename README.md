@@ -22,7 +22,7 @@ Sem `TURSO_URL`, o banco é o arquivo `data/projectv.db`.
 npm test
 ```
 
-55 testes: acesso por link, perfil, admin, atividades e agendamento, tempo real, bebidas, extras, notificações (aparelhos, limite, fila, agendados), segurança, backup/restauração e reinício real do servidor.
+62 testes: acesso por link, perfil, admin, atividades e agendamento, tempo real, bebidas, extras, notificações (aparelhos, limite, fila, agendados), segurança, backup/restauração e reinício real do servidor.
 
 `npm run seguranca` roda 50 ataques simulados contra uma cópia local.
 
@@ -39,6 +39,7 @@ npm test
 | `VAPID_PUBLIC` / `VAPID_PRIVATE` | Chaves das notificações (opcional; não troque depois que as pessoas ativaram) | geradas uma vez e guardadas no banco |
 | `VAPID_ASSUNTO` | Contato das chaves VAPID (URL ou `mailto:`) | `URL_PUBLICA` |
 | `PUSH_LOTE_MS` / `PUSH_INTERVALO_MS` | Agrupamento do movimento dos amigos | 2 min / 20 min |
+| `PUSH_MAX_POR_HORA` | Teto de avisos por pessoa por hora (testes à parte) | 4 |
 
 ## Publicar no Render
 

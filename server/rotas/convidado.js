@@ -60,8 +60,7 @@ function freiarPush(req, res, next) {
 router.get('/push/chave', soConvidado, assincrono(async (_req, res) => {
   res.json({ ok: true, chave: await notificacoes.chavePublica() });
 }));
-// Ativar neste aparelho. Só responde "ok" depois que a inscrição está gravada no banco;
-// em seguida manda um teste real só para este aparelho (não para os outros da pessoa).
+// Ativar neste aparelho. Só responde "ok" depois que a inscrição está gravada no banco.
 router.post('/eu/push', soConvidado, freiarPush, assincrono(async (req, res) => {
   const corpo = req.body || {};
   const r = await notificacoes.inscrever(req.convidado.id, corpo.inscricao, {
@@ -73,16 +72,22 @@ router.post('/eu/push', soConvidado, freiarPush, assincrono(async (req, res) => 
       erro: `Você já tem ${r.maximo} aparelhos recebendo avisos. Remova um para ativar neste.`,
     });
   }
-  const teste = await notificacoes.testarAparelho(req.convidado.id, corpo.inscricao.endpoint);
-  return res.json({ ok: true, novo: r.novo, aparelhos: r.aparelhos, teste });
+  // Sem notificação automática aqui: o teste só sai quando a pessoa pede.
+  return res.json({ ok: true, novo: r.novo, aparelhos: r.aparelhos });
 }));
 router.post('/eu/push/situacao', soConvidado, assincrono(async (req, res) => {
   res.json({ ok: true, ...(await notificacoes.situacao(req.convidado.id, (req.body || {}).endpoint)) });
 }));
 router.post('/eu/push/teste', soConvidado, freiarPush, assincrono(async (req, res) => {
   const teste = await notificacoes.testarAparelho(req.convidado.id, (req.body || {}).endpoint);
-  res.status(teste.motivo === 'nao-inscrito' ? 404 : 200).json({ ok: teste.entregue, teste,
-    erro: teste.entregue ? undefined : 'Este aparelho não está recebendo avisos. Ative de novo.' });
+  if (teste.entregue) return res.json({ ok: true, teste });
+  const respostas = {
+    'nao-inscrito': [404, 'Este aparelho não está recebendo avisos. Ative de novo.'],
+    expirada: [404, 'Precisamos reconectar este aparelho para continuar enviando os avisos.'],
+    espera: [429, 'Você testou há pouco. Para não encher seu celular, o próximo teste fica liberado em alguns minutos.'],
+  };
+  const [status, erro] = respostas[teste.motivo] || [502, 'Não conseguimos enviar o teste agora. Tente de novo em instantes.'];
+  return res.status(status).json({ ok: false, codigo: teste.motivo, erro, teste });
 }));
 router.delete('/eu/push', soConvidado, freiarPush, assincrono(async (req, res) => {
   await notificacoes.desinscrever(req.convidado.id, (req.body || {}).endpoint);
