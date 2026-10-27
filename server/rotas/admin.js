@@ -197,19 +197,35 @@ router.delete('/pos/opcoes/:id', assincrono(async (req, res) => { await pos.remo
 
 // --------------------------------------------------------------- avisos
 router.get('/avisos', assincrono(async (_req, res) => {
-  const [resumo, programados, historico] = await Promise.all([notificacoes.resumo(), notificacoes.programados(), notificacoes.historico()]);
-  res.json({ ok: true, resumo, programados, historico });
+  const [resumo, programados, historico, inscritos] = await Promise.all([
+    notificacoes.resumo(), notificacoes.programados(), notificacoes.historico(), notificacoes.inscritos()]);
+  res.json({ ok: true, resumo, programados, historico, inscritos });
 }));
-const DESTINOS = new Set(['/', '/#contribuicoes', '/#playlist', '/#caronas', '/#chegar', '/#pos']);
+// `id` vem do painel (um por envio): clicar duas vezes ou repetir a requisição não manda de novo.
+const ID_ENVIO = /^[A-Za-z0-9-]{8,64}$/;
 router.post('/avisos', assincrono(async (req, res) => {
+  const b = req.body || {};
+  if (!ID_ENVIO.test(String(b.id || ''))) return res.status(400).json({ ok: false, erro: 'Envio sem identificação. Recarregue o painel.' });
   if (!freioAvisos.tentar('admin')) return res.status(429).json({ ok: false, erro: 'Muitos avisos seguidos. Espere um minuto.' });
   const { limparTexto } = require('../dados/convidados');
-  const titulo = limparTexto((req.body || {}).titulo, 60) || '🎃 Project V';
-  const corpo = limparTexto((req.body || {}).corpo, 180);
+  const titulo = limparTexto(b.titulo, 60) || '🎃 Project V';
+  const corpo = limparTexto(b.corpo, 180);
   if (corpo.length < 2) return res.status(400).json({ ok: false, erro: 'Escreva a mensagem.' });
-  const url = DESTINOS.has((req.body || {}).url) ? req.body.url : '/';
-  const r = await notificacoes.enviar({ titulo, corpo, url, tag: `aviso-${Date.now()}` });
+  const url = notificacoes.DESTINOS.has(b.url) ? b.url : '/';
+  const r = await notificacoes.enviar({ titulo, corpo, url, tag: `aviso-${b.id}`, chave: `manual:${b.id}` });
   res.json({ ok: true, ...r });
+}));
+// Teste para uma pessoa só (todos os aparelhos dela). Não entra na trava de envio único.
+router.post('/avisos/teste', assincrono(async (req, res) => {
+  if (!freioAvisos.tentar('admin')) return res.status(429).json({ ok: false, erro: 'Muitos avisos seguidos. Espere um minuto.' });
+  const id = String((req.body || {}).convidadoId || '');
+  const alvo = (await notificacoes.inscritos()).find((i) => i.id === id);
+  if (!alvo) return res.status(404).json({ ok: false, erro: 'Essa pessoa não tem avisos ativados.' });
+  const r = await notificacoes.enviar({
+    titulo: 'Project V', corpo: 'Teste do organizador: seus avisos estão funcionando. 🎃', url: '/#avisos',
+    tag: 'teste-admin', para: { ids: [id] }, chave: `teste:${Date.now()}:${id}`,
+  });
+  res.json({ ok: true, nome: alvo.nome, ...r });
 }));
 
 // ---------------------------------------------------------------- backup

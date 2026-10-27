@@ -60,23 +60,38 @@ function freiarPush(req, res, next) {
 router.get('/push/chave', soConvidado, assincrono(async (_req, res) => {
   res.json({ ok: true, chave: await notificacoes.chavePublica() });
 }));
+// Ativar neste aparelho. Só responde "ok" depois que a inscrição está gravada no banco;
+// em seguida manda um teste real só para este aparelho (não para os outros da pessoa).
 router.post('/eu/push', soConvidado, freiarPush, assincrono(async (req, res) => {
-  await notificacoes.inscrever(req.convidado.id, (req.body || {}).inscricao);
-  res.json({ ok: true });
-  // Confirmação no próprio aparelho: prova na hora que está funcionando.
-  notificacoes.enviar({
-    titulo: '🔔 Notificações ativadas!',
-    corpo: 'Você vai receber os avisos do Project V. Te espero lá. 💀',
-    para: { ids: [req.convidado.id] },
-    tag: 'boas-vindas',
-  }).catch((e) => console.error('[push]', e.message));
+  const corpo = req.body || {};
+  const r = await notificacoes.inscrever(req.convidado.id, corpo.inscricao, {
+    ua: req.get('user-agent') || '', instalado: corpo.instalado === true,
+  });
+  if (r.limite) {
+    return res.status(409).json({
+      ok: false, codigo: 'limite', maximo: r.maximo, aparelhos: r.aparelhos,
+      erro: `Você já tem ${r.maximo} aparelhos recebendo avisos. Remova um para ativar neste.`,
+    });
+  }
+  const teste = await notificacoes.testarAparelho(req.convidado.id, corpo.inscricao.endpoint);
+  return res.json({ ok: true, novo: r.novo, aparelhos: r.aparelhos, teste });
 }));
 router.post('/eu/push/situacao', soConvidado, assincrono(async (req, res) => {
-  res.json({ ok: true, inscrito: await notificacoes.estaInscrito(req.convidado.id, (req.body || {}).endpoint) });
+  res.json({ ok: true, ...(await notificacoes.situacao(req.convidado.id, (req.body || {}).endpoint)) });
+}));
+router.post('/eu/push/teste', soConvidado, freiarPush, assincrono(async (req, res) => {
+  const teste = await notificacoes.testarAparelho(req.convidado.id, (req.body || {}).endpoint);
+  res.status(teste.motivo === 'nao-inscrito' ? 404 : 200).json({ ok: teste.entregue, teste,
+    erro: teste.entregue ? undefined : 'Este aparelho não está recebendo avisos. Ative de novo.' });
 }));
 router.delete('/eu/push', soConvidado, freiarPush, assincrono(async (req, res) => {
   await notificacoes.desinscrever(req.convidado.id, (req.body || {}).endpoint);
   res.json({ ok: true });
+}));
+router.delete('/eu/push/aparelhos/:id', soConvidado, freiarPush, assincrono(async (req, res) => {
+  const removido = await notificacoes.removerAparelho(req.convidado.id, req.params.id);
+  if (!removido) return res.status(404).json({ ok: false, erro: 'Aparelho não encontrado.' });
+  return res.json({ ok: true });
 }));
 
 router.put('/eu/perfil', soConvidado, assincrono(async (req, res) => {

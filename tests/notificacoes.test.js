@@ -32,7 +32,8 @@ async function convidado(nome, ativar = true) {
   return { ...c, token, sub };
 }
 const recebeu = (sub) => notif.caixa.filter((m) => m.endpoint === sub.endpoint && m.tag !== 'boas-vindas');
-const limpar = () => { notif.caixa.length = 0; notif._zerarSociais(); };
+const limpar = async () => { notif.caixa.length = 0; await notif._zerarSociais(); };
+const idEnvio = () => `t-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 test('inscrição só aceita serviços de push conhecidos (sem SSRF)', async () => {
   const c = await convidado('Seguro', false);
@@ -54,12 +55,12 @@ test('inscrição só aceita serviços de push conhecidos (sem SSRF)', async () 
 });
 
 test('aviso do admin chega a quem ativou; não a quem não ativou nem a desativado; convidado não envia', async () => {
-  limpar();
+  await limpar();
   const a = await convidado('Ativo');
   const b = await convidado('Sem push', false);
   const d = await convidado('Desativado');
   await s.req('PATCH', `/api/admin/convidados/${d.id}`, { token: admin, corpo: { ativo: false } });
-  const r = await s.req('POST', '/api/admin/avisos', { token: admin, corpo: { titulo: '🍕', corpo: 'A pizza chegou!', url: '/#playlist' } });
+  const r = await s.req('POST', '/api/admin/avisos', { token: admin, corpo: { id: idEnvio(), titulo: '🍕', corpo: 'A pizza chegou!', url: '/#playlist' } });
   assert.equal(r.status, 200);
   assert.equal(recebeu(a.sub).length, 1);
   assert.equal(recebeu(a.sub)[0].corpo, 'A pizza chegou!');
@@ -67,8 +68,8 @@ test('aviso do admin chega a quem ativou; não a quem não ativou nem a desativa
   assert.equal(recebeu(a.sub)[0].url, '/#playlist');
   assert.equal(recebeu(d.sub).length, 0);
   void b;
-  assert.equal((await s.req('POST', '/api/admin/avisos', { token: a.token, corpo: { corpo: 'hack' } })).status, 401);
-  const destinoRuim = await s.req('POST', '/api/admin/avisos', { token: admin, corpo: { corpo: 'x2', url: 'https://golpe.com' } });
+  assert.equal((await s.req('POST', '/api/admin/avisos', { token: a.token, corpo: { id: idEnvio(), corpo: 'hack' } })).status, 401);
+  const destinoRuim = await s.req('POST', '/api/admin/avisos', { token: admin, corpo: { id: idEnvio(), corpo: 'x2', url: 'https://golpe.com' } });
   assert.equal(destinoRuim.status, 200);
   assert.equal(notif.caixa.at(-1).url, '/');
   // O desativado perdeu a inscrição de vez
@@ -76,7 +77,7 @@ test('aviso do admin chega a quem ativou; não a quem não ativou nem a desativa
 });
 
 test('movimento dos amigos: agrupado, sem avisar o autor, silencioso de madrugada', async () => {
-  limpar();
+  await limpar();
   const autor = await convidado('Autor');
   const outro = await convidado('Outro');
   const item = (await s.req('GET', '/api/festa', { token: autor.token })).json.bebidas.itens[0];
@@ -108,7 +109,7 @@ test('movimento dos amigos: agrupado, sem avisar o autor, silencioso de madrugad
 });
 
 test('durante a festa: contribuição e música não avisam; carona avisa', async () => {
-  limpar();
+  await limpar();
   const a = await convidado('Festeiro');
   const b = await convidado('Ouvinte');
   await s.req('POST', '/api/playlist', { token: a.token, corpo: { titulo: 'Na Festa', artista: 'Y' } });
@@ -119,7 +120,7 @@ test('durante a festa: contribuição e música não avisam; carona avisa', asyn
 });
 
 test('atividade liberada avisa uma vez só', async () => {
-  limpar();
+  await limpar();
   const c = await convidado('Curioso');
   await s.req('PUT', '/api/admin/atividades/quiz', { token: admin, corpo: { estado: 'liberada' } });
   await new Promise((r) => setTimeout(r, 100));
@@ -133,7 +134,7 @@ test('atividade liberada avisa uma vez só', async () => {
 });
 
 test('agendados: véspera, contribuições (com o que falta), faltam 2h; cada um uma vez', async () => {
-  limpar();
+  await limpar();
   const c = await convidado('Lembrado');
   await notif.verificarAgendados(M('2026-10-30T19:05:00-04:00'));
   await notif.verificarAgendados(M('2026-10-30T19:10:00-04:00'));
@@ -150,7 +151,7 @@ test('agendados: véspera, contribuições (com o que falta), faltam 2h; cada um
   assert.deepEqual(recebeu(c.sub).slice(-2).map((m) => m.titulo), ['⏳ Faltam 2 horas!', '🎃 Os portões estão abertos!']);
 
   // Servidor que acordou muito depois não manda aviso velho
-  limpar();
+  await limpar();
   await banco.rodar("DELETE FROM push_enviados WHERE chave = 'agenda:faltam2h'");
   await notif.verificarAgendados(M('2026-10-31T20:00:00-04:00'));
   assert.equal(recebeu(c.sub).filter((m) => m.titulo.includes('2 horas')).length, 0);
@@ -162,11 +163,11 @@ test('agendados: véspera, contribuições (com o que falta), faltam 2h; cada um
 });
 
 test('inscrição morta é apagada; link regenerado corta os avisos do aparelho antigo', async () => {
-  limpar();
+  await limpar();
   const c = await convidado('Trocou de celular', false);
   const morta = inscricao('/morta');
   await s.req('POST', '/api/eu/push', { token: c.token, corpo: { inscricao: morta } });
-  await s.req('POST', '/api/admin/avisos', { token: admin, corpo: { corpo: 'teste' } });
+  await s.req('POST', '/api/admin/avisos', { token: admin, corpo: { id: idEnvio(), corpo: 'teste' } });
   assert.equal(await notif.estaInscrito(c.id, morta.endpoint), false);
 
   const r = await convidado('Repassou');

@@ -148,7 +148,7 @@ async function definirItem(convidadoId, itemId, quantidade) {
   await banco.rodar(
     `INSERT INTO bebidas_compromissos (convidado_id, item_id, quantidade, criado_em, atualizado_em)
      VALUES (?, ?, ?, ?, ?)`, [convidadoId, Number(itemId), q, agora, agora]);
-  require('../notificacoes').evento('contribuicao', convidadoId);
+  await require('../notificacoes').evento('contribuicao', convidadoId);
 }
 
 // Bebida fora da lista. Se o nome bater com um item da lista, entra nele.
@@ -177,7 +177,7 @@ async function adicionarOutra(convidadoId, { nome, quantidade, unidade }) {
   await banco.rodar(
     `INSERT INTO bebidas_compromissos (convidado_id, nome_livre, unidade_livre, quantidade, criado_em, atualizado_em)
      VALUES (?, ?, ?, ?, ?, ?)`, [convidadoId, n, validarUnidade(unidade), q, agora, agora]);
-  require('../notificacoes').evento('contribuicao', convidadoId);
+  await require('../notificacoes').evento('contribuicao', convidadoId);
   return undefined;
 }
 

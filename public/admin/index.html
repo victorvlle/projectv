@@ -119,8 +119,18 @@
             <option value="/#chegar">Como chegar</option>
             <option value="/#pos">O Pós</option>
           </select>
-          <button class="botao largo" style="margin-top:12px">Enviar agora</button>
+          <button class="botao largo" style="margin-top:12px" id="aviso-revisar">Revisar e enviar</button>
+          <div id="confirmar-aviso" class="confirmar-aviso oculto" role="region" aria-live="polite"></div>
         </form>
+        <div class="cartao" style="margin-top:12px">
+          <h3>Testar num aparelho</h3>
+          <p class="fraco" style="margin:0 0 8px">Manda um teste só para uma pessoa (todos os aparelhos dela). Não aparece para mais ninguém.</p>
+          <div class="linha-teste">
+            <select id="teste-para" aria-label="Pessoa que recebe o teste"></select>
+            <button class="botao secundario" type="button" id="teste-enviar">Mandar teste</button>
+          </div>
+          <p class="fraco" id="teste-resultado" role="status" style="margin:8px 0 0"></p>
+        </div>
         <div class="cartao" style="margin-top:12px">
           <h3>Programados</h3>
           <p class="fraco" style="margin:0 0 8px">Saem sozinhos, uma vez cada. Os horários seguem a data da festa.</p>

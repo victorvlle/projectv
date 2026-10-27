@@ -60,3 +60,14 @@ h3 { font-size: 1.05rem; margin-bottom: 6px; }
 .barra-meta { height: 6px; border-radius: 999px; background: var(--fundo-2); margin-top: 8px; overflow: hidden; }
 .barra-meta i { display: block; height: 100%; background: var(--laranja); }
 .barra-meta.ok i { background: var(--lima); }
+
+/* Avisos: revisão antes do envio em massa e teste por pessoa */
+.confirmar-aviso { margin-top: 12px; padding: 12px; border-radius: 12px; border: 1px solid rgba(232, 98, 12, .55); background: var(--fundo-2); }
+.confirmar-aviso p { margin: 0 0 10px; }
+.previa { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; background: var(--cartao-2); margin-bottom: 12px; }
+.previa span { color: var(--texto-2); font-size: .9rem; }
+.previa small { color: var(--texto-3); font-size: .75rem; }
+.linha-teste { display: flex; gap: 8px; flex-wrap: wrap; }
+.linha-teste select { flex: 1; min-width: 160px; }
+.ok-envio { color: var(--lima); }
+.falhou { color: #ff6b84; }

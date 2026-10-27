@@ -11,7 +11,7 @@
   };
 
   class ErroApi extends Error {
-    constructor(mensagem, status, codigo) { super(mensagem); this.status = status; this.codigo = codigo; }
+    constructor(mensagem, status, codigo, dados) { super(mensagem); this.status = status; this.codigo = codigo; this.dados = dados || {}; }
   }
 
   async function chamar(metodo, url, { token, corpo } = {}) {
@@ -30,7 +30,7 @@
     let dados = {};
     try { dados = await resposta.json(); } catch (_) { /* resposta sem JSON */ }
     if (!resposta.ok || dados.ok === false) {
-      throw new ErroApi(dados.erro || `Erro ${resposta.status}`, resposta.status, dados.codigo);
+      throw new ErroApi(dados.erro || `Erro ${resposta.status}`, resposta.status, dados.codigo, dados);
     }
     return dados;
   }

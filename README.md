@@ -22,7 +22,9 @@ Sem `TURSO_URL`, o banco é o arquivo `data/projectv.db`.
 npm test
 ```
 
-17 testes: acesso por link, perfil, admin, atividades e agendamento, tempo real, segurança (tokens, freio de tentativas), backup/restauração e reinício real do servidor com os dados preservados.
+55 testes: acesso por link, perfil, admin, atividades e agendamento, tempo real, bebidas, extras, notificações (aparelhos, limite, fila, agendados), segurança, backup/restauração e reinício real do servidor.
+
+`npm run seguranca` roda 50 ataques simulados contra uma cópia local.
 
 ## Variáveis de ambiente
 
@@ -34,7 +36,9 @@ npm test
 | `SESSAO_SEGREDO` | Assina as sessões. **Precisa ser fixo em produção** | sorteado a cada boot |
 | `ADMIN_SEGREDO` | Senha do `/admin` e do `/telao` | vazio = login sempre recusado |
 | `URL_PUBLICA` | Domínio usado nos links de convite | `RENDER_EXTERNAL_URL` |
-| `VAPID_PUBLIC` / `VAPID_PRIVATE` | Chaves das notificações (opcional) | geradas uma vez e guardadas no banco |
+| `VAPID_PUBLIC` / `VAPID_PRIVATE` | Chaves das notificações (opcional; não troque depois que as pessoas ativaram) | geradas uma vez e guardadas no banco |
+| `VAPID_ASSUNTO` | Contato das chaves VAPID (URL ou `mailto:`) | `URL_PUBLICA` |
+| `PUSH_LOTE_MS` / `PUSH_INTERVALO_MS` | Agrupamento do movimento dos amigos | 2 min / 20 min |
 
 ## Publicar no Render
 
@@ -46,6 +50,7 @@ npm test
    Se aparecer `"banco":"arquivo"`, o Turso não está configurado e os dados **vão sumir** no próximo reinício.
 
 **Plano:** no free, o servidor hiberna após 15 min sem acesso e o primeiro acesso leva ~1 min. Na festa o tráfego o mantém acordado.
+Os avisos agendados conferem o horário a cada acesso; um monitor no UptimeRobot (a cada 5 min em `/saude`) garante que saiam na hora.
 Para a semana dos links, o Starter (US$ 7/mês) elimina a espera; dá para voltar ao free depois.
 
 ## Onde ficam os dados

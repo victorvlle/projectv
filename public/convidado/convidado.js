@@ -3,9 +3,21 @@
   'use strict';
   const $ = (id) => document.getElementById(id);
   const telas = ['tela-carregando', 'tela-bloqueio', 'tela-perfil', 'tela-principal', 'tela-contribuicoes',
-    'tela-playlist', 'tela-caronas', 'tela-chegar', 'tela-pos'];
+    'tela-playlist', 'tela-caronas', 'tela-chegar', 'tela-pos', 'tela-avisos'];
   let telaAtual = 'tela-carregando';
-  function mostrar(qual) { telaAtual = qual; telas.forEach((t) => $(t).classList.toggle('oculto', t !== qual)); }
+  function mostrar(qual) {
+    telaAtual = qual;
+    telas.forEach((t) => $(t).classList.toggle('oculto', t !== qual));
+    informarTela();
+    document.dispatchEvent(new CustomEvent('pv:tela', { detail: qual }));
+  }
+  // Conta ao servidor qual tela está aberta (nada se a aba está escondida). Assim quem
+  // já está olhando a playlist não recebe aviso de "música nova".
+  function informarTela() {
+    if (!socket || !socket.connected) return;
+    socket.emit('tela', document.hidden ? null : telaAtual.replace(/^tela-/, ''));
+  }
+  document.addEventListener('visibilitychange', () => informarTela());
 
   let token = PV.guardado.ler('pv.token');
   let eu = null;
@@ -325,7 +337,7 @@
   // Telas extras: hash -> id da tela. #pos só abre quando a atividade foi liberada.
   const TELAS = {
     '#contribuicoes': 'tela-contribuicoes', '#playlist': 'tela-playlist',
-    '#caronas': 'tela-caronas', '#chegar': 'tela-chegar', '#pos': 'tela-pos',
+    '#caronas': 'tela-caronas', '#chegar': 'tela-chegar', '#pos': 'tela-pos', '#avisos': 'tela-avisos',
   };
   function irPara(hash) {
     if (!eu || !eu.perfilCompleto) return;
@@ -394,6 +406,7 @@
         carregarFesta()
           .then(() => { if (eu.perfilCompleto && telaAtual === 'tela-carregando') irPara(location.hash); })
           .catch(() => {});
+        informarTela();
       },
       aoNegar: bloquear,
       eventos: {

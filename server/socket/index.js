@@ -8,6 +8,7 @@
 
 const { convidadoDoToken } = require('../rotas/util');
 const seg = require('../seguranca');
+const notificacoes = require('../notificacoes');
 
 function registrar(io) {
   io.use(async (socket, next) => {
@@ -35,6 +36,12 @@ function registrar(io) {
     if (tipo === 'convidado') {
       socket.join('convidados');
       socket.join(`c:${convidadoId}`);
+      // Qual tela a pessoa está olhando agora (null = aba escondida). Só usado para
+      // não mandar aviso de "música nova" para quem já está vendo a playlist.
+      socket.on('tela', (tela) => {
+        notificacoes.marcarTela(socket.id, convidadoId, typeof tela === 'string' && /^[a-z]{1,20}$/.test(tela) ? tela : null);
+      });
+      socket.on('disconnect', () => notificacoes.sairTela(socket.id));
     } else {
       socket.join(tipo); // 'admin' ou 'telao'
     }

@@ -1,6 +1,6 @@
 # Status do desenvolvimento
 
-Atualizado em 23/10/2026.
+Atualizado em 26/10/2026.
 
 ## Concluído e verificado (Etapa B — fundação)
 
@@ -37,6 +37,11 @@ Atualizado em 23/10/2026.
 - [x] Notificações (Web Push): ativar/desativar, passo a passo do iPhone com atalho já logado, movimento dos amigos agrupado,
       programados (véspera, contribuições, 2h, portões, campeão do pós), atividade liberada, avisos livres no admin
 - [x] Segurança: 46 ataques barrados (inclui SSRF nas inscrições de push); testes automatizados: 47 passando
+- [x] Notificações v2: folha de benefícios + teste real só no aparelho que ativou (Android/computador); passo a passo ilustrado
+      de 4 etapas no iPhone (Safari, ícone, iOS antigo, app embutido, sem suporte); tela Notificações (sino) com permissão,
+      aparelhos (até 5, escolher qual remover), testar e desativar; fila do movimento dos amigos no banco; não avisa quem está
+      com a tela aberta; agendados também a cada acesso; admin com público estimado, confirmação na tela, envio único, teste por pessoa e falhas
+- [x] Segurança: 50 ataques barrados; testes automatizados: 55 passando; 40 verificações no navegador (simuladas, não em celular real)
 - [x] Deploy no Render + Turso: https://projectv-pec1.onrender.com (`/saude` responde `banco: turso`, verificado em 24/10)
 
 ## Pendente (Etapa C, em ordem)
@@ -64,3 +69,4 @@ Atualizado em 23/10/2026.
 
 - Confirmar número de convidados, TV/projetor e internet no local
 - Monitor no UptimeRobot (a cada 5 min em /saude) para os avisos agendados saírem com o Render free; pausar depois da festa
+- Testar as notificações num Android e num iPhone de verdade (roteiro no PDF de entrega das notificações)

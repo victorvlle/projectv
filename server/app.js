@@ -55,6 +55,27 @@ function criarApp() {
   const jsonPequeno = express.json({ limit: '32kb' });
   app.use((req, res, next) => (req.path === '/api/admin/restaurar' ? next() : jsonPequeno(req, res, next)));
 
+  // Cada acesso também serve de relógio para os avisos agendados (no máximo 1x a cada 30 s):
+  // com o Render free dormindo, quem acorda o servidor já dispara o que estiver na hora.
+  const notificacoes = require('./notificacoes');
+  app.use((req, _res, next) => {
+    if (req.path === '/saude' || req.path.startsWith('/api/')) notificacoes.tocar();
+    next();
+  });
+
+  // Defesa extra: ação que muda dados só vale vindo do próprio site. (As sessões já vão
+  // no cabeçalho Authorization, então outro site não consegue agir em nome de ninguém;
+  // isto fecha a porta mesmo que algum dia se use cookie.)
+  app.use('/api', (req, res, next) => {
+    if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
+    const origem = req.get('origin');
+    if (!origem) return next(); // apps e testes sem navegador não mandam Origin
+    let host = '';
+    try { host = new URL(origem).host; } catch (_) { /* origem inválida */ }
+    if (host && host === req.get('host')) return next();
+    return res.status(403).json({ ok: false, erro: 'Origem não permitida.' });
+  });
+
   app.get('/saude', async (_req, res) => {
     try {
       await banco.um('SELECT 1 AS ok');

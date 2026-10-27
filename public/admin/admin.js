@@ -335,28 +335,77 @@
       <div><b>${r.pessoas}</b><small>Com avisos</small></div>
       <div><b>${Math.max(0, r.convidados - r.pessoas)}</b><small>Sem avisos</small></div>
       <div><b>${r.aparelhos}</b><small>Aparelhos</small></div>`;
+    const escolhido = $('teste-para').value;
+    $('teste-para').innerHTML = avisos.inscritos.length
+      ? avisos.inscritos.map((i) => `<option value="${PV.esc(i.id)}">${PV.esc(i.nome)} (${i.aparelhos})</option>`).join('')
+      : '<option value="">Ninguém ativou ainda</option>';
+    if (avisos.inscritos.some((i) => i.id === escolhido)) $('teste-para').value = escolhido;
+    $('teste-enviar').disabled = !avisos.inscritos.length;
     $('programados').innerHTML = avisos.programados.map((p) => `
       <div class="item"><div class="item-nome">${PV.esc(p.nome)}
         ${p.enviado ? '<span class="selo ok">enviado</span>' : '<span class="selo pendente">pendente</span>'}</div>
-        <div class="item-sub">${PV.dataCurta(p.quando)}${p.enviado ? ` · chegou em ${p.entregues} aparelho(s)` : ''}</div></div>`).join('');
+        <div class="item-sub">${PV.dataCurta(p.quando)}${p.enviado ? ` · chegou em ${p.entregues} aparelho(s)${p.falhas ? ` · ${p.falhas} falha(s)` : ''}` : ''}</div></div>`).join('');
     $('historico-avisos').innerHTML = avisos.historico.filter((h) => h.titulo !== '(sem envio)').map((h) => `
       <div class="item"><div class="item-nome">${PV.esc(h.titulo)}</div>
         <div class="item-sub">${PV.esc(h.corpo)}</div>
-        <div class="item-sub">${PV.dataCurta(h.enviadoEm)} · ${h.para} pessoa(s), ${h.entregues} aparelho(s)</div></div>`).join('')
+        <div class="item-sub">${PV.dataCurta(h.enviadoEm)} · ${h.para} pessoa(s), ${h.entregues} aparelho(s)${h.falhas ? ` · <span class="falhou">${h.falhas} falha(s)</span>` : ''}</div></div>`).join('')
       || '<p class="fraco">Nada enviado ainda.</p>';
   }
 
-  $('form-aviso').addEventListener('submit', async (e) => {
+  // Envio em massa: primeiro revisa (público estimado + prévia), depois confirma.
+  // O id do envio nasce na revisão: clicar duas vezes em "Confirmar" não manda duas vezes.
+  const novoId = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`);
+  let envioPendente = null;
+  function fecharConfirmacao() { envioPendente = null; $('confirmar-aviso').classList.add('oculto'); $('aviso-revisar').disabled = false; }
+  $('form-aviso').addEventListener('submit', (e) => {
     e.preventDefault();
-    if (!confirm('Mandar esse aviso para todo mundo que ativou as notificações?')) return;
-    const r = await acao(() => api('POST', '/avisos', {
-      titulo: $('aviso-titulo').value, corpo: $('aviso-corpo').value, url: $('aviso-url').value,
-    }));
-    if (r) {
-      PV.avisar(`Aviso enviado: ${r.entregues} aparelho(s).`, 'ok');
-      $('aviso-corpo').value = '';
-      carregar();
-    }
+    const corpo = $('aviso-corpo').value.trim();
+    if (corpo.length < 2) { PV.avisar('Escreva a mensagem.', 'erro'); return; }
+    const r = avisos ? avisos.resumo : { pessoas: 0, aparelhos: 0 };
+    const sel = $('aviso-url');
+    envioPendente = { id: novoId(), titulo: $('aviso-titulo').value.trim() || '🎃 Project V', corpo, url: sel.value };
+    $('aviso-revisar').disabled = true;
+    const box = $('confirmar-aviso');
+    box.innerHTML = r.aparelhos ? `
+      <p><b>Vai para ${r.pessoas} pessoa(s), em ${r.aparelhos} aparelho(s).</b></p>
+      <div class="previa"><b>${PV.esc(envioPendente.titulo)}</b><span>${PV.esc(corpo)}</span><small>Ao tocar: ${PV.esc(sel.options[sel.selectedIndex].text)}</small></div>
+      <div class="linha-teste"><button class="botao" type="button" id="aviso-confirmar">Confirmar envio</button>
+        <button class="botao secundario" type="button" id="aviso-cancelar">Cancelar</button></div>`
+      : `<p>Ninguém ativou as notificações ainda: não há para quem mandar.</p>
+        <button class="botao secundario" type="button" id="aviso-cancelar">Fechar</button>`;
+    box.classList.remove('oculto');
+    (box.querySelector('#aviso-confirmar') || box.querySelector('#aviso-cancelar')).focus();
+  });
+  document.addEventListener('click', async (e) => {
+    if (e.target.id === 'aviso-cancelar') fecharConfirmacao();
+    if (e.target.id !== 'aviso-confirmar' || !envioPendente) return;
+    const botao = e.target;
+    botao.disabled = true;
+    botao.textContent = 'Enviando…';
+    const r = await acao(() => api('POST', '/avisos', envioPendente));
+    if (!r) { botao.disabled = false; botao.textContent = 'Tentar de novo'; return; } // mesmo id: não duplica
+    const falhas = r.falhas ? ` · ${r.falhas} falha(s)` : '';
+    const expiradas = r.expiradas ? ` · ${r.expiradas} aparelho(s) expirado(s) removido(s)` : '';
+    $('confirmar-aviso').innerHTML = r.pulado
+      ? '<p>Esse aviso já tinha sido enviado. Nada foi repetido.</p>'
+      : `<p class="ok-envio">Enviado: chegou ao serviço de push em ${r.entregues} de ${r.aparelhos} aparelho(s)${falhas}${expiradas}.</p>`;
+    envioPendente = null;
+    $('aviso-corpo').value = '';
+    $('aviso-revisar').disabled = false;
+    carregar();
+  });
+
+  $('teste-enviar').addEventListener('click', async () => {
+    const id = $('teste-para').value;
+    if (!id) return;
+    const b = $('teste-enviar');
+    b.disabled = true;
+    const r = await acao(() => api('POST', '/avisos/teste', { convidadoId: id }));
+    $('teste-resultado').textContent = r
+      ? `Teste para ${r.nome}: chegou ao serviço de push em ${r.entregues} de ${r.aparelhos} aparelho(s)${r.falhas ? `, ${r.falhas} falha(s)` : ''}.`
+      : '';
+    setTimeout(() => { b.disabled = false; }, 3000);
   });
 
   // -------------------------------------------------------------- atividades

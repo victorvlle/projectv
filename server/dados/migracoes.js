@@ -222,4 +222,23 @@ module.exports = [
       CREATE INDEX IF NOT EXISTS idx_push_enviados_quando ON push_enviados (enviado_em)
     `,
   },
+  {
+    // Rótulo amigável do aparelho, falhas por envio e fila persistente do movimento dos amigos.
+    nome: 'notificações: aparelhos, falhas e fila',
+    sql: `
+      CREATE TABLE IF NOT EXISTS push_fila (
+        tipo TEXT PRIMARY KEY,
+        n INTEGER NOT NULL DEFAULT 0,
+        autores TEXT NOT NULL DEFAULT '[]',
+        desde INTEGER,
+        ultimo_envio INTEGER NOT NULL DEFAULT 0
+      )
+    `,
+    // ALTER TABLE não tem "IF NOT EXISTS": confere as colunas antes (migração pode rodar de novo em teste).
+    async depois(c) {
+      const cols = async (t) => new Set((await c.execute(`SELECT name FROM pragma_table_info('${t}')`)).rows.map((r) => r.name));
+      if (!(await cols('push_inscricoes')).has('aparelho')) await c.execute('ALTER TABLE push_inscricoes ADD COLUMN aparelho TEXT');
+      if (!(await cols('push_enviados')).has('falhas')) await c.execute('ALTER TABLE push_enviados ADD COLUMN falhas INTEGER NOT NULL DEFAULT 0');
+    },
+  },
 ];

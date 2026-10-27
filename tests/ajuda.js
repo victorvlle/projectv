@@ -14,8 +14,8 @@ async function subir() {
   await new Promise((r) => server.listen(0, r));
   const base = `http://127.0.0.1:${server.address().port}`;
 
-  async function req(metodo, caminho, { token, corpo, cru } = {}) {
-    const headers = {};
+  async function req(metodo, caminho, { token, corpo, cru, cabecalhos } = {}) {
+    const headers = { ...(cabecalhos || {}) };
     if (token) headers.Authorization = `Bearer ${token}`;
     if (corpo !== undefined) headers['Content-Type'] = 'application/json';
     const r = await fetch(base + caminho, { method: metodo, headers, body: corpo === undefined ? undefined : JSON.stringify(corpo) });

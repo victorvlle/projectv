@@ -326,7 +326,20 @@ async function main() {
       await req('POST', '/api/eu/push', { token: tV, corpo: { inscricao: { endpoint: `https://fcm.googleapis.com/fcm/send/v${i}`, keys: { p256dh: 'B'.repeat(87), auth: 'a'.repeat(22) } } } });
     }
     const aparelhos = (await req('GET', '/api/admin/avisos', { token: admin })).json.resumo.aparelhos;
-    barrado(GN, 'Encher o servidor de inscrições (8 aparelhos para a mesma pessoa)', aparelhos <= 5, `${aparelhos} guardados (limite de 5 por pessoa)`);
+    barrado(GN, 'Encher o servidor de inscrições (8 aparelhos para a mesma pessoa)', aparelhos <= 5, `${aparelhos} guardados; do 6º em diante o servidor recusa (limite de 5 por pessoa)`);
+    const meusV = (await req('POST', '/api/eu/push/situacao', { token: tV, corpo: {} })).json.aparelhos;
+    const apagarAlheio = await req('DELETE', `/api/eu/push/aparelhos/${meusV[0].id}`, { token: tA });
+    const continuam = (await req('POST', '/api/eu/push/situacao', { token: tV, corpo: {} })).json.total;
+    barrado(GN, 'Desligar os avisos do celular de outra pessoa', apagarAlheio.status === 404 && continuam === meusV.length,
+      `HTTP ${apagarAlheio.status}; os ${continuam} aparelhos dela continuam`);
+    const testeAlheio = await req('POST', '/api/eu/push/teste', { token: tA, corpo: { endpoint: 'https://fcm.googleapis.com/fcm/send/v0' } });
+    barrado(GN, 'Disparar notificação de teste no celular de outra pessoa', testeAlheio.status === 404, `HTTP ${testeAlheio.status}`);
+    const idRep = `rep-${Date.now()}`;
+    const reps = await Promise.all([1, 2, 3].map(() => req('POST', '/api/admin/avisos', { token: admin, corpo: { id: idRep, corpo: 'Repetido' } })));
+    const saiu = reps.filter((r) => r.status === 200 && !r.json.pulado).length;
+    barrado(GN, 'Mandar o mesmo aviso 3 vezes (clique repetido / requisição reenviada)', saiu === 1, `${saiu} envio de fato; os outros foram ignorados`);
+    const deFora = await req('POST', '/api/eu/push', { token: tA, corpo: { inscricao: { endpoint: 'https://fcm.googleapis.com/fcm/send/fora', keys: { p256dh: 'B'.repeat(87), auth: 'a'.repeat(22) } } }, headers: { Origin: 'https://site-malicioso.com' } });
+    barrado(GN, 'Outro site disparar ação no Project V pelo navegador do convidado', deFora.status === 403, `HTTP ${deFora.status} (origem conferida)`);
     const manifestoRuim = await req('GET', '/manifest/..%2f..%2fpackage.json.webmanifest');
     barrado(GN, 'Usar o manifesto do atalho para ler arquivos', manifestoRuim.status === 404, `HTTP ${manifestoRuim.status}`);
 
