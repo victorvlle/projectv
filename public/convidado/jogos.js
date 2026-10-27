@@ -325,7 +325,7 @@
   // -------------------------------------------------------------- ranking
   function desenharRanking(r) {
     if (!r) return;
-    const linha = (x) => `<li class="rank-linha ${x.souEu ? 'eu' : ''} ${x.posicao <= 3 ? `top${x.posicao}` : ''}">
+    const linha = (x) => `<li class="rank-linha ${x.souEu ? 'rank-minha' : ''} ${x.posicao <= 3 ? `top${x.posicao}` : ''}">
       <span class="rank-pos">${x.posicao <= 3 ? ['🥇', '🥈', '🥉'][x.posicao - 1] : `${x.posicao}º`}</span>
       <span class="avatar">${emoji(x.avatar)}</span><span class="rank-nome">${esc(x.souEu ? `${x.nome} (você)` : x.nome)}</span>
       <span class="rank-pts">${x.pontos}</span></li>`;
