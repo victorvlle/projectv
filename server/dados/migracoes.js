@@ -370,4 +370,15 @@ module.exports = [
       }
     },
   },
+  {
+    nome: 'pontos de colaboração para quem sugeriu música ou ofereceu carona antes dos pontos existirem',
+    sql: `
+      INSERT OR IGNORE INTO pontos_log (convidado_id, atividade, pontos, motivo, chave, criado_em)
+        SELECT m.convidado_id, 'colaboracao', 5, substr('Música na playlist: ' || m.titulo, 1, 120), 'musica:' || m.id, m.criado_em
+          FROM playlist_musicas m JOIN convidados c ON c.id = m.convidado_id;
+      INSERT OR IGNORE INTO pontos_log (convidado_id, atividade, pontos, motivo, chave, criado_em)
+        SELECT k.motorista_id, 'colaboracao', 5, 'Ofereceu carona', 'carona:' || k.motorista_id, k.criado_em
+          FROM caronas k JOIN convidados c ON c.id = k.motorista_id
+    `,
+  },
 ];

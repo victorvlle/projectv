@@ -54,7 +54,8 @@ Atualizado em 27/10/2026.
       revelação e 60 s; aviso no celular e push ao sorteado; confirmação no admin (+5)
 - [x] Enigmas de filmes de terror (clássicos e recentes): 3 por dia (8h, 13h, 19h) de qua a sex, 9 no total (+10 e bônus 10/5/3, um aviso por dia ao meio-dia) e Colaborar conta ponto (carona +5, música +5, bebida levada +5 com confirmação)
 - [x] Enigmas em modo prova: revelar inicia relógio do servidor (2 min, 5 tentativas), sair da página encerra; perguntas mais difíceis sem dica
-- [x] Testes automatizados: 84 passando; 56 ataques barrados
+- [x] Pontos retroativos: quem já tinha sugerido música ou oferecido carona ganha os +5 (uma vez)
+- [x] Testes automatizados: 85 passando; 56 ataques barrados
 - [x] Deploy no Render + Turso: https://projectv-pec1.onrender.com (`/saude` responde `banco: turso`, verificado em 24/10)
 
 ## Pendente (Etapa C, em ordem)

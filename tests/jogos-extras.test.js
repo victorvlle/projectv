@@ -185,3 +185,19 @@ test('três enigmas por dia (8h, 13h e 19h), de quarta a sexta, e um aviso só p
   assert.ok(dias.some((d) => d.chave === 'enigma-dia-2026-10-30' && /3 enigmas no site da festa, abrindo às 8h, 13h e 19h/.test(d.corpo)));
   for (const d of dias) assert.equal(notif.problemaNoAviso(d), null, d.corpo);
 });
+
+test('quem sugeriu música ou ofereceu carona antes dos pontos existirem também ganha (sem duplicar)', async () => {
+  const banco2 = require('../server/dados/banco');
+  const antigo = await h.convidado('Veterano');
+  await s.req('POST', '/api/playlist', { token: antigo.token, corpo: { titulo: 'Música Antiga', artista: 'Banda Velha' } });
+  await s.req('PUT', '/api/caronas/minha', { token: antigo.token, corpo: { vagas: 1, trajeto: 'ida', saindo: 'Centro' } });
+  // Simula o banco de antes: a música e a carona existiam, os pontos não.
+  await banco2.rodar("DELETE FROM pontos_log WHERE convidado_id = ?", [antigo.id]);
+  assert.equal(await h.pontosDe(antigo.token), 0);
+  const migracoes = require('../server/dados/migracoes');
+  const degrau = migracoes[migracoes.length - 1];
+  for (let i = 0; i < 2; i++) { // rodar duas vezes não duplica
+    for (const sql of degrau.sql.split(/;\s*\n/).map((x) => x.trim()).filter(Boolean)) await banco2.rodar(sql);
+  }
+  assert.equal(await h.pontosDe(antigo.token), 10);
+});

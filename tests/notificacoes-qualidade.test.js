@@ -7,6 +7,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { subir } = require('./ajuda');
 const notif = require('../server/notificacoes');
+// Hora fixa de tarde: não depende da hora em que os testes rodam.
+notif._definirRelogio(() => Date.parse('2026-10-28T15:00:00-04:00'));
 const banco = require('../server/dados/banco');
 
 let s;
