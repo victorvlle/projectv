@@ -41,7 +41,7 @@ const ATIVIDADES = [
     nome: 'Quiz de Terror Relâmpago',
     enigma: 'O Teste do Medo',
     icone: '⚡',
-    descricao: 'Perguntas no telão, resposta pelo celular. Uma chance só: acertou, +500.',
+    descricao: 'Perguntas no telão, resposta pelo celular. Uma chance só; quanto mais rápido, mais pontos (até +500).',
     padrao: { estado: 'bloqueada' },
   },
   {

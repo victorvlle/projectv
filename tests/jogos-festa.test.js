@@ -50,13 +50,21 @@ test('em teste: só os testadores veem e jogam; para os outros continua com cade
 // Leva o cronograma do quiz para um ponto: 'pergunta' k (0 = primeira) ou 'revelacao' k ou 'fim'.
 const quizMod = require('../server/dados/quiz');
 const festaDados = require('../server/dados/festa');
-async function irPara(fase, k = 0) {
+// Pontos do quiz dependem de milissegundos: compara com folga.
+const perto = async (token, esperado, msg) => {
+  const v = await h.pontosDe(token);
+  assert.ok(Math.abs(v - esperado) <= 4, `${msg || ''} esperava ~${esperado}, veio ${v}`);
+};
+async function irPara(fase, k = 0, meio = false) {
   const cfg = await quizMod.config();
   const tempo = cfg.sessao.tempoS * 1000;
   const bloco = tempo + quizMod.REVELA_MS;
   const desde = fase === 'fim' ? quizMod.PREPARO_MS + bloco * cfg.sessao.ids.length + 1000
-    : quizMod.PREPARO_MS + k * bloco + (fase === 'pergunta' ? 1000 : tempo + 1000);
-  await festaDados.gravar('quiz', { ...cfg, sessao: { ...cfg.sessao, inicioEm: Date.now() - desde } });
+    : quizMod.PREPARO_MS + k * bloco + (fase === 'pergunta' ? (meio ? tempo / 2 : 1) : tempo + 1000);
+  const novo = Date.now() - desde;
+  // As respostas andam junto com o cronograma (o tempo de cada uma continua o mesmo).
+  await banco.rodar('UPDATE quiz_respostas SET respondida_em = respondida_em + ?', [novo - cfg.sessao.inicioEm]);
+  await festaDados.gravar('quiz', { ...cfg, sessao: { ...cfg.sessao, inicioEm: novo } });
 }
 
 test('quiz estilo Kahoot: sala, início pelo admin, uma resposta, certa só na revelação, +500 de teste, placar', async () => {
@@ -101,7 +109,7 @@ test('quiz estilo Kahoot: sala, início pelo admin, uma resposta, certa só na r
   assert.equal(fv2.quiz.atual.correta, 2);
   assert.equal(fv2.quiz.atual.acertei, true);
   assert.equal(fv2.quiz.proxima, true);
-  assert.equal(await h.pontosDe(victor.token), 500);
+  await perto(victor.token, 500, 'respondeu na hora');
   assert.equal(await h.pontosDe(lucas.token), 0);
   assert.equal((await responder(lucas, 'q1', 2)).status, 409, 'depois do tempo não vale');
   const t = await telao();
@@ -117,7 +125,7 @@ test('quiz estilo Kahoot: sala, início pelo admin, uma resposta, certa só na r
   assert.equal(fim.fase, 'fim');
   assert.equal(fim.acertos, 1);
   assert.deepEqual(fim.placar.map((p) => [p.nome, p.acertos]).sort(), [['Lucas Teste', 1], ['Victor Teste', 1]]);
-  assert.equal(await h.pontosDe(lucas.token), 500);
+  await perto(lucas.token, 500);
   assert.equal((await telao()).quiz.placar.length, 2);
 });
 
@@ -152,7 +160,29 @@ test('quiz: jogado não recomeça sozinho; parar no meio; recomeçar zera respos
   await irPara('fim');
   assert.equal(ini.status, 200);
   assert.equal(resp.status, 200);
-  assert.equal(await h.pontosDe(victor.token), 500);
+  await perto(victor.token, 500);
+});
+
+test('quiz: quanto mais rápido, mais pontos (500 na hora, 375 na metade do tempo, nunca menos de 250)', async () => {
+  assert.equal(quizMod.pontosPor(0, 20000), 500);
+  assert.equal(quizMod.pontosPor(10000, 20000), 375);
+  assert.equal(quizMod.pontosPor(20000, 20000), 250);
+  assert.equal(quizMod.pontosPor(99999, 20000), 250);
+  const antes = await h.pontosDe(lucas.token);
+  await s.req('POST', '/api/quiz/entrar', { token: lucas.token });
+  assert.equal((await s.req('POST', '/api/admin/quiz/iniciar', { token: admin, corpo: { quantas: 1 } })).status, 200);
+  await irPara('pergunta', 0, true); // metade do tempo já passou
+  const q = (await festa(lucas)).quiz.atual;
+  const certa = { q2: 0, q3: 3, q4: 1, q5: 2 }[q.id];
+  assert.equal((await s.req('POST', `/api/quiz/${q.id}/resposta`, { token: lucas.token, corpo: { escolha: certa } })).status, 200);
+  await irPara('revelacao', 0);
+  const r = (await festa(lucas)).quiz.atual;
+  assert.ok(Math.abs(r.ganhou - 375) <= 4, `ganhou ${r.ganhou}`);
+  assert.ok(/^10,\d$/.test(r.segundos), r.segundos);
+  await perto(lucas.token, antes + 375);
+  const t = (await telao()).quiz.atual.acertaram[0];
+  assert.ok(Math.abs(t.pontos - 375) <= 4);
+  await s.req('POST', '/api/admin/quiz/encerrar', { token: admin });
 });
 
 test('concurso: não vota em si, troca o voto, contagem escondida; empate divide a colocação', async () => {
@@ -174,13 +204,13 @@ test('concurso: não vota em si, troca o voto, contagem escondida; empate divide
   assert.equal((await s.req('POST', '/api/admin/concurso/publicar', { token: admin })).status, 200);
   const podio = (await festa(lucas)).concurso.podio;
   assert.deepEqual(podio.map((p) => [p.nome, p.posicao, p.pontos]).sort(), [['Lucas Teste', 1, 1000], ['Victor Teste', 1, 1000]]);
-  assert.equal(await h.pontosDe(lucas.token), 1000);
-  assert.equal(await h.pontosDe(victor.token), 1500);
+  await perto(lucas.token, 1375);
+  await perto(victor.token, 1500);
   assert.equal((await telao()).telao.modo, 'concurso');
   // Publicar de novo (despublicar + publicar) não duplica
   await s.req('POST', '/api/admin/concurso/despublicar', { token: admin });
   await s.req('POST', '/api/admin/concurso/publicar', { token: admin });
-  assert.equal(await h.pontosDe(lucas.token), 1000);
+  await perto(lucas.token, 1375);
 });
 
 test('correio: anônimo, com freio, só aprovadas vão ao telão (sem o autor)', async () => {
@@ -216,7 +246,7 @@ test('previsões em teste: só testador palpita; +1000 por acerto marcado como t
   await s.req('POST', '/api/admin/previsoes/encerrar', { token: admin });
   await s.req('PUT', '/api/admin/previsoes/sobra-bebida/resposta', { token: admin, corpo: { resposta: 'destilado' } });
   assert.equal((await s.req('POST', '/api/admin/previsoes/publicar', { token: admin })).status, 200);
-  assert.equal(await h.pontosDe(victor.token), 2500);
+  await perto(victor.token, 2500);
 });
 
 test('maldição em teste: só testadores são sorteados; cumprida vale +500 de teste', async () => {
@@ -228,7 +258,7 @@ test('maldição em teste: só testadores são sorteados; cumprida vale +500 de 
     await s.req('POST', `/api/admin/maldicao/${r.json.maldicao.id}/resolver`, { token: admin, corpo: { estado: i === 0 ? 'cumprida' : 'cancelada' } });
   }
   const total = (await h.pontosDe(victor.token)) + (await h.pontosDe(lucas.token));
-  assert.ok(total === 2500 + 1000 + 500 || total === 2500 + 1000 + 1000, `total ${total}`);
+  assert.ok([4000, 4500].some((x) => Math.abs(total - x - 375) <= 8), `total ${total}`);
 });
 
 test('apagar dados de teste: some tudo que foi teste, nada real muda, atividades saem do teste', async () => {
@@ -265,7 +295,7 @@ test('liberada de verdade: todos jogam e os pontos são reais', async () => {
   await irPara('revelacao', 0);
   await festa(outra);
   const rReal = (await s.req('GET', '/api/ranking', { token: real.token })).json.ranking;
-  assert.equal(rReal.top.find((x) => x.nome === 'Convidada Comum').pontos, 500, 'ponto real aparece para todos');
+  assert.ok(Math.abs(rReal.top.find((x) => x.nome === 'Convidada Comum').pontos - 500) <= 4, 'ponto real aparece para todos');
   await h.liberar('quiz', 'bloqueada');
 });
 

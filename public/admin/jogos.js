@@ -160,7 +160,7 @@
       <p><span class="selo ${rodando ? 'pendente' : q.fase === 'fim' ? 'ok' : 'fora'}">${fases[q.fase]}</span></p>
       <p class="fraco">Como funciona: as pessoas tocam em <b>Entrar na sala</b> no celular e aparecem no telão. Você toca em <b>Iniciar quiz</b> e o resto é automático:
         5 s de preparação, ${q.tempoS} s por pergunta, ${q.revelaS} s mostrando a resposta certa e já vai para a próxima. No fim, o telão mostra quem mais acertou.
-        Cada acerto vale +${q.pontos}.</p>
+        Acerto vale de +${q.pontos} (respondeu na hora) a +${q.pontos / 2} (no fim do tempo), como no Kahoot.</p>
       <div class="item-acoes"><button class="botao secundario" type="button" data-acao="tel-modo" data-modo="quiz">Mostrar a sala no telão</button></div>
       <p style="margin:10px 0 6px"><b>Na sala (${q.sala.length}):</b></p><div class="sala-admin">${sala}</div>
       <div class="linha-teste" style="margin-top:12px">${acoes}</div>

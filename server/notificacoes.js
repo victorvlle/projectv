@@ -468,7 +468,7 @@ async function despacharSociais(agora = Date.now()) {
 const TEXTOS_LIBERADA = {
   previsoes: ['Project V: Previsões abertas', 'As apostas sobre a festa estão abertas até sábado às 17h. Cada acerto vale 1000 pontos.'],
   pos: ['Project V: votação do pós aberta', 'Vote no lugar para onde o grupo vai depois da meia-noite.'],
-  quiz: ['Project V: Quiz Relâmpago', 'As perguntas aparecem no telão. Responda pelo celular: cada acerto vale 500 pontos.'],
+  quiz: ['Project V: Quiz Relâmpago', 'As perguntas aparecem no telão. Responda pelo celular: cada acerto vale até 500 pontos.'],
   concurso: ['Project V: Concurso de Fantasia', 'A votação da melhor fantasia está aberta no site da festa.'],
   correio: ['Project V: Correio das Trevas', 'Mande uma carta anônima para alguém da festa. As aprovadas aparecem no telão.'],
 };

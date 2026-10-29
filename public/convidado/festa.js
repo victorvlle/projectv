@@ -44,7 +44,8 @@
   function telaQuiz(q) {
     const salaTxt = `<p class="quiz-sala-conta">👥 <b>${q.naSalaTotal}</b> ${q.naSalaTotal === 1 ? 'pessoa' : 'pessoas'} na sala</p>`;
     const entrar = `<button class="botao largo quiz-entrar" type="button" data-quiz-entrar>Entrar na sala ⚡</button>`;
-    const regras = `<p class="mudo">${q.total} perguntas no telão, ${q.tempoS} segundos cada, <b>uma resposta só</b>. Acertou: +${pts(q.pontos)} pontos.</p>`;
+    const regras = `<p class="mudo">${q.total} perguntas no telão, ${q.tempoS} segundos cada, <b>uma resposta só</b>.
+      Acertou: até +${pts(q.pontos)} pontos. <b>Quanto mais rápido, mais pontos.</b></p>`;
     if (q.fase === 'sala') {
       return q.naSala
         ? `<section class="cartao quiz-cartao registrada"><p class="quiz-veredito">Você está na sala ✓</p>
@@ -58,10 +59,10 @@
     }
     if (q.fase === 'fim') {
       return `<section class="cartao quiz-cartao acertou"><p class="quiz-veredito">🏁 Fim do quiz!</p>
-        <p>Você acertou <b>${q.acertos || 0} de ${q.total}</b> · +${pts((q.acertos || 0) * q.pontos)} pontos</p>
+        <p>Você acertou <b>${q.acertos || 0} de ${q.total}</b> · +${pts(q.pontosQuiz || 0)} pontos</p>
         ${(q.placar || []).length ? `<h2 class="titulo-secao" style="margin-top:14px">Quem mais acertou</h2><div class="podio-celular">${q.placar.map((p) => `
           <div class="podio-linha"><span class="podio-pos">${['🥇', '🥈', '🥉'][p.posicao - 1] || `${p.posicao}º`}</span><span class="avatar">${emoji(p.avatar)}</span>
-          <span class="podio-nome">${esc(p.nome)}</span><b>${p.acertos}</b></div>`).join('')}</div>` : ''}</section>`;
+          <span class="podio-nome">${esc(p.nome)}<small>${p.acertos} ${p.acertos === 1 ? 'acerto' : 'acertos'}</small></span><b>+${pts(p.pontos)}</b></div>`).join('')}</div>` : ''}</section>`;
     }
     const x = q.atual;
     const cab = `<p class="quiz-num">Pergunta ${x.numero} de ${q.total}</p><h2 class="quiz-pergunta">${esc(x.texto)}</h2>`;
@@ -69,7 +70,7 @@
     if (q.fase === 'revelacao') {
       const certa = `<b>${LETRAS[x.correta]}</b> · ${esc(x.opcoes[x.correta])}`;
       return `<section class="cartao quiz-cartao ${x.acertei ? 'acertou' : 'errou'}">${cab}
-        <p class="quiz-veredito">${x.acertei ? `✓ Você acertou! +${pts(q.pontos)}` : x.minha === null ? 'Você não respondeu esta.' : '✗ Não foi dessa vez.'}</p>
+        <p class="quiz-veredito">${x.acertei ? `✓ Você acertou em ${x.segundos} s! +${pts(x.ganhou)}` : x.minha === null ? 'Você não respondeu esta.' : '✗ Não foi dessa vez.'}</p>
         <p>Resposta certa: ${certa}</p>${minha && !x.acertei ? `<p class="fraco">Sua resposta: ${minha}</p>` : ''}
         <p class="fraco">${q.proxima ? 'Próxima pergunta em' : 'Resultado final em'} <span data-quiz-seg>${resta(q.fimEm)}</span>s · você acertou ${q.acertos || 0} até agora</p></section>`;
     }
@@ -81,7 +82,7 @@
         <div class="quiz-opcoes">${ops}</div>
         <button class="botao largo" type="button" data-quiz-confirmar ${escolhaQuiz === null ? 'disabled' : ''}>
           ${escolhaQuiz === null ? 'Toque numa opção' : `Confirmar ${LETRAS[escolhaQuiz]}`}</button>
-        <p class="fraco quiz-regra">Uma chance só: depois de confirmar, não dá para trocar.</p></section>`;
+        <p class="fraco quiz-regra">Uma chance só: depois de confirmar, não dá para trocar. Quanto mais rápido, mais pontos.</p></section>`;
     }
     return `<section class="cartao quiz-cartao registrada">${cab}
       <p class="quiz-veredito">${minha ? 'Resposta registrada ✓' : '⏱️ Tempo esgotado'}</p><p>${minha || 'Você não respondeu a tempo.'}</p>

@@ -384,7 +384,7 @@
       ${r.top.every((x) => x.pontos === 0) ? '<p class="fraco">Ninguém pontuou ainda. Resolva o enigma do dia, ofereça carona ou sugira músicas.</p>' : ''}
       <section class="cartao pref-bloco"><h2 class="titulo-secao" style="margin-top:0">De onde vêm seus pontos</h2>
         ${ex.porAtividade.length ? `<ul class="rank-extrato">${ex.porAtividade.map((a) => `<li><span>${esc(a.nome)}</span><b>${a.pontos.toLocaleString('pt-BR')}</b></li>`).join('')}</ul>` : '<p class="fraco">Nada ainda.</p>'}
-        <p class="fraco">Os pontos grandes são na festa: Previsões +1000 por acerto · Quiz Relâmpago +500 por acerto · Concurso de Fantasia 1º +1000, 2º +800, 3º +500 · Maldição cumprida +500.
+        <p class="fraco">Os pontos grandes são na festa: Previsões +1000 por acerto · Quiz Relâmpago até +500 por acerto (mais rápido, mais pontos) · Concurso de Fantasia 1º +1000, 2º +800, 3º +500 · Maldição cumprida +500.
           Pré-festa (bônus): Enigma +10 e bônus · Carona +5 · Música +5 · Bebida levada +5 (confirmada na festa).</p>
       </section>`);
   }

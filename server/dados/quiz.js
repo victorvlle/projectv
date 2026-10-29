@@ -6,8 +6,9 @@
 // O cronograma é calculado a partir do horário de início: um telão ou celular que reconecta no meio
 // cai na fase certa. Nenhuma pergunta futura nem a resposta certa sai do servidor antes da hora.
 //
-// PONTOS: +500 por acerto, dados quando a pergunta chega na fase "resposta certa" (sincronizar),
-// uma vez só (chave única por pergunta e pessoa).
+// PONTOS (como no Kahoot): acertou na hora = 500; o valor cai em linha reta até 250 no fim do tempo.
+// O tempo é do servidor: do início da pergunta até a resposta chegar. Dados quando a pergunta chega
+// na fase "resposta certa" (sincronizar), uma vez só (chave única por pergunta e pessoa).
 //
 // MODO TESTE: com a atividade "Em teste", só testadores entram e respondem; tudo fica marcado e o
 // "Apagar dados de teste" zera o quiz.
@@ -20,6 +21,8 @@ const { ErroValidacao, limparTexto } = require('./convidados');
 const { PONTOS_QUIZ, QUIZ_TEMPO_PADRAO_S } = require('../jogos/conteudo');
 
 const LETRAS = ['A', 'B', 'C', 'D'];
+const pontosPor = (ms, tempoMs) => Math.round(PONTOS_QUIZ * (1 - Math.min(1, Math.max(0, ms / tempoMs)) / 2));
+const segundos = (ms) => (Math.max(0, ms) / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const PREPARO_MS = 5000;
 const REVELA_MS = 7000;
 
@@ -73,10 +76,11 @@ async function sincronizar(agora = Date.now()) {
         args: [m.inicioDe(i), fimResposta, s.teste ? 1 : 0, id] });
       if (!r.rowsAffected) return false;
       const q = (await tx.execute({ sql: 'SELECT ordem, correta FROM quiz_perguntas WHERE id = ?', args: [id] })).rows[0];
-      const certos = (await tx.execute({ sql: 'SELECT convidado_id, teste FROM quiz_respostas WHERE pergunta_id = ? AND escolha = ?', args: [id, q.correta] })).rows;
+      const certos = (await tx.execute({ sql: 'SELECT convidado_id, teste, respondida_em FROM quiz_respostas WHERE pergunta_id = ? AND escolha = ?', args: [id, q.correta] })).rows;
       for (const c of certos) {
-        await pontos.conceder({ convidadoId: c.convidado_id, atividade: 'quiz', pontos: PONTOS_QUIZ,
-          motivo: `Quiz: acertou a pergunta ${i + 1}`, chave: `quiz:${id}:${c.convidado_id}`, teste: Boolean(Number(c.teste)) }, tx);
+        const ms = Number(c.respondida_em) - m.inicioDe(i);
+        await pontos.conceder({ convidadoId: c.convidado_id, atividade: 'quiz', pontos: pontosPor(ms, m.tempoMs),
+          motivo: `Quiz: acertou a pergunta ${i + 1} em ${segundos(ms)} s`, chave: `quiz:${id}:${c.convidado_id}`, teste: Boolean(Number(c.teste)) }, tx);
       }
       return true;
     });
@@ -91,20 +95,29 @@ async function sala() {
 }
 const iniciais = (nome) => String(nome || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0].toUpperCase()).join('');
 
-async function acertosNaSessao(s) {
+// Placar da rodada: acertos e pontos (pela rapidez) de cada um. Empate de pontos divide a posição.
+async function placarDaSessao(s) {
   if (!s || !s.ids.length) return [];
+  const m = momento(s, Date.now());
   const linhas = await banco.tudo(
-    `SELECT c.nome, c.avatar, r.convidado_id, COUNT(*) AS acertos FROM quiz_respostas r
+    `SELECT c.nome, c.avatar, r.convidado_id, r.pergunta_id, r.respondida_em FROM quiz_respostas r
        JOIN quiz_perguntas q ON q.id = r.pergunta_id AND q.revelada_em IS NOT NULL AND r.escolha = q.correta
        JOIN convidados c ON c.id = r.convidado_id
-      WHERE r.pergunta_id IN (${s.ids.map(() => '?').join(',')})
-      GROUP BY r.convidado_id, c.nome, c.avatar ORDER BY acertos DESC, c.nome COLLATE NOCASE`, s.ids);
-  // Empate divide a posição (1, 1, 3…).
+      WHERE r.pergunta_id IN (${s.ids.map(() => '?').join(',')})`, s.ids);
+  const porPessoa = new Map();
+  for (const l of linhas) {
+    const i = s.ids.indexOf(l.pergunta_id);
+    const p = porPessoa.get(l.convidado_id) || { nome: l.nome, avatar: l.avatar, acertos: 0, pontos: 0 };
+    p.acertos += 1;
+    p.pontos += pontosPor(Number(l.respondida_em) - m.inicioDe(i), m.tempoMs);
+    porPessoa.set(l.convidado_id, p);
+  }
+  const lista = [...porPessoa.values()].sort((x, y) => y.pontos - x.pontos || x.nome.localeCompare(y.nome));
   let anterior = null;
   let posicao = 0;
-  return linhas.map((l, i) => {
-    if (Number(l.acertos) !== anterior) { posicao = i + 1; anterior = Number(l.acertos); }
-    return { ...l, posicao };
+  return lista.map((p, i) => {
+    if (p.pontos !== anterior) { posicao = i + 1; anterior = p.pontos; }
+    return { ...p, posicao };
   });
 }
 
@@ -113,11 +126,12 @@ async function paraConvidado(euId, agora = Date.now()) {
   await sincronizar(agora);
   const [cfg, lista, pessoas, minhasLinhas] = await Promise.all([
     config(), todas(), sala(),
-    banco.tudo('SELECT pergunta_id, escolha FROM quiz_respostas WHERE convidado_id = ?', [euId]),
+    banco.tudo('SELECT pergunta_id, escolha, respondida_em FROM quiz_respostas WHERE convidado_id = ?', [euId]),
   ]);
   const s = cfg.sessao;
   const m = momento(s, agora);
   const minhas = new Map(minhasLinhas.map((l) => [l.pergunta_id, Number(l.escolha)]));
+  const quando = new Map(minhasLinhas.map((l) => [l.pergunta_id, Number(l.respondida_em)]));
   const total = s ? s.ids.length : lista.length;
   const saida = {
     fase: m.fase, fimEm: m.fimEm || null, total, pontos: PONTOS_QUIZ, tempoS: s ? s.tempoS : cfg.tempoS,
@@ -127,17 +141,22 @@ async function paraConvidado(euId, agora = Date.now()) {
     const porId = new Map(lista.map((q) => [q.id, q]));
     const reveladas = s.ids.slice(0, m.fase === 'fim' ? total : m.fase === 'revelacao' ? m.indice + 1 : m.indice || 0)
       .map((id) => porId.get(id)).filter((q) => q && q.reveladaEm != null);
-    saida.acertos = reveladas.filter((q) => minhas.get(q.id) === q.correta).length;
+    const certas = reveladas.filter((q) => minhas.get(q.id) === q.correta);
+    saida.acertos = certas.length;
+    saida.pontosQuiz = certas.reduce((t, q) => t + pontosPor(quando.get(q.id) - m.inicioDe(s.ids.indexOf(q.id)), m.tempoMs), 0);
     if (m.fase === 'pergunta' || m.fase === 'revelacao') {
       const q = porId.get(s.ids[m.indice]);
       const minha = minhas.has(q.id) ? minhas.get(q.id) : null;
       saida.atual = { id: q.id, numero: m.indice + 1, texto: q.texto, opcoes: q.opcoes, minha };
-      if (m.fase === 'revelacao') Object.assign(saida.atual, { correta: q.correta, acertei: minha === q.correta });
+      if (m.fase === 'revelacao') {
+        const ms = minha !== null ? quando.get(q.id) - m.inicioDe(m.indice) : null;
+        Object.assign(saida.atual, { correta: q.correta, acertei: minha === q.correta,
+          segundos: ms != null ? segundos(ms) : null, ganhou: minha === q.correta ? pontosPor(ms, m.tempoMs) : 0 });
+      }
       saida.proxima = m.fase === 'revelacao' && m.indice + 1 < total;
     }
     if (m.fase === 'fim') {
-      const placar = await acertosNaSessao(s);
-      saida.placar = placar.slice(0, 5).map((p) => ({ nome: p.nome, avatar: p.avatar, acertos: Number(p.acertos), posicao: p.posicao }));
+      saida.placar = (await placarDaSessao(s)).slice(0, 5);
     }
   }
   return saida;
@@ -263,20 +282,22 @@ async function paraTelao(agora = Date.now()) {
     const porOpcao = [0, 1, 2, 3].map((i) => Number((cont.find((c) => Number(c.escolha) === i) || {}).n || 0));
     saida.atual = { numero: m.indice + 1, texto: q.texto, opcoes: q.opcoes, respostas: porOpcao.reduce((a, b) => a + b, 0) };
     if (m.fase === 'revelacao') {
-      const acertaram = await banco.tudo(
-        `SELECT c.nome, c.avatar FROM quiz_respostas r JOIN convidados c ON c.id = r.convidado_id
-          WHERE r.pergunta_id = ? AND r.escolha = ? ORDER BY r.respondida_em LIMIT 24`, [q.id, q.correta]);
+      const acertaram = (await banco.tudo(
+        `SELECT c.nome, c.avatar, r.respondida_em FROM quiz_respostas r JOIN convidados c ON c.id = r.convidado_id
+          WHERE r.pergunta_id = ? AND r.escolha = ? ORDER BY r.respondida_em LIMIT 24`, [q.id, q.correta]))
+        .map((a) => ({ nome: a.nome, avatar: a.avatar, segundos: segundos(Number(a.respondida_em) - m.inicioDe(m.indice)),
+          pontos: pontosPor(Number(a.respondida_em) - m.inicioDe(m.indice), m.tempoMs) }));
       Object.assign(saida.atual, { correta: q.correta, porOpcao, acertaram });
       saida.proxima = m.indice + 1 < s.ids.length;
     }
   }
   if (m.fase === 'fim') {
-    saida.placar = (await acertosNaSessao(s)).slice(0, 5).map((p) => ({ nome: p.nome, avatar: p.avatar, acertos: Number(p.acertos), posicao: p.posicao, pontos: Number(p.acertos) * PONTOS_QUIZ }));
+    saida.placar = (await placarDaSessao(s)).slice(0, 5);
   }
   return saida;
 }
 
 module.exports = {
   config, momento, sincronizar, paraConvidado, entrar, responder, paraAdmin, iniciar, encerrar, recomecar, editar, definirTempo, paraTelao,
-  LETRAS, PREPARO_MS, REVELA_MS,
+  LETRAS, PREPARO_MS, REVELA_MS, pontosPor,
 };

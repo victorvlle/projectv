@@ -34,7 +34,7 @@
           <span class="avatar">${emoji(p.avatar)}</span><b>${esc(p.iniciais)}</b></div>`;
       }).join('');
       $('quiz-rodape').innerHTML = `${conta}
-        ${q.fase === 'sala' ? '<p class="prev-dica">No site da festa: <b>Quiz Relâmpago → Entrar na sala</b></p>' : '<div class="quiz-cronometro" data-tq-seg></div>'}
+        ${q.fase === 'sala' ? '<p class="prev-dica">No site da festa: <b>Quiz Relâmpago → Entrar na sala</b><br>Acertou: até +500 · quanto mais rápido, mais pontos</p>' : '<div class="quiz-cronometro" data-tq-seg></div>'}
         <div class="sala-bolhas">${bolhas || '<p class="prev-dica">Esperando o primeiro corajoso…</p>'}</div>`;
     } else if (q.fase === 'fim') {
       $('quiz-rotulo').textContent = 'Quiz de Terror Relâmpago';
@@ -53,7 +53,7 @@
       $('quiz-opcoes').innerHTML = x.opcoes.map((o, i) => `<div class="quiz-op-telao op${i} ${revelada ? (i === x.correta ? 'certa' : 'errada') : ''}">
           <b>${L[i]}</b><span>${esc(o)}</span>${revelada ? `<em>${x.porOpcao[i]}</em><i style="width:${Math.round((x.porOpcao[i] / total) * 100)}%"></i>` : ''}</div>`).join('');
       $('quiz-rodape').innerHTML = revelada
-        ? `${x.acertaram.length ? `<p class="quiz-acertaram">Acertaram (+500): ${x.acertaram.map((a) => `<span><span class="avatar mini">${emoji(a.avatar)}</span>${esc(a.nome)}</span>`).join('')}</p>`
+        ? `${x.acertaram.length ? `<p class="quiz-acertaram">Acertaram: ${x.acertaram.map((a) => `<span><span class="avatar mini">${emoji(a.avatar)}</span>${esc(a.nome)} <small>${esc(a.segundos)} s · +${pts(a.pontos)}</small></span>`).join('')}</p>`
           : '<p class="prev-dica">Ninguém acertou essa! 💀</p>'}
           <p class="prev-dica">${q.proxima ? 'Próxima pergunta em' : 'Resultado final em'} <b data-tq-seg></b>s</p>`
         : `<div class="quiz-cronometro" data-tq-seg></div><p class="prev-dica">${x.respostas} de ${q.sala.length} ${q.sala.length === 1 ? 'respondeu' : 'responderam'}</p>`;
