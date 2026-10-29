@@ -34,8 +34,8 @@ test('aberta: responder, alterar, desmarcar e validar escolhas', async () => {
   assert.equal((await responder(ana.token, 'sobra-bebida', 'nada')).status, 200); // alterou
   assert.equal((await responder(ana.token, 'da-pt', betoApelido)).status, 200);
   assert.equal((await responder(ana.token, 'sem-fantasia', 'sim')).status, 200);
-  assert.equal((await responder(ana.token, 'chuva', 'sim')).status, 200);
-  assert.equal((await responder(ana.token, 'chuva', null)).status, 200); // desmarcou
+  assert.equal((await responder(ana.token, 'fantasia-dupla', 'uma')).status, 200);
+  assert.equal((await responder(ana.token, 'fantasia-dupla', null)).status, 200); // desmarcou
   const depois = await prev(ana.token);
   assert.equal(depois.respondidas, 3);
   assert.equal(depois.perguntas.find((x) => x.id === 'sobra-bebida').minha, 'nada');
@@ -65,14 +65,14 @@ test('lista de pessoas tem todos os cadastrados (mesmo quem não entrou); pergun
 test('enviar previsões: trava as escolhas, mas a pessoa continua vendo', async () => {
   const dani = await h.convidado('Dani');
   assert.equal((await s.req('POST', '/api/previsoes/enviar', { token: dani.token })).status, 400, 'precisa responder pelo menos uma');
-  await responder(dani.token, 'chuva', 'sim');
+  await responder(dani.token, 'fantasia-dupla', 'uma');
   const envios = await Promise.all([1, 2].map(() => s.req('POST', '/api/previsoes/enviar', { token: dani.token })));
   assert.ok(envios.every((r) => r.status === 200), 'enviar duas vezes não quebra');
   const p = await prev(dani.token);
   assert.equal(p.enviado, true);
   assert.ok(p.enviadoEm > 0);
-  assert.equal(p.perguntas.find((x) => x.id === 'chuva').minha, 'sim', 'continua vendo a escolha');
-  assert.equal((await responder(dani.token, 'chuva', 'nao')).status, 409);
+  assert.equal(p.perguntas.find((x) => x.id === 'fantasia-dupla').minha, 'uma', 'continua vendo a escolha');
+  assert.equal((await responder(dani.token, 'fantasia-dupla', 'duas')).status, 409);
   assert.equal((await responder(dani.token, 'sem-fantasia', 'sim')).status, 409);
   assert.equal((await prev(ana.token)).enviado, false, 'o envio é de cada um');
   assert.equal((await s.req('GET', '/api/admin/jogos', { token: admin })).json.previsoes.enviaram, 1);

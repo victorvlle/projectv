@@ -16,12 +16,12 @@ const PERGUNTAS = [
   { id: 'sobra-bebida', ordem: 8, tipo: 'opcoes', texto: 'O que vai sobrar de bebida?',
     opcoes: [{ id: 'nada', nome: 'Nada, vai acabar tudo' }, { id: 'cerveja', nome: 'Cerveja' },
       { id: 'destilado', nome: 'Destilado (vodka, gin, tequila…)' }, { id: 'sem-alcool', nome: 'Refri, suco ou energético' }] },
-  { id: 'chuva', ordem: 9, tipo: 'opcoes', texto: 'Vai chover durante a festa?',
-    opcoes: [{ id: 'sim', nome: 'Sim' }, { id: 'nao', nome: 'Não' }] },
+  { id: 'fantasia-dupla', ordem: 9, tipo: 'opcoes', texto: 'Quantas duplas ou casais vão chegar com fantasias combinando?',
+    opcoes: [{ id: 'nenhuma', nome: 'Nenhuma' }, { id: 'uma', nome: '1' }, { id: 'duas', nome: '2' }, { id: 'tres-mais', nome: '3 ou mais' }] },
   { id: 'sem-fantasia', ordem: 10, tipo: 'opcoes', texto: 'Alguém vai chegar sem fantasia?',
     opcoes: [{ id: 'sim', nome: 'Sim' }, { id: 'nao', nome: 'Não' }] },
 ];
-const PERGUNTAS_REMOVIDAS = ['ganha-concurso', 'mais-amaldicoado', 'mais-fotos', 'rei-trevas', 'longnecks', 'destino-pos'];
+const PERGUNTAS_REMOVIDAS = ['ganha-concurso', 'mais-amaldicoado', 'mais-fotos', 'rei-trevas', 'longnecks', 'destino-pos', 'chuva'];
 const PONTOS_PREVISAO = 1000;
 
 // Castigos da Maldição: todos de bebida (cada um bebe o que estiver bebendo).

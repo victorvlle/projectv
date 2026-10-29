@@ -491,4 +491,18 @@ module.exports = [
       }
     },
   },
+  {
+    nome: 'previsões: "Vai chover?" vira "fantasias combinando"',
+    sql: `
+      DELETE FROM previsoes_palpites WHERE pergunta_id = 'chuva';
+      DELETE FROM pontos_log WHERE atividade = 'previsoes' AND chave LIKE 'previsao:chuva:%';
+      DELETE FROM previsoes_perguntas WHERE id = 'chuva'
+    `,
+    async depois(c) {
+      const { PERGUNTAS } = require('../jogos/conteudo');
+      const p = PERGUNTAS.find((x) => x.id === 'fantasia-dupla');
+      await c.execute({ sql: 'INSERT OR IGNORE INTO previsoes_perguntas (id, ordem, texto, tipo, opcoes) VALUES (?, ?, ?, ?, ?)',
+        args: [p.id, p.ordem, p.texto, p.tipo, JSON.stringify(p.opcoes)] });
+    },
+  },
 ];
