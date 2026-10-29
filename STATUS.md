@@ -61,12 +61,12 @@ Atualizado em 27/10/2026.
 - [x] Autor não vota na própria música
 - [x] Modo teste: estado "Em teste" nas atividades, testadores marcados no admin, pontos/dados de teste separados e botão "Apagar dados de teste"
 - [x] Pontuação da festa: Previsões +1000 por acerto, Maldição +500, Quiz +500 por acerto, Concurso 1000/800/500
-- [x] Quiz de Terror Relâmpago: 5 perguntas de múltipla escolha, uma chance, tempo no servidor, telão com contagem e revelação
+- [x] Quiz de Terror Relâmpago estilo Kahoot: sala de espera (monstros com iniciais no telão), admin só inicia, perguntas e respostas certas andam sozinhas, placar no fim; 10 perguntas (Halloween, lendas e clássicos do cinema), em rodadas
 - [x] Concurso de Fantasia: votação (não vota em si), apuração com empate, pódio no telão
 - [x] Correio das Trevas: carta anônima com aprovação do organizador, telão com rodízio
 - [x] Mural de Fotos e O Monstro tirados do site (decisão de 29/10); pergunta 6 das Previsões trocada para o Correio
 - [x] Previsões revisadas (sem jogos da festa), lista com todos os cadastrados e botão "Enviar previsões" que trava as escolhas
-- [x] Testes automatizados: 96 passando; 66 ataques barrados; roteiro de testes em PDF para Victor e Lucas
+- [x] Testes automatizados: 96 passando; 67 ataques barrados; roteiro de testes em PDF para Victor e Lucas
 - [x] Deploy no Render + Turso: https://projectv-pec1.onrender.com (`/saude` responde `banco: turso`, verificado em 24/10)
 
 ## Pendente (Etapa C, em ordem)

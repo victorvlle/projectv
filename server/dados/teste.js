@@ -25,6 +25,7 @@ async function apagarDadosDeTeste(agora = Date.now()) {
   const comandos = [
     { sql: 'DELETE FROM pontos_log WHERE teste = 1', args: [] },
     { sql: 'DELETE FROM quiz_respostas WHERE teste = 1', args: [] },
+    { sql: 'DELETE FROM quiz_sala WHERE teste = 1', args: [] },
     { sql: 'UPDATE quiz_perguntas SET lancada_em = NULL, revelada_em = NULL, teste = 0 WHERE teste = 1', args: [] },
     { sql: 'DELETE FROM concurso_votos WHERE teste = 1', args: [] },
     { sql: 'DELETE FROM correio WHERE teste = 1', args: [] },
@@ -48,7 +49,7 @@ async function apagarDadosDeTeste(agora = Date.now()) {
     await banco.rodar("DELETE FROM pontos_log WHERE atividade = 'concurso'");
     await festa.gravar('concurso', { estado: 'fechado', teste: false });
   }
-  if (quiz) await festa.gravar('quiz', { ...quiz, atual: null });
+  if (quiz && (ids.has('quiz') || (quiz.sessao && quiz.sessao.teste))) await festa.gravar('quiz', { ...quiz, sessao: null });
   if (ids.has('maldicao') || antes.maldicoes) await festa.gravar('maldicao', { ...(mald || {}), ligada: false, proximaEm: null });
   return { ...antes, atividades: [...ids] };
 }

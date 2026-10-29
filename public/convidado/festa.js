@@ -21,88 +21,108 @@
   const telaAberta = (id) => !$(id).classList.contains('oculto');
 
   // ================================================================== QUIZ
+  // Estilo Kahoot: sala de espera → o organizador inicia → as perguntas andam sozinhas pelo relógio
+  // do servidor. A cada troca de fase o celular busca o estado de novo (a resposta certa e as
+  // próximas perguntas nunca chegam antes da hora).
   let quiz = null;
   let escolhaQuiz = null; // opção tocada, ainda não confirmada
   let relogioQuiz = null;
+  let proximaBusca = null;
+  let pollSala = null;
   let enviandoQuiz = false;
   let avisadoDe = null;
 
   const resta = (fimEm) => Math.max(0, Math.ceil((fimEm - PV.relogio.agora()) / 1000));
 
-  function cartaoAtual(q, x) {
-    const cab = `<p class="quiz-num">Pergunta ${x.ordem} de ${q.total}</p><h2 class="quiz-pergunta">${esc(x.texto)}</h2>`;
-    const respondendo = x.fase === 'respondendo' && resta(x.fimEm) > 0;
-    if (respondendo && x.minha === null) {
+  async function buscarQuiz() {
+    try {
+      const r = await C().api('GET', '/api/quiz');
+      C().atualizarParte('quiz', r.quiz);
+    } catch (_) { /* tenta na próxima */ }
+  }
+
+  function telaQuiz(q) {
+    const salaTxt = `<p class="quiz-sala-conta">👥 <b>${q.naSalaTotal}</b> ${q.naSalaTotal === 1 ? 'pessoa' : 'pessoas'} na sala</p>`;
+    const entrar = `<button class="botao largo quiz-entrar" type="button" data-quiz-entrar>Entrar na sala ⚡</button>`;
+    const regras = `<p class="mudo">${q.total} perguntas no telão, ${q.tempoS} segundos cada, <b>uma resposta só</b>. Acertou: +${pts(q.pontos)} pontos.</p>`;
+    if (q.fase === 'sala') {
+      return q.naSala
+        ? `<section class="cartao quiz-cartao registrada"><p class="quiz-veredito">Você está na sala ✓</p>
+            <p>Seu monstro já está no telão. Agora é esperar o organizador começar.</p>${salaTxt}${regras}</section>`
+        : `<section class="cartao quiz-cartao valendo"><p class="quiz-veredito">⚡ Quiz Relâmpago</p>${regras}${entrar}${salaTxt}</section>`;
+    }
+    if (q.fase === 'preparar') {
+      return `<section class="cartao quiz-cartao valendo"><p class="quiz-num">Prepare-se!</p>
+        <div class="quiz-contagem" data-quiz-seg>${resta(q.fimEm)}</div><p>A primeira pergunta já vai aparecer no telão e aqui.</p>
+        ${q.naSala ? '' : entrar}</section>`;
+    }
+    if (q.fase === 'fim') {
+      return `<section class="cartao quiz-cartao acertou"><p class="quiz-veredito">🏁 Fim do quiz!</p>
+        <p>Você acertou <b>${q.acertos || 0} de ${q.total}</b> · +${pts((q.acertos || 0) * q.pontos)} pontos</p>
+        ${(q.placar || []).length ? `<h2 class="titulo-secao" style="margin-top:14px">Quem mais acertou</h2><div class="podio-celular">${q.placar.map((p) => `
+          <div class="podio-linha"><span class="podio-pos">${['🥇', '🥈', '🥉'][p.posicao - 1] || `${p.posicao}º`}</span><span class="avatar">${emoji(p.avatar)}</span>
+          <span class="podio-nome">${esc(p.nome)}</span><b>${p.acertos}</b></div>`).join('')}</div>` : ''}</section>`;
+    }
+    const x = q.atual;
+    const cab = `<p class="quiz-num">Pergunta ${x.numero} de ${q.total}</p><h2 class="quiz-pergunta">${esc(x.texto)}</h2>`;
+    const minha = x.minha !== null ? `<b>${LETRAS[x.minha]}</b> · ${esc(x.opcoes[x.minha])}` : null;
+    if (q.fase === 'revelacao') {
+      const certa = `<b>${LETRAS[x.correta]}</b> · ${esc(x.opcoes[x.correta])}`;
+      return `<section class="cartao quiz-cartao ${x.acertei ? 'acertou' : 'errou'}">${cab}
+        <p class="quiz-veredito">${x.acertei ? `✓ Você acertou! +${pts(q.pontos)}` : x.minha === null ? 'Você não respondeu esta.' : '✗ Não foi dessa vez.'}</p>
+        <p>Resposta certa: ${certa}</p>${minha && !x.acertei ? `<p class="fraco">Sua resposta: ${minha}</p>` : ''}
+        <p class="fraco">${q.proxima ? 'Próxima pergunta em' : 'Resultado final em'} <span data-quiz-seg>${resta(q.fimEm)}</span>s · você acertou ${q.acertos || 0} até agora</p></section>`;
+    }
+    if (x.minha === null && resta(q.fimEm) > 0) {
       const ops = x.opcoes.map((o, i) => `<button type="button" class="quiz-opcao op${i} ${escolhaQuiz === i ? 'escolhida' : ''}" data-quiz-op="${i}"
           aria-pressed="${escolhaQuiz === i}"><b>${LETRAS[i]}</b><span>${esc(o)}</span></button>`).join('');
       return `<section class="cartao quiz-cartao valendo">${cab}
-        <div class="quiz-tempo"><i data-quiz-barra style="width:100%"></i></div><p class="quiz-seg" data-quiz-seg>${resta(x.fimEm)}s</p>
+        <div class="quiz-tempo"><i data-quiz-barra style="width:100%"></i></div><p class="quiz-seg" data-quiz-seg>${resta(q.fimEm)}s</p>
         <div class="quiz-opcoes">${ops}</div>
         <button class="botao largo" type="button" data-quiz-confirmar ${escolhaQuiz === null ? 'disabled' : ''}>
           ${escolhaQuiz === null ? 'Toque numa opção' : `Confirmar ${LETRAS[escolhaQuiz]}`}</button>
         <p class="fraco quiz-regra">Uma chance só: depois de confirmar, não dá para trocar.</p></section>`;
     }
-    const minha = x.minha !== null ? `<b>${LETRAS[x.minha]}</b> · ${esc(x.opcoes[x.minha])}` : null;
-    if (x.fase === 'revelada') {
-      const certa = `<b>${LETRAS[x.correta]}</b> · ${esc(x.opcoes[x.correta])}`;
-      return `<section class="cartao quiz-cartao ${x.acertei ? 'acertou' : 'errou'}">${cab}
-        <p class="quiz-veredito">${x.acertei ? `✓ Você acertou! +${pts(q.pontos)} pontos` : x.minha === null ? 'Você não respondeu esta.' : '✗ Não foi dessa vez.'}</p>
-        <p>Resposta certa: ${certa}</p>${minha && !x.acertei ? `<p class="fraco">Sua resposta: ${minha}</p>` : ''}</section>`;
-    }
-    if (respondendo) {
-      return `<section class="cartao quiz-cartao registrada">${cab}
-        <p class="quiz-veredito">Resposta registrada ✓</p><p>${minha}</p>
-        <p class="quiz-seg" data-quiz-seg>${resta(x.fimEm)}s</p><p class="fraco">A resposta certa aparece no telão quando o tempo acabar.</p></section>`;
-    }
     return `<section class="cartao quiz-cartao registrada">${cab}
-      <p class="quiz-veredito">⏱️ Tempo esgotado</p>
-      <p>${minha ? `Sua resposta: ${minha}` : 'Você não respondeu a tempo.'}</p><p class="fraco">Olhe o telão: a resposta certa vem aí.</p></section>`;
+      <p class="quiz-veredito">${minha ? 'Resposta registrada ✓' : '⏱️ Tempo esgotado'}</p><p>${minha || 'Você não respondeu a tempo.'}</p>
+      <p class="quiz-seg" data-quiz-seg>${resta(q.fimEm)}s</p><p class="fraco">A resposta certa aparece quando o tempo acabar.</p></section>`;
   }
 
   function desenharQuiz(q) {
     quiz = q;
+    clearTimeout(proximaBusca);
+    clearInterval(relogioQuiz);
+    clearInterval(pollSala);
     if (!q) { const f = $('faixa-quiz'); if (f) f.classList.add('oculto'); return; }
-    const x = q.atual;
-    if (!x || x.id !== (desenharQuiz.ultima || null)) { escolhaQuiz = null; desenharQuiz.ultima = x ? x.id : null; }
-    const espera = `<section class="cartao"><b>Fique de olho no telão</b>
-      <p class="mudo">As perguntas aparecem no telão durante a festa e aqui no celular ao mesmo tempo. ${q.total} perguntas,
-      ${q.tempoS} segundos para cada uma e <b>uma resposta só</b>. Acertou: +${pts(q.pontos)} pontos.</p></section>`;
-    const hist = q.historico.length ? `<h2 class="titulo-secao">Perguntas anteriores</h2><div class="lista">${q.historico.map((h) => `
-      <div class="quiz-hist ${h.acertei ? 'acertou' : 'errou'}"><span>${h.acertei ? '✓' : '✗'}</span>
-        <div><b>${h.ordem}. ${esc(h.texto)}</b><small>Certa: ${LETRAS[h.correta]} · ${esc(h.opcoes[h.correta])}</small></div></div>`).join('')}</div>` : '';
-    const placar = q.historico.length || (x && x.fase === 'revelada') ? `<p class="quiz-placar">Você acertou <b>${q.acertos}</b> · +${pts(q.acertos * q.pontos)} pontos</p>` : '';
-    pintar('quiz', `${seloTeste(q)}${x && x.fase !== 'nao-lancada' ? cartaoAtual(q, x) : espera}${placar}${hist}`);
-    vigiarQuiz();
+    const chave = q.atual ? `${q.fase}:${q.atual.id}` : q.fase;
+    if (chave !== desenharQuiz.ultima) { escolhaQuiz = null; desenharQuiz.ultima = chave; }
+    pintar('quiz', `${seloTeste(q)}${telaQuiz(q)}`);
+    // Troca de fase: busca de novo um pouco depois do fim da fase atual.
+    if (q.fimEm) proximaBusca = setTimeout(buscarQuiz, Math.max(300, q.fimEm - PV.relogio.agora() + 400));
+    // Na sala, a contagem de gente vai atualizando enquanto a tela está aberta.
+    if (q.fase === 'sala') pollSala = setInterval(() => { if (telaAberta('tela-quiz') && !document.hidden) buscarQuiz(); }, 4000);
+    if (q.fimEm) {
+      relogioQuiz = setInterval(() => {
+        const r = resta(q.fimEm);
+        document.querySelectorAll('[data-quiz-seg]').forEach((el) => {
+          el.textContent = el.classList.contains('quiz-seg') ? `${r}s` : `${r}`;
+          el.classList.toggle('acabando', r <= 5);
+        });
+        const barra = document.querySelector('[data-quiz-barra]');
+        if (barra) barra.style.width = `${Math.max(0, Math.min(100, ((q.fimEm - PV.relogio.agora()) / (q.tempoS * 1000)) * 100))}%`;
+        if (r <= 0) clearInterval(relogioQuiz);
+      }, 200);
+    }
     avisarPerguntaNova();
   }
 
-  function vigiarQuiz() {
-    clearInterval(relogioQuiz);
-    const x = quiz && quiz.atual;
-    if (!x || x.fase !== 'respondendo') return;
-    let virou = false;
-    relogioQuiz = setInterval(() => {
-      const r = resta(x.fimEm);
-      const seg = document.querySelector('[data-quiz-seg]');
-      if (seg) { seg.textContent = `${r}s`; seg.classList.toggle('acabando', r <= 5); }
-      const barra = document.querySelector('[data-quiz-barra]');
-      if (barra) barra.style.width = `${Math.max(0, Math.min(100, ((x.fimEm - PV.relogio.agora()) / (quiz.tempoS * 1000)) * 100))}%`;
-      if (r <= 0 && !virou) {
-        virou = true;
-        clearInterval(relogioQuiz);
-        x.fase = 'tempo-esgotado';
-        assinaturas.quiz = null;
-        desenharQuiz(quiz);
-        setTimeout(() => C().recarregar(), 1500);
-      }
-    }, 200);
-  }
-
-  // Pergunta valendo e a pessoa em outra tela: faixa no topo levando para o quiz.
+  // Quiz começando ou pergunta valendo e a pessoa em outra tela: faixa no topo levando para o quiz.
   function avisarPerguntaNova() {
-    const x = quiz && quiz.atual;
+    const q = quiz;
     let faixa = $('faixa-quiz');
-    const precisa = x && x.fase === 'respondendo' && x.minha === null && resta(x.fimEm) > 0 && !telaAberta('tela-quiz');
+    const valendo = q && q.fase === 'pergunta' && q.atual && q.atual.minha === null && resta(q.fimEm) > 0;
+    const comecando = q && q.fase === 'preparar';
+    const precisa = (valendo || comecando) && !telaAberta('tela-quiz');
     if (!precisa) { if (faixa) faixa.classList.add('oculto'); return; }
     if (!faixa) {
       faixa = document.createElement('a');
@@ -111,16 +131,27 @@
       faixa.href = '#quiz';
       document.body.appendChild(faixa);
     }
-    faixa.innerHTML = `⚡ <b>Pergunta ${x.ordem} do Quiz valendo!</b> Toque para responder`;
+    faixa.innerHTML = comecando ? '⚡ <b>O Quiz vai começar!</b> Toque para jogar' : `⚡ <b>Pergunta ${q.atual.numero} do Quiz valendo!</b> Toque para responder`;
     faixa.classList.remove('oculto');
-    if (avisadoDe !== x.id && navigator.vibrate) { try { navigator.vibrate(150); } catch (_) { /* opcional */ } }
-    avisadoDe = x.id;
+    const marca = comecando ? 'inicio' : q.atual.id;
+    if (avisadoDe !== marca && navigator.vibrate) { try { navigator.vibrate(150); } catch (_) { /* opcional */ } }
+    avisadoDe = marca;
   }
-  document.addEventListener('pv:tela', () => avisarPerguntaNova());
+  document.addEventListener('pv:tela', (e) => { avisarPerguntaNova(); if (e.detail === 'tela-quiz' && quiz) buscarQuiz(); });
 
   $('quiz').addEventListener('click', async (e) => {
+    const ent = e.target.closest('[data-quiz-entrar]');
+    if (ent && !ent.disabled) {
+      ent.disabled = true;
+      try {
+        const r = await C().api('POST', '/api/quiz/entrar');
+        C().atualizarParte('quiz', r.quiz);
+        PV.avisar('Você entrou na sala ⚡', 'ok');
+      } catch (erro) { ent.disabled = false; if (erro.status !== 401) PV.avisar(erro.message, 'erro'); }
+      return;
+    }
     const op = e.target.closest('[data-quiz-op]');
-    if (op) { escolhaQuiz = Number(op.dataset.quizOp); assinaturas.quiz = null; desenharQuiz(quiz); return; }
+    if (op) { escolhaQuiz = Number(op.dataset.quizOp); desenharQuiz(quiz); return; }
     const conf = e.target.closest('[data-quiz-confirmar]');
     if (!conf || conf.disabled || enviandoQuiz || escolhaQuiz === null) return;
     const x = quiz.atual;
@@ -133,7 +164,7 @@
       PV.avisar('Resposta registrada ✓', 'ok');
     } catch (erro) {
       if (erro.status !== 401) PV.avisar(erro.message, 'erro');
-      C().recarregar();
+      buscarQuiz();
     } finally {
       enviandoQuiz = false;
     }

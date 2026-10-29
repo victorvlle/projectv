@@ -47,55 +47,112 @@ test('em teste: só os testadores veem e jogam; para os outros continua com cade
   assert.equal((await s.req('PUT', '/api/concurso/voto', { token: outra.token, corpo: { candidato: 'x' } })).status, 403);
 });
 
-test('quiz: uma resposta só, dentro do tempo; a certa não sai antes de revelar; +500 marcado como teste', async () => {
-  assert.equal((await s.req('POST', '/api/admin/quiz/q1/lancar', { token: admin })).status, 200);
-  assert.equal((await telao()).telao.modo, 'quiz', 'lançar leva o telão para o quiz');
-  // Outra pergunta não pode ser lançada enquanto esta vale
-  assert.equal((await s.req('POST', '/api/admin/quiz/q2/lancar', { token: admin })).status, 409);
+// Leva o cronograma do quiz para um ponto: 'pergunta' k (0 = primeira) ou 'revelacao' k ou 'fim'.
+const quizMod = require('../server/dados/quiz');
+const festaDados = require('../server/dados/festa');
+async function irPara(fase, k = 0) {
+  const cfg = await quizMod.config();
+  const tempo = cfg.sessao.tempoS * 1000;
+  const bloco = tempo + quizMod.REVELA_MS;
+  const desde = fase === 'fim' ? quizMod.PREPARO_MS + bloco * cfg.sessao.ids.length + 1000
+    : quizMod.PREPARO_MS + k * bloco + (fase === 'pergunta' ? 1000 : tempo + 1000);
+  await festaDados.gravar('quiz', { ...cfg, sessao: { ...cfg.sessao, inicioEm: Date.now() - desde } });
+}
 
+test('quiz estilo Kahoot: sala, início pelo admin, uma resposta, certa só na revelação, +500 de teste, placar', async () => {
+  const q0 = (await festa(victor)).quiz;
+  assert.equal(q0.fase, 'sala');
+  assert.equal(q0.naSala, false);
+  assert.equal((await s.req('POST', '/api/admin/quiz/iniciar', { token: admin })).status, 409, 'sala vazia não começa');
+  assert.equal((await s.req('POST', '/api/quiz/entrar', { token: outra.token })).status, 403, 'quem não testa não entra');
+  assert.equal((await s.req('POST', '/api/quiz/entrar', { token: victor.token })).status, 200);
+  assert.equal((await s.req('POST', '/api/quiz/entrar', { token: victor.token })).status, 200, 'entrar de novo não duplica');
+  const t0 = await telao();
+  assert.deepEqual(t0.quiz.sala, [{ avatar: 'bruxa', iniciais: 'VT' }]);
+  assert.ok(!JSON.stringify(t0.quiz).includes('Victor'), 'na sala o telão mostra só o monstro e as iniciais');
+
+  assert.equal((await s.req('POST', '/api/admin/quiz/iniciar', { token: admin, corpo: { quantas: 3 } })).status, 200);
+  assert.equal((await telao()).telao.modo, 'quiz', 'iniciar leva o telão para o quiz');
+  assert.equal((await festa(victor)).quiz.fase, 'preparar');
+  assert.equal((await s.req('POST', '/api/admin/quiz/iniciar', { token: admin })).status, 409, 'não começa duas vezes');
+  assert.ok(!JSON.stringify(await festa(victor)).includes('Samhain'), 'a pergunta não chega antes da hora');
+
+  await irPara('pergunta', 0);
   const fv = await festa(victor);
+  assert.equal(fv.quiz.fase, 'pergunta');
   assert.equal(fv.quiz.atual.id, 'q1');
-  assert.equal(fv.quiz.atual.fase, 'respondendo');
+  assert.equal(fv.quiz.total, 3);
   assert.equal(fv.quiz.atual.correta, undefined, 'resposta certa escondida');
   assert.ok(!JSON.stringify(await telao()).includes('"correta"'), 'nem no telão antes de revelar');
+  assert.ok(!JSON.stringify(fv).includes('Frankenstein'), 'a próxima pergunta não vaza');
 
-  const responder = (c, escolha) => s.req('POST', '/api/quiz/q1/resposta', { token: c.token, corpo: { escolha } });
-  assert.equal((await responder(victor, 9)).status, 400);
-  assert.equal((await responder(victor, 2)).status, 200); // Irlanda (certa)
-  assert.equal((await responder(victor, 2)).status, 409, 'só vale uma resposta');
-  assert.equal((await responder(lucas, 0)).status, 200); // errada
-  assert.equal((await responder(outra, 1)).status, 403, 'quem não testa não responde');
-  // Revelar antes do tempo acabar é recusado
-  assert.equal((await s.req('POST', '/api/admin/quiz/q1/revelar', { token: admin })).status, 409);
+  const responder = (c, id, escolha) => s.req('POST', `/api/quiz/${id}/resposta`, { token: c.token, corpo: { escolha } });
+  assert.equal((await responder(victor, 'q1', 9)).status, 400);
+  assert.equal((await responder(victor, 'q1', 2)).status, 200); // Irlanda (certa)
+  assert.equal((await responder(victor, 'q1', 1)).status, 409, 'só vale uma resposta');
+  assert.equal((await responder(lucas, 'q1', 0)).status, 200, 'responder já coloca na sala');
+  assert.equal((await responder(lucas, 'q2', 0)).status, 409, 'pergunta que não está valendo');
+  assert.equal((await responder(outra, 'q1', 2)).status, 403);
+  assert.equal((await telao()).quiz.atual.respostas, 2);
 
-  await vencerTempo('q1');
-  const r = await s.req('POST', '/api/admin/quiz/q1/revelar', { token: admin });
-  assert.equal(r.status, 200);
-  assert.equal(r.json.acertaram, 1);
-  assert.equal((await s.req('POST', '/api/admin/quiz/q1/revelar', { token: admin })).json.jaRevelada, true, 'revelar de novo não duplica');
-  assert.equal(await h.pontosDe(victor.token), 500);
-  assert.equal(await h.pontosDe(lucas.token), 0);
+  await irPara('revelacao', 0);
   const fv2 = await festa(victor);
+  assert.equal(fv2.quiz.fase, 'revelacao');
   assert.equal(fv2.quiz.atual.correta, 2);
   assert.equal(fv2.quiz.atual.acertei, true);
+  assert.equal(fv2.quiz.proxima, true);
+  assert.equal(await h.pontosDe(victor.token), 500);
+  assert.equal(await h.pontosDe(lucas.token), 0);
+  assert.equal((await responder(lucas, 'q1', 2)).status, 409, 'depois do tempo não vale');
   const t = await telao();
   assert.deepEqual(t.quiz.atual.acertaram.map((a) => a.nome), ['Victor Teste']);
-  // Ponto de teste: quem não é testador não vê no ranking
   const rOutra = (await s.req('GET', '/api/ranking', { token: outra.token })).json.ranking;
-  assert.equal(rOutra.top.find((x) => x.nome === 'Victor Teste').pontos, 0);
+  assert.equal(rOutra.top.find((x) => x.nome === 'Victor Teste').pontos, 0, 'ponto de teste não aparece para quem não testa');
+
+  await irPara('pergunta', 1);
+  assert.equal((await festa(lucas)).quiz.atual.id, 'q2', 'troca sozinho para a próxima');
+  assert.equal((await responder(lucas, 'q2', 0)).status, 200); // Mary Shelley (certa)
+  await irPara('fim');
+  const fim = (await festa(lucas)).quiz;
+  assert.equal(fim.fase, 'fim');
+  assert.equal(fim.acertos, 1);
+  assert.deepEqual(fim.placar.map((p) => [p.nome, p.acertos]).sort(), [['Lucas Teste', 1], ['Victor Teste', 1]]);
+  assert.equal(await h.pontosDe(lucas.token), 500);
+  assert.equal((await telao()).quiz.placar.length, 2);
 });
 
-test('quiz: responder depois do tempo é recusado; cancelar desfaz o lançamento', async () => {
-  await s.req('POST', '/api/admin/quiz/q2/lancar', { token: admin });
-  await vencerTempo('q2');
-  assert.equal((await s.req('POST', '/api/quiz/q2/resposta', { token: lucas.token, corpo: { escolha: 0 } })).status, 409);
-  assert.equal((await s.req('POST', '/api/admin/quiz/q2/cancelar', { token: admin })).status, 200);
-  const q2 = (await adminJogos()).quiz.perguntas.find((x) => x.id === 'q2');
-  assert.equal(q2.fase, 'nao-lancada');
-  // Editar só antes de lançar; precisa de 4 opções e da certa
-  assert.equal((await s.req('PUT', '/api/admin/quiz/q2', { token: admin, corpo: { texto: 'Pergunta nova?', opcoes: ['a', 'b', 'c'], correta: 0 } })).status, 400);
-  assert.equal((await s.req('PUT', '/api/admin/quiz/q2', { token: admin, corpo: { texto: 'Pergunta nova?', opcoes: ['a', 'b', 'c', 'd'], correta: 3 } })).status, 200);
+test('quiz: jogado não recomeça sozinho; parar no meio; recomeçar zera respostas, sala e pontos do quiz', async () => {
+  // Nova rodada pega as próximas perguntas ainda não jogadas
+  assert.equal((await s.req('POST', '/api/admin/quiz/iniciar', { token: admin, corpo: { quantas: 2 } })).status, 200);
+  await irPara('pergunta', 0);
+  assert.equal((await festa(victor)).quiz.atual.id, 'q4', 'q1 a q3 já foram (2 jogadas + 1 que fechou sem resposta)');
+  await s.req('POST', '/api/admin/quiz/encerrar', { token: admin });
+  // Editar pergunta já jogada não pode; não jogada pode
   assert.equal((await s.req('PUT', '/api/admin/quiz/q1', { token: admin, corpo: { texto: 'Mudar?', opcoes: ['a', 'b', 'c', 'd'], correta: 0 } })).status, 409);
+  assert.equal((await s.req('PUT', '/api/admin/quiz/q9', { token: admin, corpo: { texto: 'Pergunta nova?', opcoes: ['a', 'b', 'c'], correta: 0 } })).status, 400);
+  assert.equal((await s.req('POST', '/api/admin/quiz/recomecar', { token: admin })).status, 200);
+  assert.equal(await h.pontosDe(victor.token), 0);
+  const j = (await adminJogos()).quiz;
+  assert.equal(j.sala.length, 0);
+  assert.ok(j.perguntas.every((x) => x.reveladaEm == null && x.respostas === 0));
+  // Parar no meio: a pergunta em andamento não vale
+  await s.req('POST', '/api/quiz/entrar', { token: victor.token });
+  await s.req('POST', '/api/admin/quiz/iniciar', { token: admin, corpo: { quantas: 2 } });
+  await irPara('pergunta', 0);
+  await s.req('POST', '/api/quiz/q1/resposta', { token: victor.token, corpo: { escolha: 2 } });
+  assert.equal((await s.req('POST', '/api/admin/quiz/encerrar', { token: admin })).status, 200);
+  assert.equal((await festa(victor)).quiz.fase, 'fim');
+  assert.equal(await h.pontosDe(victor.token), 0, 'parou antes de revelar: não pontua');
+  await s.req('POST', '/api/admin/quiz/recomecar', { token: admin });
+  // Deixa uma sessão de teste com ponto para o "apagar dados de teste" limpar depois
+  await s.req('POST', '/api/quiz/entrar', { token: victor.token });
+  const ini = await s.req('POST', '/api/admin/quiz/iniciar', { token: admin, corpo: { quantas: 1 } });
+  await irPara('pergunta', 0);
+  const resp = await s.req('POST', '/api/quiz/q1/resposta', { token: victor.token, corpo: { escolha: 2 } });
+  await irPara('fim');
+  assert.equal(ini.status, 200);
+  assert.equal(resp.status, 200);
+  assert.equal(await h.pontosDe(victor.token), 500);
 });
 
 test('concurso: não vota em si, troca o voto, contagem escondida; empate divide a colocação', async () => {
@@ -184,7 +241,9 @@ test('apagar dados de teste: some tudo que foi teste, nada real muda, atividades
   assert.equal(await h.pontosDe(lucas.token), 0);
   assert.equal(await h.pontosDe(real.token), 5, 'ponto real intacto');
   const j = await adminJogos();
-  assert.ok(j.quiz.perguntas.every((q) => q.fase === 'nao-lancada' && q.total === 0));
+  assert.ok(j.quiz.perguntas.every((q) => q.reveladaEm == null && q.respostas === 0));
+  assert.equal(j.quiz.sala.length, 0);
+  assert.equal(j.quiz.fase, 'sala');
   assert.equal(j.concurso.estado, 'fechado');
   assert.equal(j.concurso.eleitores, 0);
   assert.equal(j.correio.cartas.length, 0);
@@ -199,11 +258,14 @@ test('apagar dados de teste: some tudo que foi teste, nada real muda, atividades
 
 test('liberada de verdade: todos jogam e os pontos são reais', async () => {
   await h.liberar('quiz');
-  await s.req('POST', '/api/admin/quiz/q3/lancar', { token: admin });
-  assert.equal((await s.req('POST', '/api/quiz/q3/resposta', { token: outra.token, corpo: { escolha: 3 } })).status, 200);
-  await vencerTempo('q3');
-  await s.req('POST', '/api/admin/quiz/q3/revelar', { token: admin });
+  assert.equal((await s.req('POST', '/api/quiz/entrar', { token: outra.token })).status, 200);
+  await s.req('POST', '/api/admin/quiz/iniciar', { token: admin, corpo: { quantas: 1 } });
+  await irPara('pergunta', 0);
+  assert.equal((await s.req('POST', '/api/quiz/q1/resposta', { token: outra.token, corpo: { escolha: 2 } })).status, 200);
+  await irPara('revelacao', 0);
+  await festa(outra);
   const rReal = (await s.req('GET', '/api/ranking', { token: real.token })).json.ranking;
   assert.equal(rReal.top.find((x) => x.nome === 'Convidada Comum').pontos, 500, 'ponto real aparece para todos');
   await h.liberar('quiz', 'bloqueada');
 });
+

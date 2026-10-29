@@ -139,6 +139,7 @@ async function jogosDaFesta(req) {
 
 router.get('/festa', soConvidado, assincrono(async (req, res) => {
   const eu = req.convidado.id;
+  await quiz.sincronizar(); // pontos do quiz em dia antes de montar o ranking
   const t = testador(req);
   const [info, ativs, lista, beb, musicas, carros, noite, prev, enig, rank, jogos] = await Promise.all([
     festa.info(), atividades.paraConvidado(Date.now(), t), convidados.confirmados(), bebidas.paraConvidado(eu),
@@ -266,6 +267,7 @@ router.post('/enigmas/:id/resposta', soConvidado, freiarJogos, assincrono(async 
 }));
 
 router.get('/ranking', soConvidado, assincrono(async (req, res) => {
+  await quiz.sincronizar();
   res.json({ ok: true, ranking: await pontos.paraConvidado(req.convidado.id, testador(req)) });
 }));
 
@@ -275,6 +277,10 @@ router.get('/quiz', soConvidado, assincrono(async (req, res) => {
   const q = await seLiberado('quiz', req, () => quiz.paraConvidado(req.convidado.id));
   if (!q) return proibido(res, 'O Quiz');
   return res.json({ ok: true, quiz: q });
+}));
+router.post('/quiz/entrar', soConvidado, freiarJogos, assincrono(async (req, res) => {
+  if (await quiz.entrar(req.convidado)) { avisar.telao('quiz:sala', {}); avisar.admin('atualizar', { oque: 'quiz' }); }
+  res.json({ ok: true, quiz: { ...(await quiz.paraConvidado(req.convidado.id)), teste: (await atividades.acesso('quiz', req.convidado)).teste } });
 }));
 router.post('/quiz/:id/resposta', soConvidado, freiarJogos, assincrono(async (req, res) => {
   await quiz.responder(req.convidado, req.params.id, (req.body || {}).escolha);

@@ -303,14 +303,9 @@ router.put('/colaboracao/bebida/:convidadoId', assincrono(async (req, res) => {
 }));
 
 // ----------------------------------------------------------------- quiz
-router.post('/quiz/:id/lancar', assincrono(async (req, res) => { await quiz.lancar(req.params.id); jogosMudou(res, 'quiz'); }));
-router.post('/quiz/:id/revelar', assincrono(async (req, res) => {
-  const r = await quiz.revelar(req.params.id);
-  avisar.atualizar('quiz');
-  avisar.atualizar('ranking');
-  res.json({ ok: true, ...r });
-}));
-router.post('/quiz/:id/cancelar', assincrono(async (req, res) => { await quiz.cancelar(req.params.id); jogosMudou(res, 'quiz'); }));
+router.post('/quiz/iniciar', assincrono(async (req, res) => { await quiz.iniciar({ quantas: (req.body || {}).quantas }); jogosMudou(res, 'quiz'); }));
+router.post('/quiz/encerrar', assincrono(async (_req, res) => { await quiz.encerrar(); avisar.atualizar('ranking'); jogosMudou(res, 'quiz'); }));
+router.post('/quiz/recomecar', assincrono(async (_req, res) => { await quiz.recomecar(); avisar.atualizar('ranking'); jogosMudou(res, 'quiz'); }));
 router.put('/quiz/:id', assincrono(async (req, res) => { await quiz.editar(req.params.id, req.body || {}); jogosMudou(res, 'quiz'); }));
 router.put('/quiz-tempo', assincrono(async (req, res) => { await quiz.definirTempo((req.body || {}).segundos); jogosMudou(res, 'quiz'); }));
 

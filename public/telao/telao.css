@@ -147,3 +147,22 @@ body { overflow: hidden; cursor: default; }
 .carta-corpo { font-size: 5.4vh; line-height: 1.25; margin: 0; overflow-wrap: anywhere; }
 .carta-assinatura { text-align: right; font-size: 3vh; color: var(--texto-2); margin: 3vh 0 0; }
 @media (prefers-reduced-motion: reduce) { .quiz-cronometro.acabando, .carta-papel { animation: none; } }
+
+/* Sala do quiz: monstros flutuando com as iniciais */
+.quiz-na-sala { position: fixed; top: 12vh; right: 3vw; font-size: 3.4vh; padding: 1vh 2vw; border-radius: 99px; background: rgba(34, 26, 45, .9);
+  border: .3vh solid var(--laranja); }
+.quiz-na-sala b { color: var(--laranja-claro); font-size: 4.4vh; }
+.sala-bolhas { display: flex; flex-wrap: wrap; justify-content: center; gap: 2.5vh 3vw; margin-top: 4vh; max-width: 90vw; }
+.bolha { display: flex; flex-direction: column; align-items: center; gap: .6vh; animation: flutuar 3.2s ease-in-out infinite alternate; }
+.bolha .avatar { width: 10vh; height: 10vh; font-size: 6vh; }
+.bolha b { font-size: 2.8vh; letter-spacing: .1em; color: var(--texto-2); }
+.bolha.chegou { animation: chegar .7s cubic-bezier(.2, 1.6, .4, 1) both, flutuar 3.2s ease-in-out .7s infinite alternate; }
+@keyframes flutuar { from { transform: translateY(0); } to { transform: translateY(-1.6vh); } }
+@keyframes chegar { from { transform: scale(0) rotate(-20deg); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.quiz-placar-telao { display: grid; gap: 1.5vh; width: min(80vw, 120vh); margin: 0 auto; }
+.linha-placar { display: flex; align-items: center; gap: 2vw; font-size: 3.6vh; padding: 1.4vh 2vw; border-radius: 1.8vh; background: rgba(34, 26, 45, .9); border: 1px solid var(--borda); }
+.linha-placar .avatar { width: 7vh; height: 7vh; font-size: 4.4vh; }
+.linha-placar .pos { width: 6vh; text-align: center; }
+.linha-placar .n { flex: 1; font-weight: 700; }
+.linha-placar .pts { color: var(--laranja-claro); font-weight: 800; }
+@media (prefers-reduced-motion: reduce) { .bolha, .bolha.chegou { animation: none; } }

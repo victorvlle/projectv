@@ -527,4 +527,15 @@ module.exports = [
       }
     },
   },
+  {
+    nome: 'quiz no estilo Kahoot: sala de espera',
+    sql: `
+      CREATE TABLE IF NOT EXISTS quiz_sala (
+        convidado_id TEXT PRIMARY KEY REFERENCES convidados(id) ON DELETE CASCADE,
+        entrou_em INTEGER NOT NULL,
+        teste INTEGER NOT NULL DEFAULT 0
+      );
+      DELETE FROM config WHERE chave = 'quiz'
+    `,
+  },
 ];

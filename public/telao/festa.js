@@ -9,40 +9,61 @@
   const pts = (n) => Number(n).toLocaleString('pt-BR');
 
   // ------------------------------------------------------------------ quiz
-  let quiz = null;
+  // Sala de espera (monstros com as iniciais flutuando) → preparar → pergunta → resposta certa → … → placar.
+  // O servidor manda a fase e quando ela acaba; o telão busca de novo logo depois de cada troca.
   let relogio = null;
+  let troca = null;
+  const vistos = new Set();
   function desenharQuiz(q) {
-    quiz = q;
     clearInterval(relogio);
-    if (!q || !q.atual) {
+    clearTimeout(troca);
+    if (!q) return;
+    const cena = document.querySelector('[data-cena="quiz"]');
+    cena.dataset.fase = q.fase;
+    if (q.fimEm && window.PVTelaoRecarregar) troca = setTimeout(window.PVTelaoRecarregar, Math.max(300, q.fimEm - PV.relogio.agora() + 300));
+    const conta = `<div class="quiz-na-sala">👥 <b>${q.sala.length}</b> na sala</div>`;
+    if (q.fase === 'sala' || q.fase === 'preparar') {
       $('quiz-rotulo').textContent = 'Quiz de Terror Relâmpago';
-      $('quiz-pergunta').textContent = q && q.feitas >= q.total ? 'Fim do quiz!' : 'Prepare o celular…';
+      $('quiz-pergunta').textContent = q.fase === 'sala' ? 'Entre na sala pelo celular!' : 'Prepare-se!';
       $('quiz-opcoes').innerHTML = '';
-      $('quiz-rodape').innerHTML = `<p class="prev-dica">${q && q.feitas >= q.total ? 'Confira o ranking.' : `${q ? q.total : 5} perguntas · uma chance em cada · acertou, +500 pontos`}</p>`;
-      return;
-    }
-    const x = q.atual;
-    $('quiz-rotulo').textContent = `Pergunta ${x.ordem} de ${q.total}`;
-    $('quiz-pergunta').textContent = x.texto;
-    const revelada = x.fase === 'revelada';
-    const total = revelada ? x.porOpcao.reduce((a, b) => a + b, 0) || 1 : 1;
-    $('quiz-opcoes').innerHTML = x.opcoes.map((o, i) => `<div class="quiz-op-telao op${i} ${revelada ? (i === x.correta ? 'certa' : 'errada') : ''}">
-        <b>${L[i]}</b><span>${esc(o)}</span>${revelada ? `<em>${x.porOpcao[i]}</em><i style="width:${Math.round((x.porOpcao[i] / total) * 100)}%"></i>` : ''}</div>`).join('');
-    if (revelada) {
-      $('quiz-rodape').innerHTML = x.acertaram.length
-        ? `<p class="quiz-acertaram">Acertaram (+500): ${x.acertaram.map((a) => `<span><span class="avatar mini">${emoji(a.avatar)}</span>${esc(a.nome)}</span>`).join('')}</p>`
-        : '<p class="prev-dica">Ninguém acertou essa! 💀</p>';
-      return;
+      const bolhas = q.sala.map((p, i) => {
+        const chave = `${p.avatar}:${p.iniciais}:${i}`;
+        const nova = !vistos.has(chave);
+        vistos.add(chave);
+        return `<div class="bolha ${nova ? 'chegou' : ''}" style="animation-delay:${nova ? 0 : (i % 7) * 0.35}s, ${(i % 5) * 0.5}s">
+          <span class="avatar">${emoji(p.avatar)}</span><b>${esc(p.iniciais)}</b></div>`;
+      }).join('');
+      $('quiz-rodape').innerHTML = `${conta}
+        ${q.fase === 'sala' ? '<p class="prev-dica">No site da festa: <b>Quiz Relâmpago → Entrar na sala</b></p>' : '<div class="quiz-cronometro" data-tq-seg></div>'}
+        <div class="sala-bolhas">${bolhas || '<p class="prev-dica">Esperando o primeiro corajoso…</p>'}</div>`;
+    } else if (q.fase === 'fim') {
+      $('quiz-rotulo').textContent = 'Quiz de Terror Relâmpago';
+      $('quiz-pergunta').textContent = 'Fim do quiz! 🏁';
+      $('quiz-opcoes').innerHTML = '';
+      $('quiz-rodape').innerHTML = (q.placar || []).length
+        ? `<div class="quiz-placar-telao">${q.placar.map((p) => `<div class="linha-placar"><span class="pos">${['🥇', '🥈', '🥉'][p.posicao - 1] || `${p.posicao}º`}</span>
+            <span class="avatar">${emoji(p.avatar)}</span><span class="n">${esc(p.nome)}</span><span class="pts">${p.acertos} ${p.acertos === 1 ? 'acerto' : 'acertos'} · +${pts(p.pontos)}</span></div>`).join('')}</div>`
+        : '<p class="prev-dica">Ninguém acertou nenhuma! 💀</p>';
+    } else {
+      const x = q.atual;
+      const revelada = q.fase === 'revelacao';
+      $('quiz-rotulo').textContent = `Pergunta ${x.numero} de ${q.total}`;
+      $('quiz-pergunta').textContent = x.texto;
+      const total = revelada ? x.porOpcao.reduce((a, b) => a + b, 0) || 1 : 1;
+      $('quiz-opcoes').innerHTML = x.opcoes.map((o, i) => `<div class="quiz-op-telao op${i} ${revelada ? (i === x.correta ? 'certa' : 'errada') : ''}">
+          <b>${L[i]}</b><span>${esc(o)}</span>${revelada ? `<em>${x.porOpcao[i]}</em><i style="width:${Math.round((x.porOpcao[i] / total) * 100)}%"></i>` : ''}</div>`).join('');
+      $('quiz-rodape').innerHTML = revelada
+        ? `${x.acertaram.length ? `<p class="quiz-acertaram">Acertaram (+500): ${x.acertaram.map((a) => `<span><span class="avatar mini">${emoji(a.avatar)}</span>${esc(a.nome)}</span>`).join('')}</p>`
+          : '<p class="prev-dica">Ninguém acertou essa! 💀</p>'}
+          <p class="prev-dica">${q.proxima ? 'Próxima pergunta em' : 'Resultado final em'} <b data-tq-seg></b>s</p>`
+        : `<div class="quiz-cronometro" data-tq-seg></div><p class="prev-dica">${x.respostas} de ${q.sala.length} ${q.sala.length === 1 ? 'respondeu' : 'responderam'}</p>`;
     }
     const tic = () => {
-      const resta = Math.max(0, Math.ceil((x.fimEm - PV.relogio.agora()) / 1000));
-      $('quiz-rodape').innerHTML = resta > 0
-        ? `<div class="quiz-cronometro ${resta <= 5 ? 'acabando' : ''}">${resta}</div><p class="prev-dica">${x.respostas} ${x.respostas === 1 ? 'resposta' : 'respostas'} · responda pelo celular</p>`
-        : `<p class="quiz-esgotado terror">Tempo esgotado!</p><p class="prev-dica">${x.respostas} ${x.respostas === 1 ? 'resposta' : 'respostas'} · a resposta certa vem aí…</p>`;
+      const resta = q.fimEm ? Math.max(0, Math.ceil((q.fimEm - PV.relogio.agora()) / 1000)) : 0;
+      document.querySelectorAll('[data-tq-seg]').forEach((el) => { el.textContent = resta; el.classList.toggle('acabando', q.fase === 'pergunta' && resta <= 5); });
       if (!resta) clearInterval(relogio);
     };
-    tic();
-    if (x.fase === 'respondendo') relogio = setInterval(tic, 250);
+    if (q.fimEm) { tic(); relogio = setInterval(tic, 250); }
   }
 
   // -------------------------------------------------------------- concurso

@@ -155,6 +155,7 @@
     try { avatares = (await PV.chamar('GET', '/api/avatares')).avatares; } catch (_) { /* tenta na reconexão */ }
     await carregar();
     const recarregar = PV.adiar(carregar, 200);
+    window.PVTelaoRecarregar = recarregar;
     socket = PV.conectar({
       tipo: 'telao', token,
       aoConectar: recarregar,
@@ -164,6 +165,7 @@
         maldicao: (m) => window.PVMaldicao && window.PVMaldicao.iniciar(m),
         'maldicao:resolvida': (d) => window.PVMaldicao && window.PVMaldicao.resolvida(d),
         'quiz:resposta': recarregar,
+        'quiz:sala': recarregar,
       },
     });
     if (window.PVMaldicao) window.PVMaldicao.mostrarBotaoSom();

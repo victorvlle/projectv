@@ -128,35 +128,47 @@
 
   // ------------------------------------------------------------------ quiz
   const L = ['A', 'B', 'C', 'D'];
+  let trocaQuiz = null;
   function desenharQuiz(q) {
-    const rot = { 'nao-lancada': ['não lançada', 'fora'], respondendo: ['valendo agora', 'pendente'], 'tempo-esgotado': ['tempo esgotado', 'pendente'], revelada: ['revelada', 'ok'] };
-    const valendo = q.perguntas.find((x) => x.fase === 'respondendo');
+    const rodando = ['preparar', 'pergunta', 'revelacao'].includes(q.fase);
+    clearTimeout(trocaQuiz);
+    if (rodando && q.fimEm) trocaQuiz = setTimeout(() => A().recarregar(), Math.max(500, q.fimEm - PV.relogio.agora() + 600));
+    const fases = { sala: 'Sala aberta, esperando começar', preparar: 'Começando…', pergunta: `Pergunta ${(q.indice ?? 0) + 1} de ${q.total} valendo`,
+      revelacao: `Mostrando a resposta da ${(q.indice ?? 0) + 1}`, fim: 'Quiz terminado' };
     const lista = q.perguntas.map((x) => {
-      const [rotulo, selo] = rot[x.fase];
-      const barra = x.fase !== 'nao-lancada' ? `<div class="quiz-barra">${x.opcoes.map((o, i) => `<span class="${x.fase === 'revelada' && i === x.correta ? 'certa' : ''}">${L[i]}: ${x.porOpcao[i]}</span>`).join('')}<span>Total: ${x.total}</span></div>` : '';
-      let acoes = '';
-      if (x.fase === 'nao-lancada') acoes = `<button class="botao pequeno" type="button" data-acao="quiz-lancar" data-id="${esc(x.id)}" ${valendo || !q.liberada ? 'disabled' : ''}>Lançar no telão</button>`;
-      if (x.fase === 'tempo-esgotado') acoes = `<button class="botao pequeno" type="button" data-acao="quiz-revelar" data-id="${esc(x.id)}">Revelar resposta e dar os pontos</button>`;
-      if (x.fase === 'respondendo' || x.fase === 'tempo-esgotado') acoes += ` <button class="botao secundario pequeno" type="button" data-acao="quiz-cancelar" data-id="${esc(x.id)}">Cancelar (lançou errado)</button>`;
-      if (x.fase === 'revelada') acoes = '<span class="fraco">Pontos dados.</span>';
-      const editar = x.fase === 'nao-lancada' ? `<details style="margin-top:8px"><summary>Editar</summary>
+      const jogada = x.reveladaEm != null;
+      const barra = jogada ? `<div class="quiz-barra">${x.opcoes.map((o, i) => `<span class="${i === x.correta ? 'certa' : ''}">${L[i]}: ${x.porOpcao[i]}</span>`).join('')}<span>Total: ${x.respostas}</span></div>` : '';
+      const editar = !jogada && !rodando ? `<details style="margin-top:8px"><summary>Editar</summary>
           <form data-quiz-form="${esc(x.id)}"><label>Pergunta</label><textarea name="texto" rows="2" maxlength="200">${esc(x.texto)}</textarea>
           ${x.opcoes.map((o, i) => `<div class="quiz-admin-op"><label><input type="radio" name="correta" value="${i}" ${i === x.correta ? 'checked' : ''}> ${L[i]}</label>
             <input type="text" name="op${i}" maxlength="60" value="${esc(o)}"></div>`).join('')}
           <p class="fraco">Marque a bolinha da opção certa.</p><button class="botao largo" type="submit">Salvar pergunta</button></form></details>` : '';
-      return `<div class="item"><div class="item-nome">${x.ordem}. ${esc(x.texto)} <span class="selo ${selo}">${rotulo}</span>${x.teste && x.fase !== 'nao-lancada' ? ' <span class="selo teste">teste</span>' : ''}</div>
-        <div class="item-sub">Certa: ${L[x.correta]} · ${esc(x.opcoes[x.correta])}</div>${barra}
-        <div class="item-acoes" style="margin-top:8px">${acoes}</div>${editar}</div>`;
+      return `<div class="item"><div class="item-nome">${x.ordem}. ${esc(x.texto)} ${jogada ? '<span class="selo ok">jogada</span>' : ''}</div>
+        <div class="item-sub">Certa: ${L[x.correta]} · ${esc(x.opcoes[x.correta])}</div>${barra}${editar}</div>`;
     }).join('');
+    const sala = q.sala.length ? q.sala.map((p) => `<span class="chip-sala"><span class="avatar mini">${A().emojiDe(p.avatar)}</span>${esc(p.nome)}</span>`).join('') : '<span class="fraco">Ninguém ainda.</span>';
+    let acoes = '';
+    if (q.fase === 'sala' || q.fase === 'fim') {
+      acoes = `<label class="fraco">Perguntas <input type="number" id="quiz-quantas" min="1" max="${q.perguntas.length}" value="${q.perguntas.filter((x) => x.reveladaEm == null).length || q.perguntas.length}" style="width:70px"></label>
+        <button class="botao" type="button" data-acao="quiz-iniciar" ${q.liberada && q.sala.length ? '' : 'disabled'}>▶ Iniciar quiz</button>
+        <span class="fraco">Usa as próximas perguntas ainda não jogadas (dá para fazer em rodadas).</span>`;
+    }
+    if (rodando) acoes = '<button class="botao perigo" type="button" data-acao="quiz-encerrar">Parar o quiz agora</button>';
     pintar('j-quiz', `
-      ${q.liberada ? '' : '<p class="aviso-inline">O Quiz está bloqueado: libere (ou coloque "Em teste") em Atividades para lançar perguntas.</p>'}
-      ${q.emTeste ? '<p class="selo teste" style="display:inline-block">🧪 Em teste: só os testadores respondem</p>' : ''}
-      <p class="fraco">Lance uma pergunta por vez: ela aparece no telão e no celular, com ${q.tempoS} s para responder (uma chance só).
-        Quando o tempo acabar, toque em "Revelar": o telão mostra a certa e quem acertou ganha +${q.pontos}.</p>
-      <div class="linha-teste"><label class="fraco">Tempo (s) <input type="number" min="10" max="120" value="${q.tempoS}" id="quiz-tempo" style="width:80px"></label>
-        <button class="botao secundario pequeno" type="button" data-acao="quiz-tempo">Salvar tempo</button>
-        <button class="botao secundario pequeno" type="button" data-acao="tel-modo" data-modo="quiz">Mostrar quiz no telão</button></div>
-      <div class="lista" style="margin-top:10px">${lista}</div>`);
+      ${q.liberada ? '' : '<p class="aviso-inline">O Quiz está bloqueado: libere (ou coloque "Em teste") em Atividades. Aí as pessoas já conseguem entrar na sala.</p>'}
+      ${q.emTeste ? '<p class="selo teste" style="display:inline-block">🧪 Em teste: só os testadores entram e respondem</p>' : ''}
+      <p><span class="selo ${rodando ? 'pendente' : q.fase === 'fim' ? 'ok' : 'fora'}">${fases[q.fase]}</span></p>
+      <p class="fraco">Como funciona: as pessoas tocam em <b>Entrar na sala</b> no celular e aparecem no telão. Você toca em <b>Iniciar quiz</b> e o resto é automático:
+        5 s de preparação, ${q.tempoS} s por pergunta, ${q.revelaS} s mostrando a resposta certa e já vai para a próxima. No fim, o telão mostra quem mais acertou.
+        Cada acerto vale +${q.pontos}.</p>
+      <div class="item-acoes"><button class="botao secundario" type="button" data-acao="tel-modo" data-modo="quiz">Mostrar a sala no telão</button></div>
+      <p style="margin:10px 0 6px"><b>Na sala (${q.sala.length}):</b></p><div class="sala-admin">${sala}</div>
+      <div class="linha-teste" style="margin-top:12px">${acoes}</div>
+      <div class="linha-teste" style="margin-top:8px"><label class="fraco">Tempo por pergunta (s) <input type="number" min="10" max="120" value="${q.tempoS}" id="quiz-tempo" style="width:80px"></label>
+        <button class="botao secundario pequeno" type="button" data-acao="quiz-tempo" ${rodando ? 'disabled' : ''}>Salvar tempo</button>
+        <button class="botao secundario pequeno" type="button" data-acao="quiz-recomecar" ${rodando ? 'disabled' : ''}>Recomeçar do zero</button></div>
+      <p class="fraco">"Recomeçar do zero" esvazia a sala e apaga as respostas e os pontos do quiz (para testar de novo).</p>
+      <details style="margin-top:10px"><summary>Perguntas (${q.perguntas.length})</summary><div class="lista" style="margin-top:10px">${lista}</div></details>`);
   }
 
   // -------------------------------------------------------------- concurso
@@ -262,9 +274,9 @@
     }
     if (oque === 'tempo-salvar') await fazer(() => api('PUT', '/enigmas-tempo', { segundos: Number($('enigma-tempo').value) }), 'Tempo salvo.');
     if (oque === 'beb-levou') await fazer(() => api('PUT', `/colaboracao/bebida/${encodeURIComponent(id)}`, { levou: true }), 'Confirmado: +5.');
-    if (oque === 'quiz-lancar') { if (confirmarToque(b, 'Toque de novo: lançar agora')) await fazer(() => api('POST', `/quiz/${encodeURIComponent(id)}/lancar`), 'Pergunta lançada! Está no telão.'); }
-    if (oque === 'quiz-revelar') await fazer(() => api('POST', `/quiz/${encodeURIComponent(id)}/revelar`), 'Resposta revelada. Pontos dados.');
-    if (oque === 'quiz-cancelar') { if (confirmarToque(b)) await fazer(() => api('POST', `/quiz/${encodeURIComponent(id)}/cancelar`), 'Pergunta cancelada (pode lançar de novo).'); }
+    if (oque === 'quiz-iniciar') { if (confirmarToque(b, 'Toque de novo: começar agora')) await fazer(() => api('POST', '/quiz/iniciar', { quantas: Number($('quiz-quantas').value) }), 'Quiz começando! Olhe o telão.'); }
+    if (oque === 'quiz-encerrar') { if (confirmarToque(b)) await fazer(() => api('POST', '/quiz/encerrar'), 'Quiz parado.'); }
+    if (oque === 'quiz-recomecar') { if (confirmarToque(b, 'Toque de novo: apagar respostas e pontos do quiz')) await fazer(() => api('POST', '/quiz/recomecar'), 'Quiz zerado.'); }
     if (oque === 'quiz-tempo') await fazer(() => api('PUT', '/quiz-tempo', { segundos: Number($('quiz-tempo').value) }), 'Tempo salvo.');
     if (oque === 'conc-abrir') await fazer(() => api('POST', '/concurso/abrir'), 'Votação aberta.');
     if (oque === 'conc-encerrar') { if (confirmarToque(b)) await fazer(() => api('POST', '/concurso/encerrar'), 'Votação encerrada.'); }
