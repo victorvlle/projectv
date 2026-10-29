@@ -469,4 +469,26 @@ module.exports = [
       }
     },
   },
+  {
+    nome: 'previsões revisadas (sem jogos da festa) e botão "Enviar previsões"',
+    sql: `
+      DELETE FROM previsoes_palpites WHERE pergunta_id IN ('ganha-concurso', 'mais-amaldicoado', 'mais-fotos', 'rei-trevas', 'longnecks', 'destino-pos');
+      DELETE FROM pontos_log WHERE atividade = 'previsoes' AND (chave LIKE 'previsao:ganha-concurso:%' OR chave LIKE 'previsao:mais-amaldicoado:%'
+        OR chave LIKE 'previsao:mais-fotos:%' OR chave LIKE 'previsao:rei-trevas:%' OR chave LIKE 'previsao:longnecks:%' OR chave LIKE 'previsao:destino-pos:%');
+      DELETE FROM previsoes_perguntas WHERE id IN ('ganha-concurso', 'mais-amaldicoado', 'mais-fotos', 'rei-trevas', 'longnecks', 'destino-pos');
+      CREATE TABLE IF NOT EXISTS previsoes_envios (
+        convidado_id TEXT PRIMARY KEY REFERENCES convidados(id) ON DELETE CASCADE,
+        enviado_em INTEGER NOT NULL,
+        teste INTEGER NOT NULL DEFAULT 0
+      )
+    `,
+    async depois(c) {
+      const { PERGUNTAS } = require('../jogos/conteudo');
+      for (const p of PERGUNTAS) {
+        await c.execute({ sql: 'INSERT OR IGNORE INTO previsoes_perguntas (id, ordem, texto, tipo, opcoes) VALUES (?, ?, ?, ?, ?)',
+          args: [p.id, p.ordem, p.texto, p.tipo, JSON.stringify(p.opcoes || [])] });
+        await c.execute({ sql: 'UPDATE previsoes_perguntas SET ordem = ?, texto = ? WHERE id = ?', args: [p.ordem, p.texto, p.id] });
+      }
+    },
+  },
 ];

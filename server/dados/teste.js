@@ -30,6 +30,7 @@ async function apagarDadosDeTeste(agora = Date.now()) {
     { sql: 'DELETE FROM correio WHERE teste = 1', args: [] },
     { sql: 'DELETE FROM maldicoes WHERE teste = 1', args: [] },
     { sql: 'DELETE FROM previsoes_palpites WHERE teste = 1', args: [] },
+    { sql: 'DELETE FROM previsoes_envios WHERE teste = 1', args: [] },
   ];
   // Previsões que foram encerradas/publicadas/respondidas em teste: voltam ao começo.
   if ((prev && prev.teste) || ids.has('previsoes')) {

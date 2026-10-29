@@ -5,7 +5,7 @@
   const $ = (id) => document.getElementById(id);
   const C = () => window.PVConvidado;
   const esc = PV.esc;
-  const emoji = (id) => (C() ? C().emojiDe(id) : '❔');
+  const emoji = (id) => (!id ? '👤' : C() ? C().emojiDe(id) : '❔');
   const ultimaAssinatura = {};
 
   // Redesenha uma área só se o conteúdo mudou e ninguém está digitando nela.
@@ -45,11 +45,17 @@
       aria-label="${p.respondidas} de ${p.total} respondidas"><i style="width:${Math.round((p.respondidas / p.total) * 100)}%"></i></div>`;
     if (p.estado === 'aguardando') {
       return `<section class="cartao prev-aviso"><b>🔒 Abrem ${p.abreEm ? esc(PV.dataCurta(p.abreEm)) : 'em breve'}</b>
-        <p class="mudo">Dá para ler as perguntas desde já. Cada acerto vale ${p.pontosPorAcerto} pontos.</p></section>`;
+        <p class="mudo">Dá para ler as perguntas desde já. Cada acerto vale ${pts(p.pontosPorAcerto)} pontos.</p></section>`;
+    }
+    if (p.estado === 'aberta' && p.enviado) {
+      return `<section class="cartao prev-aviso publicada"><b>✓ Previsões enviadas</b>
+        <p class="mudo">Enviadas ${esc(PV.dataCurta(p.enviadoEm))}. Você respondeu ${p.respondidas} de ${p.total}. Dá para ver suas escolhas, mas não dá mais para mudar.
+        O resultado sai na festa. +${pts(p.pontosPorAcerto)} por acerto.</p></section>`;
     }
     if (p.estado === 'aberta') {
       return `<section class="cartao prev-aviso aberta"><b>Abertas até ${esc(PV.dataCurta(p.fechaEm))}</b>
-        <p class="mudo">Toque para escolher. Dá para trocar até fechar. Ninguém vê o seu palpite. +${p.pontosPorAcerto} por acerto.</p>
+        <p class="mudo">Toque para escolher. Ninguém vê o seu palpite. +${pts(p.pontosPorAcerto)} por acerto.
+        Quando terminar, toque em <b>Enviar previsões</b> no fim da página: depois de enviar, não dá para mudar.</p>
         <p class="prev-contagem"><b>${p.respondidas}</b> de ${p.total} respondidas</p>${barra}</section>`;
     }
     if (p.estado === 'encerrada') {
@@ -57,11 +63,12 @@
         <p class="mudo">Você respondeu ${p.respondidas} de ${p.total}. O resultado sai na festa, no telão.</p></section>`;
     }
     return `<section class="cartao prev-aviso publicada"><b>🎉 Você acertou ${p.acertos} de ${p.total}</b>
-      <p class="mudo">+${p.acertos * p.pontosPorAcerto} pontos no ranking.</p></section>`;
+      <p class="mudo">+${pts(p.acertos * p.pontosPorAcerto)} pontos no ranking.</p></section>`;
   }
 
+  const pts = (n) => Number(n).toLocaleString('pt-BR');
   function cartaoPergunta(q, p) {
-    const aberta = p.estado === 'aberta';
+    const aberta = p.estado === 'aberta' && !p.enviado;
     const publicada = p.estado === 'publicada';
     let corpo;
     if (q.tipo === 'opcoes') {
@@ -95,7 +102,46 @@
     if (!p) return;
     pintar('prev-status', statusPrevisoes(p));
     pintar('prev-lista', p.perguntas.map((q) => cartaoPergunta(q, p)).join(''));
+    let fim = $('prev-enviar');
+    if (!fim) {
+      fim = document.createElement('div');
+      fim.id = 'prev-enviar';
+      $('prev-lista').insertAdjacentElement('afterend', fim);
+    }
+    const faltam = p.total - p.respondidas;
+    pintar('prev-enviar', p.estado === 'aberta' && !p.enviado ? `<section class="cartao prev-envio">
+        <p>${faltam ? `Você respondeu <b>${p.respondidas} de ${p.total}</b>. Faltam ${faltam}.` : `<b>Todas as ${p.total} respondidas.</b>`}
+        Depois de enviar, suas escolhas ficam travadas.</p>
+        <button class="botao largo" type="button" data-enviar-prev ${p.respondidas ? '' : 'disabled'}>Enviar previsões</button></section>` : '');
   }
+
+  let armadoEnvio = null;
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-enviar-prev]');
+    if (!b || b.disabled) return;
+    if (!armadoEnvio) {
+      b.textContent = 'Toque de novo para enviar (não dá para mudar depois)';
+      b.classList.add('perigo');
+      armadoEnvio = setTimeout(() => { armadoEnvio = null; b.textContent = 'Enviar previsões'; b.classList.remove('perigo'); }, 5000);
+      return;
+    }
+    clearTimeout(armadoEnvio);
+    armadoEnvio = null;
+    b.disabled = true;
+    b.textContent = 'Enviando…';
+    try {
+      const r = await C().api('POST', '/api/previsoes/enviar');
+      C().atualizarParte('previsoes', r.previsoes);
+      PV.avisar('Previsões enviadas! Boa sorte 🔮', 'ok');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (erro) {
+      b.disabled = false;
+      b.textContent = 'Enviar previsões';
+      b.classList.remove('perigo');
+      if (erro.status !== 401) PV.avisar(erro.message, 'erro');
+      if (erro.status === 409) C().recarregar();
+    }
+  });
 
   let salvando = false;
   async function responder(perguntaId, escolha) {

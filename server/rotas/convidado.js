@@ -239,6 +239,12 @@ router.put('/previsoes/:id', soConvidado, freiarJogos, assincrono(async (req, re
   res.json({ ok: true, previsoes: await previsoes.paraConvidado(req.convidado.id, Date.now(), testador(req)) });
 }));
 
+router.post('/previsoes/enviar', soConvidado, freiarJogos, assincrono(async (req, res) => {
+  await previsoes.enviar(req.convidado.id, Date.now(), testador(req));
+  avisar.admin('atualizar', { oque: 'previsoes' });
+  res.json({ ok: true, previsoes: await previsoes.paraConvidado(req.convidado.id, Date.now(), testador(req)) });
+}));
+
 router.get('/enigmas', soConvidado, assincrono(async (req, res) => {
   res.json({ ok: true, enigmas: await enigmas.paraConvidado(req.convidado.id) });
 }));

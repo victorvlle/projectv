@@ -57,7 +57,7 @@
       <p><span class="selo ${selo}">${rotulo}</span>
         ${p.estado === 'aguardando' && p.abreEm ? `Abre ${esc(PV.dataCurta(p.abreEm))} (mude na aba Atividades).` : ''}
         ${p.estado === 'aberta' ? `Fecha ${esc(PV.dataCurta(p.fechaEm))}, quando a festa começa.` : ''}
-        · ${p.participantes} ${p.participantes === 1 ? 'pessoa respondeu' : 'pessoas responderam'}</p>
+        · ${p.participantes} ${p.participantes === 1 ? 'pessoa respondeu' : 'pessoas responderam'} · ${p.enviaram} ${p.enviaram === 1 ? 'enviou' : 'enviaram'}</p>
       <div class="item-acoes">${acoes.join('')}</div>
       ${p.estado === 'encerrada' || p.estado === 'publicada' ? `<p class="fraco" style="margin:8px 0">Marque a resposta certa de cada pergunta (salva na hora). Depois de publicar, corrigir uma resposta recalcula os pontos.</p>
         <div class="item-acoes"><span class="fraco">Telão:</span>

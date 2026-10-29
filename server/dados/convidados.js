@@ -101,6 +101,12 @@ async function confirmados() {
   return linhas.map((l) => ({ id: l.id, nome: l.nome, avatar: l.avatar }));
 }
 
+// Todo convidado ativo, mesmo quem ainda não entrou no site (para escolher nas Previsões).
+async function todosAtivos() {
+  const linhas = await banco.tudo('SELECT id, nome, avatar FROM convidados WHERE ativo = 1 ORDER BY nome COLLATE NOCASE');
+  return linhas.map((l) => ({ id: l.id, nome: l.nome, avatar: l.avatar || null }));
+}
+
 async function totais() {
   const r = await banco.um(
     `SELECT COUNT(*) AS total,
@@ -181,6 +187,7 @@ async function excluir(id) {
     { sql: 'DELETE FROM pos_votos WHERE convidado_id = ?', args: [id] },
     { sql: 'DELETE FROM push_inscricoes WHERE convidado_id = ?', args: [id] },
     { sql: 'DELETE FROM previsoes_palpites WHERE convidado_id = ?', args: [id] },
+    { sql: 'DELETE FROM previsoes_envios WHERE convidado_id = ?', args: [id] },
     { sql: "UPDATE previsoes_perguntas SET resposta = NULL WHERE tipo = 'convidado' AND resposta = ?", args: [id] },
     { sql: 'UPDATE maldicoes SET parceiro_id = NULL WHERE parceiro_id = ?', args: [id] },
     { sql: 'DELETE FROM maldicoes WHERE convidado_id = ?', args: [id] },
@@ -196,7 +203,7 @@ async function excluir(id) {
 
 module.exports = {
   ErroValidacao, limparTexto,
-  criar, buscarPorId, buscarPorCodigo, listarParaAdmin, confirmados, totais,
+  criar, buscarPorId, buscarPorCodigo, listarParaAdmin, confirmados, todosAtivos, totais,
   atualizarPerfil, marcarAcesso, editar, regenerarLink, excluir,
   paraAdmin, paraProprio,
 };

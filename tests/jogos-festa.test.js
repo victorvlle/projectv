@@ -154,10 +154,10 @@ test('correio: anônimo, com freio, só aprovadas vão ao telão (sem o autor)',
 test('previsões em teste: só testador palpita; +1000 por acerto marcado como teste', async () => {
   await h.liberar('previsoes', 'teste');
   const resp = (c, id, escolha) => s.req('PUT', `/api/previsoes/${id}`, { token: c.token, corpo: { escolha } });
-  assert.equal((await resp(outra, 'longnecks', 'nenhuma')).status, 409);
-  assert.equal((await resp(victor, 'longnecks', 'nenhuma')).status, 200);
+  assert.equal((await resp(outra, 'sobra-bebida', 'destilado')).status, 409);
+  assert.equal((await resp(victor, 'sobra-bebida', 'destilado')).status, 200);
   await s.req('POST', '/api/admin/previsoes/encerrar', { token: admin });
-  await s.req('PUT', '/api/admin/previsoes/longnecks/resposta', { token: admin, corpo: { resposta: 'nenhuma' } });
+  await s.req('PUT', '/api/admin/previsoes/sobra-bebida/resposta', { token: admin, corpo: { resposta: 'destilado' } });
   assert.equal((await s.req('POST', '/api/admin/previsoes/publicar', { token: admin })).status, 200);
   assert.equal(await h.pontosDe(victor.token), 2500);
 });

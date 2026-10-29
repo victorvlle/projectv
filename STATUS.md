@@ -65,7 +65,8 @@ Atualizado em 27/10/2026.
 - [x] Concurso de Fantasia: votação (não vota em si), apuração com empate, pódio no telão
 - [x] Correio das Trevas: carta anônima com aprovação do organizador, telão com rodízio
 - [x] Mural de Fotos e O Monstro tirados do site (decisão de 29/10); pergunta 6 das Previsões trocada para o Correio
-- [x] Testes automatizados: 94 passando; 66 ataques barrados; roteiro de testes em PDF para Victor e Lucas
+- [x] Previsões revisadas (sem jogos da festa), lista com todos os cadastrados e botão "Enviar previsões" que trava as escolhas
+- [x] Testes automatizados: 96 passando; 66 ataques barrados; roteiro de testes em PDF para Victor e Lucas
 - [x] Deploy no Render + Turso: https://projectv-pec1.onrender.com (`/saude` responde `banco: turso`, verificado em 24/10)
 
 ## Pendente (Etapa C, em ordem)

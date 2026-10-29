@@ -2,7 +2,8 @@
 //
 // ESTADOS
 //  - aguardando: a atividade ainda não abriu (agendada para sexta 30/10, 00:00).
-//  - aberta: dá para responder e trocar a resposta.
+//  - aberta: dá para responder e trocar a resposta, até a pessoa tocar em "Enviar previsões"
+//    (aí as escolhas dela ficam travadas; ela ainda vê o que escolheu).
 //  - encerrada: fechou (início da festa ou o admin encerrou); ninguém muda mais nada.
 //  - publicada: o admin publicou os resultados; pontos calculados (+1000 por acerto).
 //
@@ -65,10 +66,16 @@ function rotuloEscolha(p, escolha, pessoasPorId) {
 }
 
 // Visão do convidado.
+async function envio(euId) {
+  const l = await banco.um('SELECT enviado_em FROM previsoes_envios WHERE convidado_id = ?', [euId]);
+  return l ? Number(l.enviado_em) : null;
+}
+
 async function paraConvidado(euId, agora = Date.now(), testador = false) {
-  const [sit, lista, pessoas, meus] = await Promise.all([
-    situacao(agora, testador), perguntas(), convidados.confirmados(),
+  const [sit, lista, pessoas, meus, enviadoEm] = await Promise.all([
+    situacao(agora, testador), perguntas(), convidados.todosAtivos(),
     banco.tudo('SELECT pergunta_id, escolha FROM previsoes_palpites WHERE convidado_id = ?', [euId]),
+    envio(euId),
   ]);
   const minhas = new Map(meus.map((m) => [m.pergunta_id, m.escolha]));
   const porId = new Map(pessoas.map((c) => [c.id, c]));
@@ -91,6 +98,7 @@ async function paraConvidado(euId, agora = Date.now(), testador = false) {
   const acertos = publicada ? saida.filter((p) => p.acertei).length : null;
   return {
     ...sit, pontosPorAcerto: PONTOS_PREVISAO, perguntas: saida, respondidas, total: saida.length, acertos,
+    enviado: enviadoEm != null, enviadoEm,
     pessoas: pessoas.map((c) => ({ id: apelido(c.id), nome: c.nome, avatar: c.avatar, souEu: c.id === euId })),
   };
 }
@@ -100,6 +108,7 @@ async function responder(euId, perguntaId, escolha, agora = Date.now(), testador
   if (sit.estado !== 'aberta') {
     throw new ErroValidacao(sit.estado === 'aguardando' ? 'As Previsões ainda não abriram.' : 'As Previsões já fecharam. Não dá mais para mudar.', 409);
   }
+  if ((await envio(euId)) != null) throw new ErroValidacao('Você já enviou suas previsões. Agora é só esperar o resultado.', 409);
   const p = (await perguntas()).find((x) => x.id === String(perguntaId));
   if (!p) throw new ErroValidacao('Pergunta não encontrada.', 404);
   let valor = null;
@@ -108,7 +117,7 @@ async function responder(euId, perguntaId, escolha, agora = Date.now(), testador
       if (!p.opcoes.some((o) => o.id === escolha)) throw new ErroValidacao('Escolha uma das opções.');
       valor = escolha;
     } else {
-      const alvo = (await convidados.confirmados()).find((c) => apelido(c.id) === escolha);
+      const alvo = (await convidados.todosAtivos()).find((c) => apelido(c.id) === escolha);
       if (!alvo) throw new ErroValidacao('Escolha uma pessoa da lista.');
       valor = alvo.id;
     }
@@ -121,6 +130,15 @@ async function responder(euId, perguntaId, escolha, agora = Date.now(), testador
        ON CONFLICT(convidado_id, pergunta_id) DO UPDATE SET escolha = excluded.escolha, atualizado_em = excluded.atualizado_em, teste = excluded.teste`,
       [euId, p.id, valor, agora, sit.teste ? 1 : 0]);
   }
+}
+
+// "Enviar previsões": trava as escolhas da pessoa (precisa ter respondido pelo menos uma).
+async function enviar(euId, agora = Date.now(), testador = false) {
+  const sit = await situacao(agora, testador);
+  if (sit.estado !== 'aberta') throw new ErroValidacao(sit.estado === 'aguardando' ? 'As Previsões ainda não abriram.' : 'As Previsões já fecharam.', 409);
+  const n = await banco.um('SELECT COUNT(*) AS n FROM previsoes_palpites WHERE convidado_id = ?', [euId]);
+  if (!Number(n.n)) throw new ErroValidacao('Responda pelo menos uma pergunta antes de enviar.');
+  await banco.rodar('INSERT OR IGNORE INTO previsoes_envios (convidado_id, enviado_em, teste) VALUES (?, ?, ?)', [euId, agora, sit.teste ? 1 : 0]);
 }
 
 // ------------------------------------------------------------------- admin
@@ -136,7 +154,7 @@ async function contagens() {
 
 async function paraAdmin(agora = Date.now()) {
   const [sit, lista, pessoas, cont, participantes, maldicoes] = await Promise.all([
-    situacao(agora), perguntas(), convidados.confirmados(), contagens(),
+    situacao(agora), perguntas(), convidados.todosAtivos(), contagens(),
     banco.um('SELECT COUNT(DISTINCT convidado_id) AS n FROM previsoes_palpites'),
     banco.tudo("SELECT convidado_id, COUNT(*) AS n FROM maldicoes WHERE estado != 'cancelada' GROUP BY convidado_id ORDER BY n DESC LIMIT 3"),
   ]);
@@ -144,6 +162,7 @@ async function paraAdmin(agora = Date.now()) {
   return {
     ...sit,
     participantes: Number(participantes.n),
+    enviaram: Number((await banco.um('SELECT COUNT(*) AS n FROM previsoes_envios')).n),
     pessoas: pessoas.map((c) => ({ id: c.id, nome: c.nome, avatar: c.avatar })),
     perguntas: lista.map((p) => ({
       ...p,
@@ -174,7 +193,7 @@ async function definirResposta(perguntaId, resposta) {
   let valor = null;
   if (resposta !== null && resposta !== '') {
     if (p.tipo === 'opcoes' && !p.opcoes.some((o) => o.id === resposta)) throw new ErroValidacao('Resposta inválida.');
-    if (p.tipo === 'convidado' && !(await convidados.confirmados()).some((c) => c.id === resposta)) throw new ErroValidacao('Pessoa inválida.');
+    if (p.tipo === 'convidado' && !(await convidados.todosAtivos()).some((c) => c.id === resposta)) throw new ErroValidacao('Pessoa inválida.');
     valor = resposta;
   }
   await marcarTeste();
@@ -221,7 +240,7 @@ async function paraTelao(indice, agora = Date.now()) {
   const sit = await situacao(agora);
   if (sit.estado === 'aberta' || sit.estado === 'aguardando') return { estado: sit.estado, fechaEm: sit.fechaEm };
   const [lista, pessoas, cont, palpites] = await Promise.all([
-    perguntas(), convidados.confirmados(), contagens(),
+    perguntas(), convidados.todosAtivos(), contagens(),
     banco.tudo('SELECT convidado_id, pergunta_id, escolha FROM previsoes_palpites'),
   ]);
   const i = Math.max(0, Math.min(lista.length - 1, Number(indice) || 0));
@@ -242,6 +261,6 @@ async function paraTelao(indice, agora = Date.now()) {
 }
 
 module.exports = {
-  situacao, perguntas, paraConvidado, responder, paraAdmin, encerrar, reabrir, definirResposta, calcularPontos,
+  situacao, perguntas, paraConvidado, responder, enviar, paraAdmin, encerrar, reabrir, definirResposta, calcularPontos,
   publicar, despublicar, paraTelao, apelido, config,
 };

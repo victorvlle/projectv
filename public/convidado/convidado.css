@@ -437,3 +437,6 @@ body.sem-rolagem { overflow: hidden; }
 .carta .selo.ok { border-color: var(--lima); color: var(--lima); }
 .carta .selo.off { border-color: var(--sangue); color: #ff8b9b; }
 .carta .selo.pendente { border-color: var(--laranja); color: var(--laranja-claro); }
+
+.prev-envio { margin-top: 14px; }
+.prev-envio p { margin: 0 0 12px; color: var(--texto-2); }

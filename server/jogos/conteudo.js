@@ -2,21 +2,26 @@
 // Os textos iniciais entram no banco uma vez (migração); depois o admin edita pelo painel
 // o que for editável (respostas oficiais, enigmas, intensidade da Maldição).
 
+// Revisadas em 29/10: nada que dependa de saber quais jogos vão ter na festa.
 const PERGUNTAS = [
   { id: 'ultimo-chegar', ordem: 1, tipo: 'convidado', texto: 'Quem vai chegar por último?' },
   { id: 'primeiro-sair', ordem: 2, tipo: 'convidado', texto: 'Quem vai ser o primeiro a ir embora?' },
-  { id: 'ganha-concurso', ordem: 3, tipo: 'convidado', texto: 'Quem vai ganhar o Concurso de Fantasia?' },
-  { id: 'mais-amaldicoado', ordem: 4, tipo: 'convidado', texto: 'Quem vai ser mais amaldiçoado pela Maldição?' },
+  { id: 'da-pt', ordem: 3, tipo: 'convidado', texto: 'Quem vai dar PT?' },
+  { id: 'tirar-fantasia', ordem: 4, tipo: 'convidado', texto: 'Quem vai ser o primeiro a tirar a fantasia?' },
   { id: 'primeiro-dancar', ordem: 5, tipo: 'convidado', texto: 'Quem vai ser o primeiro a dançar?' },
-  { id: 'mais-fotos', ordem: 6, tipo: 'convidado', texto: 'Quem vai receber mais cartas no Correio das Trevas?' },
-  { id: 'rei-trevas', ordem: 7, tipo: 'convidado', texto: 'Quem vai ser coroado Rei ou Rainha das Trevas?' },
-  { id: 'longnecks', ordem: 8, tipo: 'opcoes', texto: 'Quantas longnecks vão sobrar?',
-    opcoes: [{ id: 'nenhuma', nome: 'Nenhuma' }, { id: '1-5', nome: '1 a 5' }, { id: '6-10', nome: '6 a 10' }, { id: 'mais-10', nome: 'Mais de 10' }] },
-  { id: 'destino-pos', ordem: 9, tipo: 'opcoes', texto: 'Para onde vai o pós?',
-    opcoes: [{ id: 'bellos', nome: "Bello's Club" }, { id: 'condado', nome: 'Condado Bar' }, { id: 'augusta', nome: 'Augusta Haus' }] },
+  { id: 'ultimo-sair', ordem: 6, tipo: 'convidado', texto: 'Quem vai ser o último a ir embora?' },
+  { id: 'fantasia-repetida', ordem: 7, tipo: 'opcoes', texto: 'Qual vai ser a fantasia mais repetida?',
+    opcoes: [{ id: 'bruxa', nome: 'Bruxa ou bruxo' }, { id: 'vampiro', nome: 'Vampiro' }, { id: 'zumbi', nome: 'Zumbi' },
+      { id: 'caveira', nome: 'Caveira ou esqueleto' }, { id: 'outra', nome: 'Outra' }] },
+  { id: 'sobra-bebida', ordem: 8, tipo: 'opcoes', texto: 'O que vai sobrar de bebida?',
+    opcoes: [{ id: 'nada', nome: 'Nada, vai acabar tudo' }, { id: 'cerveja', nome: 'Cerveja' },
+      { id: 'destilado', nome: 'Destilado (vodka, gin, tequila…)' }, { id: 'sem-alcool', nome: 'Refri, suco ou energético' }] },
+  { id: 'chuva', ordem: 9, tipo: 'opcoes', texto: 'Vai chover durante a festa?',
+    opcoes: [{ id: 'sim', nome: 'Sim' }, { id: 'nao', nome: 'Não' }] },
   { id: 'sem-fantasia', ordem: 10, tipo: 'opcoes', texto: 'Alguém vai chegar sem fantasia?',
     opcoes: [{ id: 'sim', nome: 'Sim' }, { id: 'nao', nome: 'Não' }] },
 ];
+const PERGUNTAS_REMOVIDAS = ['ganha-concurso', 'mais-amaldicoado', 'mais-fotos', 'rei-trevas', 'longnecks', 'destino-pos'];
 const PONTOS_PREVISAO = 1000;
 
 // Castigos da Maldição: todos de bebida (cada um bebe o que estiver bebendo).
@@ -128,6 +133,6 @@ const PONTOS_CONCURSO = [1000, 800, 500];
 const PONTOS_COLABORACAO = { carona: 5, musica: 5, bebida: 5 };
 
 module.exports = {
-  PERGUNTAS, PONTOS_PREVISAO, CASTIGOS, INTENSIDADES, PONTOS_MALDICAO, ENIGMAS, PONTOS_ENIGMA, BONUS_ENIGMA_PADRAO,
+  PERGUNTAS, PERGUNTAS_REMOVIDAS, PONTOS_PREVISAO, CASTIGOS, INTENSIDADES, PONTOS_MALDICAO, ENIGMAS, PONTOS_ENIGMA, BONUS_ENIGMA_PADRAO,
   PONTOS_COLABORACAO, QUIZ, PONTOS_QUIZ, QUIZ_TEMPO_PADRAO_S, PONTOS_CONCURSO,
 };

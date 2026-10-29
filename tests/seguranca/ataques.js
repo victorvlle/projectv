@@ -354,9 +354,9 @@ async function main() {
     const pontoConv = await req('PUT', '/api/admin/colaboracao/bebida/qualquer', { token: tA, corpo: { levou: true } });
     barrado(GJ, 'Convidado publicar resultados, sortear maldição ou se dar pontos', [pubConv, sorteConv, pontoConv].every((r) => r.status === 401),
       `HTTP ${pubConv.status}, ${sorteConv.status}, ${pontoConv.status}`);
-    await req('PUT', '/api/previsoes/longnecks', { token: tV, corpo: { escolha: 'mais-10' } });
+    await req('PUT', '/api/previsoes/sobra-bebida', { token: tV, corpo: { escolha: 'nada' } });
     const espiar = await req('GET', '/api/previsoes', { token: tA });
-    const palpiteVazou = /"votos"|"resposta"/.test(JSON.stringify(espiar.json)) || (espiar.json.previsoes.perguntas.find((q) => q.id === 'longnecks') || {}).minha === 'mais-10';
+    const palpiteVazou = /"votos"|"resposta"/.test(JSON.stringify(espiar.json)) || (espiar.json.previsoes.perguntas.find((q) => q.id === 'sobra-bebida') || {}).minha === 'nada';
     barrado(GJ, 'Ver os palpites dos outros nas Previsões enquanto estão abertas', !palpiteVazou, 'só o próprio palpite volta do servidor');
     // Só os enigmas ainda abertos (os já fechados mostram a resposta de propósito).
     const enigmaTexto = JSON.stringify((await req('GET', '/api/enigmas', { token: tA })).json.enigmas.enigmas.filter((x) => x.estado !== 'fechado')).toLowerCase();
