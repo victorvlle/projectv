@@ -312,7 +312,8 @@ router.put('/quiz-tempo', assincrono(async (req, res) => { await quiz.definirTem
 // ------------------------------------------------------------- concurso
 router.post('/concurso/:estado', assincrono(async (req, res) => {
   const e = req.params.estado;
-  if (e === 'abrir') await concurso.mudar('aberto');
+  if (e === 'desfile') await concurso.mudar('desfile');
+  else if (e === 'abrir') await concurso.mudar('aberto');
   else if (e === 'encerrar') await concurso.mudar('encerrado');
   else if (e === 'publicar') { const r = await concurso.publicar(); avisar.atualizar('ranking'); return res.json({ ok: true, ...r }); }
   else if (e === 'despublicar') { await concurso.despublicar(); avisar.atualizar('ranking'); }

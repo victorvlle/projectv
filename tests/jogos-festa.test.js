@@ -188,7 +188,18 @@ test('quiz: quanto mais rápido, mais pontos (500 na hora, 375 na metade do temp
 test('concurso: não vota em si, troca o voto, contagem escondida; empate divide a colocação', async () => {
   const votar = (c, candidato) => s.req('PUT', '/api/concurso/voto', { token: c.token, corpo: { candidato } });
   assert.equal((await votar(victor, 'qualquer')).status, 409, 'votação ainda fechada');
+  // Hora do Desfile: telão chama a fila; votar ainda não pode; abrir a votação troca o telão sozinho
+  await s.req('PUT', '/api/admin/telao', { token: admin, corpo: { modo: 'ranking' } });
+  assert.equal((await s.req('POST', '/api/admin/concurso/desfile', { token: admin })).status, 200);
+  const td = await telao();
+  assert.equal(td.telao.modo, 'concurso');
+  assert.equal(td.concurso.estado, 'desfile');
+  assert.ok(td.concurso.desfile.length >= 3 && !JSON.stringify(td.concurso.desfile).includes('Victor'), 'só monstros e iniciais');
+  assert.equal((await festa(victor)).concurso.estado, 'desfile');
+  await s.req('PUT', '/api/admin/telao', { token: admin, corpo: { modo: 'ranking' } });
   assert.equal((await s.req('POST', '/api/admin/concurso/abrir', { token: admin })).status, 200);
+  assert.equal((await telao()).telao.modo, 'concurso', 'abrir a votação leva o telão para a votação');
+  assert.equal((await s.req('POST', '/api/admin/concurso/desfile', { token: admin })).status, 409, 'desfile depois da votação aberta não');
   const c = (await festa(victor)).concurso;
   const id = (nome) => c.candidatos.find((x) => x.nome === nome).id;
   assert.ok(!JSON.stringify(c).includes(victor.id), 'ids internos não saem');

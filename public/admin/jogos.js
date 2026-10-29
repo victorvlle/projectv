@@ -173,9 +173,10 @@
 
   // -------------------------------------------------------------- concurso
   function desenharConcurso(c) {
-    const rot = { fechado: ['Votação fechada', 'fora'], aberto: ['Votação aberta', 'ok'], encerrado: ['Encerrada', 'pendente'], publicado: ['Resultado publicado', 'ok'] }[c.estado];
+    const rot = { fechado: ['Votação fechada', 'fora'], desfile: ['🎭 Hora do Desfile no telão', 'pendente'], aberto: ['Votação aberta', 'ok'], encerrado: ['Encerrada', 'pendente'], publicado: ['Resultado publicado', 'ok'] }[c.estado];
     const acoes = [];
-    if (c.estado === 'fechado' || c.estado === 'encerrado') acoes.push(`<button class="botao ${c.estado === 'encerrado' ? 'secundario' : ''}" type="button" data-acao="conc-abrir" ${c.liberada ? '' : 'disabled'}>${c.estado === 'encerrado' ? 'Reabrir votação' : 'Abrir votação'}</button>`);
+    if (c.estado === 'fechado') acoes.push(`<button class="botao" type="button" data-acao="conc-desfile" ${c.liberada ? '' : 'disabled'}>🎭 Hora do Desfile Macabro</button>`);
+    if (c.estado === 'fechado' || c.estado === 'desfile' || c.estado === 'encerrado') acoes.push(`<button class="botao ${c.estado === 'encerrado' ? 'secundario' : ''}" type="button" data-acao="conc-abrir" ${c.liberada ? '' : 'disabled'}>${c.estado === 'encerrado' ? 'Reabrir votação' : c.estado === 'desfile' ? 'Desfile acabou: abrir votação' : 'Abrir votação (sem desfile)'}</button>`);
     if (c.estado === 'aberto') acoes.push('<button class="botao" type="button" data-acao="conc-encerrar">Encerrar votação</button>');
     if (c.estado === 'encerrado') acoes.push('<button class="botao" type="button" data-acao="conc-publicar">Publicar resultado e dar os pontos</button>');
     if (c.estado === 'publicado') acoes.push('<button class="botao secundario" type="button" data-acao="conc-despublicar">Despublicar (tira os pontos)</button>');
@@ -187,7 +188,8 @@
       ${c.emTeste ? '<p class="selo teste" style="display:inline-block">🧪 Em teste: só os testadores votam</p>' : ''}
       <p><span class="selo ${rot[1]}">${rot[0]}</span> · ${c.eleitores} ${c.eleitores === 1 ? 'pessoa votou' : 'pessoas votaram'} · prêmios ${c.premios.join(' / ')}</p>
       <div class="item-acoes">${acoes.join('')}<button class="botao secundario pequeno" type="button" data-acao="tel-modo" data-modo="concurso">Mostrar no telão</button></div>
-      <p class="fraco" style="margin:8px 0">Só você vê a contagem. Empate divide a colocação.</p>
+      <p class="fraco" style="margin:8px 0">Ordem: <b>Hora do Desfile Macabro</b> (o telão chama a fila) → desfile ao vivo → <b>abrir votação</b> (o telão troca sozinho) → encerrar → publicar.
+        Só você vê a contagem. Empate divide a colocação.</p>
       <div class="lista">${cont || '<p class="fraco">Nenhum voto ainda.</p>'}</div>`);
   }
 
@@ -278,7 +280,8 @@
     if (oque === 'quiz-encerrar') { if (confirmarToque(b)) await fazer(() => api('POST', '/quiz/encerrar'), 'Quiz parado.'); }
     if (oque === 'quiz-recomecar') { if (confirmarToque(b, 'Toque de novo: apagar respostas e pontos do quiz')) await fazer(() => api('POST', '/quiz/recomecar'), 'Quiz zerado.'); }
     if (oque === 'quiz-tempo') await fazer(() => api('PUT', '/quiz-tempo', { segundos: Number($('quiz-tempo').value) }), 'Tempo salvo.');
-    if (oque === 'conc-abrir') await fazer(() => api('POST', '/concurso/abrir'), 'Votação aberta.');
+    if (oque === 'conc-desfile') await fazer(() => api('POST', '/concurso/desfile'), 'Telão: Hora do Desfile Macabro!');
+    if (oque === 'conc-abrir') await fazer(() => api('POST', '/concurso/abrir'), 'Votação aberta. O telão já mostra.');
     if (oque === 'conc-encerrar') { if (confirmarToque(b)) await fazer(() => api('POST', '/concurso/encerrar'), 'Votação encerrada.'); }
     if (oque === 'conc-publicar') { if (confirmarToque(b, 'Toque de novo: publicar e dar os pontos')) await fazer(() => api('POST', '/concurso/publicar'), 'Resultado no telão. Pontos dados.'); }
     if (oque === 'conc-despublicar') { if (confirmarToque(b)) await fazer(() => api('POST', '/concurso/despublicar'), 'Resultado despublicado.'); }

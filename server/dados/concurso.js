@@ -2,7 +2,7 @@
 // enquanto a votação estiver aberta. O admin encerra e publica: os três mais votados ganham
 // 1000 / 800 / 500 pontos. Empate divide a colocação (dois em 1º ganham 1000 cada; o próximo é 3º).
 //
-// ESTADOS (config 'concurso'): fechado · aberto · encerrado · publicado.
+// ESTADOS (config 'concurso'): fechado · desfile (telão chama o Desfile Macabro) · aberto · encerrado · publicado.
 // PRIVACIDADE: ninguém vê a contagem antes de publicar (só o admin). Os outros aparecem por um
 // apelido opaco, nunca pelo id interno.
 //
@@ -57,7 +57,7 @@ async function votar(eu, candidatoApelido, agora = Date.now()) {
   const { liberada, teste } = await atividades.acesso('concurso', eu, agora);
   if (!liberada) throw new ErroValidacao('O Concurso de Fantasia ainda não está aberto.', 403);
   const cfg = await config();
-  if (cfg.estado !== 'aberto') throw new ErroValidacao(cfg.estado === 'fechado' ? 'A votação ainda não começou.' : 'A votação já fechou.', 409);
+  if (cfg.estado !== 'aberto') throw new ErroValidacao(['fechado', 'desfile'].includes(cfg.estado) ? 'A votação ainda não começou.' : 'A votação já fechou.', 409);
   const alvo = (await convidados.confirmados()).find((c) => apelido(c.id) === String(candidatoApelido));
   if (!alvo) throw new ErroValidacao('Escolha uma pessoa da lista.');
   if (alvo.id === eu.id) throw new ErroValidacao('Não vale votar em você mesmo. 😉');
@@ -78,12 +78,18 @@ async function paraAdmin(agora = Date.now()) {
 async function mudar(estado, agora = Date.now()) {
   const uso = await atividades.emUso('concurso', agora);
   const cfg = await config();
+  if (estado === 'desfile') {
+    if (!uso.ativa) throw new ErroValidacao('Libere o Concurso (ou coloque "Em teste") na aba Atividades antes do desfile.', 409);
+    if (cfg.estado !== 'fechado' && cfg.estado !== 'desfile') throw new ErroValidacao('A votação já começou.', 409);
+  }
   if (estado === 'aberto') {
     if (!uso.ativa) throw new ErroValidacao('Libere o Concurso (ou coloque "Em teste") na aba Atividades antes de abrir a votação.', 409);
     if (cfg.estado === 'publicado') throw new ErroValidacao('O resultado já foi publicado. Despublique antes de reabrir.', 409);
   }
   if (estado === 'encerrado' && cfg.estado !== 'aberto') throw new ErroValidacao('A votação não está aberta.', 409);
   await festa.gravar('concurso', { ...cfg, estado, teste: cfg.teste || uso.teste });
+  // Desfile e votação aparecem no telão sozinhos.
+  if (estado === 'desfile' || estado === 'aberto') await festa.definirTelao({ modo: 'concurso' });
 }
 
 async function publicar() {
@@ -115,6 +121,10 @@ async function paraTelao() {
   const votos = await banco.um('SELECT COUNT(*) AS n FROM concurso_votos');
   const saida = { estado: cfg.estado, votos: Number(votos.n), premios: PONTOS_CONCURSO };
   if (cfg.estado === 'publicado') saida.podio = podio(await contagem());
+  if (cfg.estado === 'desfile') {
+    const pessoas = await convidados.confirmados();
+    saida.desfile = pessoas.map((c) => ({ avatar: c.avatar, iniciais: c.nome.trim().split(/\s+/).slice(0, 2).map((x) => x[0].toUpperCase()).join('') }));
+  }
   return saida;
 }
 

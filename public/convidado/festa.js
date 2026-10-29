@@ -181,7 +181,10 @@
     const premios = `1º +${pts(c.premios[0])} · 2º +${pts(c.premios[1])} · 3º +${pts(c.premios[2])}`;
     const meu = c.meuVoto ? c.candidatos.find((x) => x.id === c.meuVoto) : null;
     let topo;
-    if (c.estado === 'fechado') {
+    if (c.estado === 'desfile') {
+      topo = `<section class="cartao prev-aviso aberta"><b>🎭 Hora do Desfile Macabro!</b><p class="mudo">Entre na fila e desfile a sua fantasia.
+        Logo depois do desfile a votação abre aqui no celular. Prêmios: ${premios}.</p></section>`;
+    } else if (c.estado === 'fechado') {
       topo = `<section class="cartao"><b>🔒 A votação abre durante a festa</b><p class="mudo">Capriche na fantasia. Os três mais votados ganham: ${premios} pontos.</p></section>`;
     } else if (c.estado === 'aberto') {
       topo = `<section class="cartao prev-aviso aberta"><b>Votação aberta</b><p class="mudo">Vote na melhor fantasia da noite (não vale votar em você).

@@ -78,6 +78,7 @@
   // -------------------------------------------------------------- concurso
   function desenharConcurso(c) {
     if (!c) return;
+    $('concurso-titulo').classList.toggle('oculto', c.estado === 'desfile');
     if (c.estado === 'publicado') {
       const podio = c.podio || [];
       // Empate: todos os empatados sobem no mesmo degrau (2º à esquerda, 1º no meio, 3º à direita).
@@ -88,6 +89,14 @@
           <div class="bloco">${x.posicao}º</div></div>`).join('')}</div>
         ${extras.length ? `<p class="prev-dica">Empatados: ${extras.map((x) => `${esc(x.nome)} (${x.posicao}º)`).join(', ')}</p>` : ''}`
         : '<p class="prev-dica">Ninguém recebeu voto.</p>';
+      return;
+    }
+    if (c.estado === 'desfile') {
+      $('concurso-telao').innerHTML = `<div class="desfile-chamada"><p class="desfile-titulo terror">Hora do Desfile Macabro</p>
+        <p class="desfile-sub">Formem a fila! 👑</p></div>
+        <div class="sala-bolhas">${(c.desfile || []).map((p, i) => `<div class="bolha" style="animation-delay:${(i % 7) * 0.35}s">
+          <span class="avatar">${emoji(p.avatar)}</span><b>${esc(p.iniciais)}</b></div>`).join('')}</div>
+        <p class="prev-dica">Depois do desfile, a votação abre no celular · 1º +${pts(c.premios[0])} · 2º +${pts(c.premios[1])} · 3º +${pts(c.premios[2])}</p>`;
       return;
     }
     const txt = { fechado: 'A votação abre em breve. Capriche na pose!', aberto: 'Votação aberta! Vote pelo celular na melhor fantasia.', encerrado: 'Votação encerrada. O resultado vem aí…' }[c.estado];

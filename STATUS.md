@@ -73,6 +73,9 @@ Atualizado em 27/10/2026.
 
 - [ ] Adivinhe a fantasia (deixado para depois)
 
+- [ ] **Avisos de telão para todas as gincanas** (pedido em 29/10): cada jogo ganha uma tela de chamada no telão antes de começar.
+      Os horários de cada gincana ainda vão ser definidos (regra de horário fica para depois).
+- [x] Concurso de Fantasia: tela "Hora do Desfile Macabro" no telão (botão no admin); abrir a votação troca o telão sozinho
 - [ ] Teste real (Victor e Lucas) de Quiz, Concurso, Correio, Maldição e Previsões no celular e na TV
 - [ ] Sábado antes das 17h: "Apagar dados de teste" e conferir que nada ficou "Em teste"
 
