@@ -73,6 +73,7 @@ Atualizado em 27/10/2026.
 
 - [ ] Adivinhe a fantasia (deixado para depois)
 
+- [x] Pódios com suspense no telão (3º, 2º e 1º com pausa): Concurso, placar do Quiz e Ranking da noite
 - [ ] **Avisos de telão para todas as gincanas** (pedido em 29/10): cada jogo ganha uma tela de chamada no telão antes de começar.
       Os horários de cada gincana ainda vão ser definidos (regra de horário fica para depois).
 - [x] Concurso de Fantasia: lista "Quero desfilar!" (só quem entra concorre), tela "Hora do Desfile Macabro" no telão, abrir a votação troca o telão sozinho, telão mostra quem já votou (voto secreto)

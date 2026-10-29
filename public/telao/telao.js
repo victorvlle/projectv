@@ -44,9 +44,11 @@
   }
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') manterAcesa(); });
 
+  let vezRanking = 0; // cada vez que o ranking aparece no telão, o pódio é revelado com suspense
   function trocarCena(cena) {
     if (cena === cenaAtual) return;
     cenaAtual = cena;
+    if (cena === 'ranking') { vezRanking += 1; if (estado) desenharRanking(estado.ranking || []); }
     document.querySelectorAll('.cena').forEach((s) => {
       const visivel = s.dataset.cena === cena;
       s.classList.toggle('oculto', !visivel);
@@ -112,11 +114,14 @@
   }
 
   function desenharRanking(r) {
-    const podio = r.filter((x) => x.posicao <= 3).slice(0, 3);
-    const ordem = [podio[1], podio[0], podio[2]].filter(Boolean);
-    $('podio').innerHTML = r.some((x) => x.pontos > 0) ? ordem.map((x) => `<div class="degrau d${x.posicao}">
-        <span class="avatar">${emojiDe(x.avatar)}</span><b>${PV.esc(x.nome)}</b><span class="pts">${x.pontos.toLocaleString('pt-BR')} pts</span>
-        <div class="bloco">${x.posicao}º</div></div>`).join('') : '<p class="prev-dica">Ninguém pontuou ainda.</p>';
+    if (!r.some((x) => x.pontos > 0)) {
+      $('podio').innerHTML = '<p class="prev-dica">Ninguém pontuou ainda.</p>';
+    } else {
+      const top = r.filter((x) => x.posicao <= 3 && x.pontos > 0);
+      const grupos = [1, 2, 3].map((pos) => ({ posicao: pos, pessoas: top.filter((x) => x.posicao === pos)
+        .map((x) => ({ nome: x.nome, avatar: x.avatar, detalhe: `${x.pontos.toLocaleString('pt-BR')} pts` })) })).filter((g) => g.pessoas.length);
+      window.PVPodio.montar($('podio'), grupos, { chave: `ranking:${vezRanking}`, animar: cenaAtual === 'ranking' });
+    }
     $('rank-telao').innerHTML = r.filter((x) => x.posicao > 3).slice(0, 7).map((x) => `<li><span class="p">${x.posicao}º</span>
       <span class="avatar">${emojiDe(x.avatar)}</span><span class="n">${PV.esc(x.nome)}</span><span class="pts">${x.pontos.toLocaleString('pt-BR')}</span></li>`).join('');
   }

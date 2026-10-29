@@ -14,6 +14,9 @@
   let relogio = null;
   let troca = null;
   const vistos = new Set();
+  // Agrupa por posição (empate = mesmo degrau) para o pódio com suspense.
+  const grupos = (lista, detalhe) => [1, 2, 3].map((pos) => ({ posicao: pos, pessoas: lista.filter((p) => p.posicao === pos).map((p) => ({ ...p, detalhe: detalhe(p) })) }))
+    .filter((g) => g.pessoas.length);
   function desenharQuiz(q) {
     clearInterval(relogio);
     clearTimeout(troca);
@@ -40,10 +43,17 @@
       $('quiz-rotulo').textContent = 'Quiz de Terror Relâmpago';
       $('quiz-pergunta').textContent = 'Fim do quiz! 🏁';
       $('quiz-opcoes').innerHTML = '';
-      $('quiz-rodape').innerHTML = (q.placar || []).length
-        ? `<div class="quiz-placar-telao">${q.placar.map((p) => `<div class="linha-placar"><span class="pos">${['🥇', '🥈', '🥉'][p.posicao - 1] || `${p.posicao}º`}</span>
-            <span class="avatar">${emoji(p.avatar)}</span><span class="n">${esc(p.nome)}</span><span class="pts">${p.acertos} ${p.acertos === 1 ? 'acerto' : 'acertos'} · +${pts(p.pontos)}</span></div>`).join('')}</div>`
-        : '<p class="prev-dica">Ninguém acertou nenhuma! 💀</p>';
+      const placar = q.placar || [];
+      if (!placar.length) {
+        $('quiz-rodape').innerHTML = '<p class="prev-dica">Ninguém acertou nenhuma! 💀</p>';
+      } else {
+        // Pódio com suspense (3º, 2º, 1º) e, embaixo, quem veio depois.
+        if (!$('quiz-podio')) $('quiz-rodape').innerHTML = '<div id="quiz-podio"></div><div class="quiz-placar-telao" id="quiz-resto"></div>';
+        window.PVPodio.montar($('quiz-podio'), grupos(placar, (p) => `${p.acertos} ${p.acertos === 1 ? 'acerto' : 'acertos'} · +${pts(p.pontos)}`),
+          { chave: `quiz:${JSON.stringify(placar)}` });
+        $('quiz-resto').innerHTML = placar.filter((p) => p.posicao > 3).map((p) => `<div class="linha-placar"><span class="pos">${p.posicao}º</span>
+          <span class="avatar">${emoji(p.avatar)}</span><span class="n">${esc(p.nome)}</span><span class="pts">${p.acertos} ${p.acertos === 1 ? 'acerto' : 'acertos'} · +${pts(p.pontos)}</span></div>`).join('');
+      }
     } else {
       const x = q.atual;
       const revelada = q.fase === 'revelacao';
@@ -81,14 +91,10 @@
     $('concurso-titulo').classList.toggle('oculto', c.estado === 'desfile');
     if (c.estado === 'publicado') {
       const podio = c.podio || [];
-      // Empate: todos os empatados sobem no mesmo degrau (2º à esquerda, 1º no meio, 3º à direita).
-      const ordem = [2, 1, 3].flatMap((pos) => podio.filter((p) => p.posicao === pos));
-      const extras = [];
-      $('concurso-telao').innerHTML = podio.length ? `<div class="podio">${ordem.map((x) => `<div class="degrau d${x.posicao}">
-          <span class="avatar">${emoji(x.avatar)}</span><b>${esc(x.nome)}</b><span class="pts">+${pts(x.pontos)} · ${x.votos} ${x.votos === 1 ? 'voto' : 'votos'}</span>
-          <div class="bloco">${x.posicao}º</div></div>`).join('')}</div>
-        ${extras.length ? `<p class="prev-dica">Empatados: ${extras.map((x) => `${esc(x.nome)} (${x.posicao}º)`).join(', ')}</p>` : ''}`
-        : '<p class="prev-dica">Ninguém recebeu voto.</p>';
+      if (!podio.length) { $('concurso-telao').innerHTML = '<p class="prev-dica">Ninguém recebeu voto.</p>'; return; }
+      // Revela 3º, 2º e 1º com suspense (uma vez por resultado publicado).
+      window.PVPodio.montar($('concurso-telao'), grupos(podio, (p) => `+${pts(p.pontos)} · ${p.votos} ${p.votos === 1 ? 'voto' : 'votos'}`),
+        { chave: `concurso:${JSON.stringify(podio)}` });
       return;
     }
     if (c.estado === 'desfile') {
