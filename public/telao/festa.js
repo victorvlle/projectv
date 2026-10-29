@@ -139,7 +139,6 @@
     if (!cartas.length) {
       document.querySelector('[data-cena="correio"]').classList.remove('com-foto');
       $('carta-telao').innerHTML = '<p class="prev-dica">Nada no mural ainda. Mande um recado ou uma foto pelo celular! 📸</p>';
-      $('correio-rodape').textContent = '';
       return;
     }
     const c = cartas[indice % cartas.length];
@@ -156,7 +155,6 @@
           ${c.para ? para(c) : '<p class="carta-para">Para: alguém nesta festa…</p>'}
           <p class="carta-corpo">“${esc(c.texto)}”</p><p class="carta-assinatura">— Anônimo 💀</p></div>`;
     }
-    $('correio-rodape').textContent = `${(indice % cartas.length) + 1} de ${cartas.length} · mande o seu recado ou foto pelo celular`;
     // Já deixa a próxima foto baixada.
     const prox = cartas[(indice + 1) % cartas.length];
     if (prox && prox.foto) PV.foto(urlFoto(prox), tokenTelao()).catch(() => {});
