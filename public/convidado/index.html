@@ -257,6 +257,27 @@
     <div id="correio"></div>
   </main>
 
+  <main id="tela-fotos" class="pagina oculto">
+    <header class="barra">
+      <a class="voltar" href="#">← Voltar</a>
+      <span class="marca barra-marca">Project V</span>
+    </header>
+    <h1 class="titulo-tela">🖼️ Fotos da festa</h1>
+    <div id="fotos"></div>
+  </main>
+
+  <div id="foto-visor" class="foto-visor oculto" role="dialog" aria-modal="true" aria-label="Foto da festa">
+    <button class="foto-visor-fechar" type="button" id="visor-fechar" aria-label="Fechar">✕</button>
+    <img id="visor-img" alt="Foto da festa">
+    <p id="visor-legenda" class="foto-visor-legenda"></p>
+    <div class="foto-visor-acoes">
+      <button class="botao secundario" type="button" id="visor-ant" aria-label="Foto anterior">◀</button>
+      <button class="botao" type="button" id="visor-baixar">⬇️ Baixar esta foto</button>
+      <button class="botao secundario" type="button" id="visor-prox" aria-label="Próxima foto">▶</button>
+    </div>
+    <p id="visor-conta" class="fraco foto-visor-conta"></p>
+  </div>
+
   <main id="tela-maldicao" class="pagina oculto">
     <header class="barra">
       <a class="voltar" href="#">← Voltar</a>

@@ -1,6 +1,12 @@
 // Mural das Trevas (id interno "correio"): cada pessoa manda um RECADO ou uma FOTO (com legenda
-// opcional) e escolhe, se quiser, para quem é. Tudo passa pelo organizador antes de ir ao telão.
-// Anônimo para todos os convidados; só o organizador vê quem mandou (para moderar). Sem pontos.
+// opcional) e escolhe, se quiser, para quem é. Anônimo para todos; só o organizador vê quem mandou.
+// Sem pontos.
+//
+// ENTRADA AUTOMÁTICA (padrão): o que chega vai direto ao telão. O organizador pode TRAVAR
+// (config 'correio'.auto = false): aí cada envio espera aprovação. Ele também apaga qualquer envio.
+//
+// FOTOS DA FESTA: depois da festa (atividade "fotos", abre domingo) todos veem e baixam as fotos
+// aprovadas, uma a uma ou todas num .zip.
 //
 // FOTOS: o celular já reduz a foto (lado maior até 1600 px) e manda JPEG; o servidor confere que é
 // JPEG de verdade e o tamanho. A foto fica em correio_fotos (fora das listas, que ficam leves) e
@@ -11,6 +17,7 @@
 
 const crypto = require('crypto');
 const banco = require('./banco');
+const festa = require('./festa');
 const atividades = require('./atividades');
 const convidados = require('./convidados');
 const { ErroValidacao, limparTexto } = convidados;
@@ -19,6 +26,13 @@ const MAX_CARACTERES = 140;
 const MAX_POR_PESSOA = 20;
 const INTERVALO_MS = 30 * 1000;
 const MAX_FOTO_BYTES = 900 * 1024;
+
+async function config() {
+  return { auto: true, ...((await festa.ler('correio')) || {}) };
+}
+async function definirAuto(auto) {
+  await festa.gravar('correio', { ...(await config()), auto: Boolean(auto) });
+}
 
 const apelido = (id) => `k${crypto.createHash('sha256').update(`pv-correio:${id}`).digest('hex').slice(0, 12)}`;
 
@@ -43,7 +57,7 @@ async function paraConvidado(euId) {
     convidados.confirmados(),
   ]);
   return {
-    max: MAX_CARACTERES, limite: MAX_POR_PESSOA,
+    max: MAX_CARACTERES, limite: MAX_POR_PESSOA, auto: (await config()).auto,
     minhas: minhas.map((m) => ({ id: Number(m.id), texto: m.texto, estado: m.estado, em: Number(m.criado_em), para: m.para || null, foto: Boolean(Number(m.foto)) })),
     enviadas: minhas.length,
     pessoas: pessoas.filter((c) => c.id !== euId).map((c) => ({ id: apelido(c.id), nome: c.nome, avatar: c.avatar })),
@@ -67,23 +81,76 @@ async function enviar(eu, { texto, para, foto }, agora = Date.now()) {
   if (r.ultima != null && agora - Number(r.ultima) < INTERVALO_MS) {
     throw new ErroValidacao('Espere uns segundos antes de mandar de novo.', 429);
   }
+  const { auto } = await config();
   await banco.transacao(async (tx) => {
-    const ins = await tx.execute({ sql: 'INSERT INTO correio (autor_id, para_id, texto, criado_em, teste) VALUES (?, ?, ?, ?, ?)',
-      args: [eu.id, paraId, t, agora, teste ? 1 : 0] });
+    const ins = await tx.execute({ sql: 'INSERT INTO correio (autor_id, para_id, texto, criado_em, teste, estado, moderado_em) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      args: [eu.id, paraId, t, agora, teste ? 1 : 0, auto ? 'aprovada' : 'pendente', auto ? agora : null] });
     if (imagem) {
       await tx.execute({ sql: 'INSERT INTO correio_fotos (carta_id, dados, bytes) VALUES (?, ?, ?)',
         args: [Number(ins.lastInsertRowid), imagem.toString('base64'), imagem.length] });
     }
   });
+  return { noTelao: auto };
 }
 
-// A foto em si (Buffer). Convidado: só as próprias. Organizador/telão: qualquer uma.
-async function foto(id, { autorId } = {}) {
+// A foto em si (Buffer). Convidado: as próprias e, com as Fotos da festa abertas, as aprovadas.
+// Organizador/telão: qualquer uma.
+async function foto(id, { autorId, galeria = false } = {}) {
+  const filtro = autorId ? `AND (m.autor_id = ? ${galeria ? "OR m.estado = 'aprovada'" : ''})` : '';
   const linha = await banco.um(
-    `SELECT f.dados FROM correio_fotos f JOIN correio m ON m.id = f.carta_id
-      WHERE f.carta_id = ? ${autorId ? 'AND m.autor_id = ?' : ''}`,
+    `SELECT f.dados FROM correio_fotos f JOIN correio m ON m.id = f.carta_id WHERE f.carta_id = ? ${filtro}`,
     autorId ? [Number(id), autorId] : [Number(id)]);
   return linha ? Buffer.from(linha.dados, 'base64') : null;
+}
+
+// ------------------------------------------------------- fotos da festa
+async function galeria() {
+  const linhas = await banco.tudo(
+    `SELECT m.id, m.texto, m.criado_em, p.nome AS para FROM correio m JOIN correio_fotos f ON f.carta_id = m.id
+       LEFT JOIN convidados p ON p.id = m.para_id
+      WHERE m.estado = 'aprovada' ORDER BY m.criado_em`);
+  return { fotos: linhas.map((l) => ({ id: Number(l.id), texto: l.texto, para: l.para || null, em: Number(l.criado_em) })) };
+}
+
+// .zip sem compressão (JPEG já é comprimido), escrito foto a foto para não segurar tudo na memória.
+const TABELA_CRC = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
+  return t;
+})();
+function crc32(buf) {
+  let c = 0xffffffff;
+  for (let i = 0; i < buf.length; i++) c = TABELA_CRC[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+async function escreverZip(escrever) {
+  const ids = (await galeria()).fotos.map((f) => f.id);
+  const central = [];
+  let pos = 0;
+  for (const [i, id] of ids.entries()) {
+    const dados = await foto(id);
+    if (!dados) continue;
+    const nome = Buffer.from(`project-v-halloween-${String(i + 1).padStart(3, '0')}.jpg`);
+    const crc = crc32(dados);
+    const cab = Buffer.alloc(30);
+    cab.writeUInt32LE(0x04034b50, 0); cab.writeUInt16LE(20, 4); cab.writeUInt16LE(0, 6); cab.writeUInt16LE(0, 8);
+    cab.writeUInt16LE(0, 10); cab.writeUInt16LE(0x5b61, 12); // 01/11/2025 (data fixa, só enfeite)
+    cab.writeUInt32LE(crc, 14); cab.writeUInt32LE(dados.length, 18); cab.writeUInt32LE(dados.length, 22);
+    cab.writeUInt16LE(nome.length, 26); cab.writeUInt16LE(0, 28);
+    await escrever(Buffer.concat([cab, nome, dados]));
+    const c = Buffer.alloc(46);
+    c.writeUInt32LE(0x02014b50, 0); c.writeUInt16LE(20, 4); c.writeUInt16LE(20, 6); c.writeUInt16LE(0, 8); c.writeUInt16LE(0, 10);
+    c.writeUInt16LE(0, 12); c.writeUInt16LE(0x5b61, 14); c.writeUInt32LE(crc, 16); c.writeUInt32LE(dados.length, 20); c.writeUInt32LE(dados.length, 24);
+    c.writeUInt16LE(nome.length, 28); c.writeUInt32LE(pos, 42);
+    central.push(Buffer.concat([c, nome]));
+    pos += 30 + nome.length + dados.length;
+  }
+  const dir = Buffer.concat(central);
+  const fim = Buffer.alloc(22);
+  fim.writeUInt32LE(0x06054b50, 0); fim.writeUInt16LE(central.length, 8); fim.writeUInt16LE(central.length, 10);
+  fim.writeUInt32LE(dir.length, 12); fim.writeUInt32LE(pos, 16);
+  await escrever(Buffer.concat([dir, fim]));
+  return central.length;
 }
 
 // ------------------------------------------------------------------ admin
@@ -99,7 +166,7 @@ async function paraAdmin(agora = Date.now()) {
   ]);
   const cartas = linhas.map((l) => ({ id: Number(l.id), texto: l.texto, estado: l.estado, em: Number(l.criado_em), autor: l.autor,
     para: l.para || null, teste: Boolean(Number(l.teste)), foto: Boolean(Number(l.foto)) }));
-  return { liberada: uso.ativa, emTeste: uso.teste, pendentes: cartas.filter((c) => c.estado === 'pendente').length, cartas,
+  return { auto: (await config()).auto, liberada: uso.ativa, emTeste: uso.teste, pendentes: cartas.filter((c) => c.estado === 'pendente').length, cartas,
     fotos: Number(fotos.n), fotosMb: Math.round(Number(fotos.bytes) / 1024 / 102.4) / 10 };
 }
 
@@ -109,7 +176,16 @@ async function moderar(id, estado, agora = Date.now()) {
   if (!r.rowsAffected) throw new ErroValidacao('Recado não encontrado.', 404);
 }
 
-// Depois da festa: some com todas as fotos (e os envios que eram foto). Recados de texto ficam.
+// Apaga um envio (recado ou foto) de vez.
+async function apagar(id) {
+  const r = await banco.lote([
+    { sql: 'DELETE FROM correio_fotos WHERE carta_id = ?', args: [Number(id)] },
+    { sql: 'DELETE FROM correio WHERE id = ?', args: [Number(id)] },
+  ]);
+  if (!r[1].rowsAffected) throw new ErroValidacao('Envio não encontrado.', 404);
+}
+
+// Some com todas as fotos (e os envios que eram foto). Recados de texto ficam.
 async function apagarFotos() {
   const n = Number((await banco.um('SELECT COUNT(*) AS n FROM correio_fotos')).n);
   await banco.lote([
@@ -129,4 +205,4 @@ async function paraTelao() {
     em: Number(l.moderado_em), foto: Boolean(Number(l.foto)) })) };
 }
 
-module.exports = { paraConvidado, enviar, foto, paraAdmin, moderar, apagarFotos, paraTelao, apelido, MAX_CARACTERES, MAX_FOTO_BYTES };
+module.exports = { config, definirAuto, paraConvidado, enviar, foto, galeria, escreverZip, crc32, paraAdmin, moderar, apagar, apagarFotos, paraTelao, apelido, MAX_CARACTERES, MAX_FOTO_BYTES };

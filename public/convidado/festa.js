@@ -309,7 +309,8 @@
     if ($('form-correio')) return;
     $('correio').innerHTML = `<div id="correio-teste"></div>
       <form id="form-correio" class="cartao">
-        <p class="mudo" style="margin-top:0">Mande um recado ou uma foto da festa. É anônimo: ninguém sabe quem mandou, só o organizador, que aprova antes de ir para o telão.</p>
+        <p class="mudo" style="margin-top:0" id="mural-intro"></p>
+        <p class="mural-aviso">⚠️ Nada ofensivo ou constrangedor, e nada que exponha alguém sem querer. O organizador apaga o que passar do ponto.</p>
         <input type="file" id="mural-arquivo" accept="image/*" class="oculto">
         <button class="botao secundario largo" type="button" id="mural-foto-botao">📷 Escolher ou tirar foto</button>
         <div id="mural-previa" class="mural-previa oculto">
@@ -350,6 +351,9 @@
     if (!k) return;
     montarCorreio();
     pintar('correio-teste', seloTeste(k));
+    pintar('mural-intro', k.auto
+      ? 'Mande um recado ou uma foto da festa: aparece no telão na hora, sem o seu nome. Só o organizador sabe quem mandou.'
+      : 'Mande um recado ou uma foto da festa. É anônimo: só o organizador sabe quem mandou, e ele aprova antes de ir para o telão.');
     const sel = $('correio-para');
     const opcoes = `<option value="">Ninguém em especial</option>${k.pessoas.map((p) => `<option value="${esc(p.id)}">${esc(p.nome)}</option>`).join('')}`;
     if (assinaturas.correioPara !== opcoes && document.activeElement !== sel) {
@@ -385,7 +389,8 @@
       $('correio-conta').textContent = '0/140';
       fotoEscolhida = null;
       $('mural-arquivo').value = '';
-      PV.avisar(`${eraFoto ? 'Foto enviada' : 'Recado enviado'}! Aparece no telão depois que o organizador aprovar.`, 'ok');
+      const auto = r.correio && r.correio.auto;
+      PV.avisar(`${eraFoto ? 'Foto enviada' : 'Recado enviado'}! ${auto ? 'Já está no telão. 👻' : 'Aparece no telão depois que o organizador aprovar.'}`, 'ok');
       C().atualizarParte('correio', r.correio);
     } catch (erro) {
       if (erro.status !== 401) PV.avisar(erro.status === 413 ? 'A foto ficou grande demais. Tente outra.' : erro.message, 'erro');
@@ -401,11 +406,112 @@
     return null;
   }
 
+  // ======================================================= FOTOS DA FESTA
+  // Abre depois da festa: todas as fotos aprovadas do Mural, para ver e baixar.
+  let fotos = [];
+  let visorPos = 0;
+  const urlFoto = (id) => `/api/correio/foto/${id}`;
+
+  function desenharFotos(g) {
+    if (!g) return;
+    fotos = g.fotos;
+    pintar('fotos', `${seloTeste(g)}
+      <p class="mudo">${fotos.length ? `${fotos.length} ${fotos.length === 1 ? 'foto' : 'fotos'} da noite de 31/10. Toque numa foto para ver grande e baixar.` : 'Nenhuma foto no mural.'}</p>
+      ${fotos.length > 1 ? '<button class="botao largo" type="button" id="fotos-zip">⬇️ Baixar todas as fotos (.zip)</button>' : ''}
+      <div class="galeria">${fotos.map((f, i) => `<button type="button" class="galeria-item" data-foto-pos="${i}" aria-label="Abrir foto ${i + 1}">
+        <img data-foto="${urlFoto(f.id)}" alt="Foto ${i + 1}"></button>`).join('')}</div>`);
+    PV.preencherFotos($('fotos'), C().token());
+  }
+
+  async function arquivoDaFoto(f, i) {
+    const blob = await PV.fotoBlob(urlFoto(f.id), C().token());
+    return new File([blob], `project-v-halloween-${String(i + 1).padStart(3, '0')}.jpg`, { type: 'image/jpeg' });
+  }
+  function baixarArquivo(blob, nome) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nome;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+  async function baixarFoto(i) {
+    const botao = $('visor-baixar');
+    botao.disabled = true;
+    try {
+      const arq = await arquivoDaFoto(fotos[i], i);
+      // No celular, "Compartilhar" deixa salvar direto na galeria (no iPhone: "Salvar imagem").
+      if (navigator.canShare && navigator.canShare({ files: [arq] })) {
+        try { await navigator.share({ files: [arq] }); } catch (e) { if (e.name !== 'AbortError') baixarArquivo(arq, arq.name); }
+      } else baixarArquivo(arq, arq.name);
+    } catch (_) {
+      PV.avisar('Não consegui baixar a foto. Tente de novo.', 'erro');
+    } finally {
+      botao.disabled = false;
+    }
+  }
+  async function baixarZip(botao) {
+    botao.disabled = true;
+    const texto = botao.textContent;
+    botao.textContent = 'Preparando as fotos…';
+    try {
+      const r = await fetch('/api/fotos/zip', { headers: { Authorization: `Bearer ${C().token()}` } });
+      if (!r.ok) throw new Error(String(r.status));
+      baixarArquivo(await r.blob(), 'project-v-halloween-fotos.zip');
+    } catch (_) {
+      PV.avisar('Não consegui baixar agora. Tente de novo em instantes.', 'erro');
+    } finally {
+      botao.disabled = false;
+      botao.textContent = texto;
+    }
+  }
+
+  function abrirVisor(i) {
+    if (!fotos.length) return;
+    visorPos = (i + fotos.length) % fotos.length;
+    const f = fotos[visorPos];
+    const img = $('visor-img');
+    img.removeAttribute('src');
+    img.dataset.foto = urlFoto(f.id);
+    PV.foto(urlFoto(f.id), C().token()).then((src) => { if (img.dataset.foto === urlFoto(f.id)) img.src = src; }).catch(() => {});
+    $('visor-legenda').textContent = f.texto ? `“${f.texto}”${f.para ? ` · para ${f.para}` : ''}` : (f.para ? `Para ${f.para}` : '');
+    $('visor-conta').textContent = `${visorPos + 1} de ${fotos.length}`;
+    $('visor-ant').classList.toggle('oculto', fotos.length < 2);
+    $('visor-prox').classList.toggle('oculto', fotos.length < 2);
+    $('foto-visor').classList.remove('oculto');
+    document.body.classList.add('sem-rolar');
+  }
+  function fecharVisor() {
+    $('foto-visor').classList.add('oculto');
+    document.body.classList.remove('sem-rolar');
+  }
+  document.addEventListener('click', (e) => {
+    const item = e.target.closest('[data-foto-pos]');
+    if (item) return abrirVisor(Number(item.dataset.fotoPos));
+    if (e.target.closest('#fotos-zip')) return baixarZip(e.target.closest('#fotos-zip'));
+    if (e.target.closest('#visor-fechar') || e.target.id === 'foto-visor') return fecharVisor();
+    if (e.target.closest('#visor-ant')) return abrirVisor(visorPos - 1);
+    if (e.target.closest('#visor-prox')) return abrirVisor(visorPos + 1);
+    if (e.target.closest('#visor-baixar')) return baixarFoto(visorPos);
+    return null;
+  });
+  document.addEventListener('keydown', (e) => {
+    if ($('foto-visor').classList.contains('oculto')) return;
+    if (e.key === 'Escape') fecharVisor();
+    if (e.key === 'ArrowLeft') abrirVisor(visorPos - 1);
+    if (e.key === 'ArrowRight') abrirVisor(visorPos + 1);
+  });
+  // Saiu da tela de fotos (voltar do celular): fecha o visor.
+  window.addEventListener('hashchange', () => { if (location.hash !== '#fotos') fecharVisor(); });
+
   // ================================================================= cards
   function desenhar(estado) {
     desenharQuiz(estado.quiz);
     desenharConcurso(estado.concurso);
     desenharCorreio(estado.correio);
+    desenharFotos(estado.fotos);
   }
 
   window.PVFesta = { desenhar };

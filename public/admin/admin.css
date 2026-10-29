@@ -99,3 +99,5 @@ h3 { font-size: 1.05rem; margin-bottom: 6px; }
 .avatar.mini { width: 24px; height: 24px; font-size: 14px; }
 
 .chip-sala .tirar { appearance: none; border: 0; background: none; color: var(--texto-3); cursor: pointer; padding: 0 2px 0 4px; font-size: .9rem; }
+
+.item.travado { border-color: var(--laranja); }

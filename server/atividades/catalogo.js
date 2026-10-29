@@ -25,7 +25,7 @@ const ATIVIDADES = [
     nome: 'Mural das Trevas',
     enigma: 'Cartas do Além',
     icone: '📸',
-    descricao: 'Mande um recado ou uma foto. Os aprovados aparecem no telão.',
+    descricao: 'Mande um recado ou uma foto. Aparece no telão na hora.',
     padrao: { estado: 'bloqueada' },
   },
   {
@@ -52,6 +52,15 @@ const ATIVIDADES = [
     descricao: 'Vote para onde a noite continua depois da festa.',
     // Abre às 23h do dia da festa; a votação fecha quando a festa termina.
     padrao: { estado: 'agendada', abreEm: '2026-10-31T23:00:00-04:00' },
+  },
+  {
+    id: 'fotos',
+    nome: 'Fotos da festa',
+    enigma: 'Lembranças do Além',
+    icone: '🖼️',
+    descricao: 'Todas as fotos do Mural das Trevas. Veja e baixe as suas favoritas.',
+    // Só depois da festa: domingo de manhã.
+    padrao: { estado: 'agendada', abreEm: '2026-11-01T09:00:00-04:00' },
   },
 ];
 

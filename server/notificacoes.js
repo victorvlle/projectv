@@ -32,7 +32,7 @@ const { ErroValidacao } = require('./dados/convidados');
 
 const MAX_POR_CONVIDADO = 5;
 // Destinos que um toque na notificação pode abrir. Qualquer outro vira a página inicial.
-const DESTINOS = new Set(['/', '/#contribuicoes', '/#playlist', '/#caronas', '/#chegar', '/#pos', '/#avisos', '/#previsoes', '/#enigma', '/#ranking', '/#maldicao', '/#quiz', '/#concurso', '/#correio']);
+const DESTINOS = new Set(['/', '/#contribuicoes', '/#playlist', '/#caronas', '/#chegar', '/#pos', '/#avisos', '/#previsoes', '/#enigma', '/#ranking', '/#maldicao', '/#quiz', '/#concurso', '/#correio', '/#fotos']);
 const destinoSeguro = (u) => (DESTINOS.has(u) ? u : '/');
 const HOSTS_PERMITIDOS = [
   /^fcm\.googleapis\.com$/, /^android\.googleapis\.com$/,
@@ -470,9 +470,10 @@ const TEXTOS_LIBERADA = {
   pos: ['Project V: votação do pós aberta', 'Vote no lugar para onde o grupo vai depois da meia-noite.'],
   quiz: ['Project V: Quiz Relâmpago', 'As perguntas aparecem no telão. Responda pelo celular: cada acerto vale até 500 pontos.'],
   concurso: ['Project V: Concurso de Fantasia', 'A votação da melhor fantasia está aberta no site da festa.'],
-  correio: ['Project V: Mural das Trevas', 'Mande um recado ou uma foto da festa. Os aprovados aparecem no telão.'],
+  correio: ['Project V: Mural das Trevas', 'Mande um recado ou uma foto da festa: aparece no telão na hora.'],
+  fotos: ['Project V: fotos da festa', 'As fotos do Mural das Trevas estão no site. Veja e baixe as suas favoritas.'],
 };
-const URL_LIBERADA = { pos: '/#pos', previsoes: '/#previsoes', quiz: '/#quiz', concurso: '/#concurso', correio: '/#correio' };
+const URL_LIBERADA = { pos: '/#pos', previsoes: '/#previsoes', quiz: '/#quiz', concurso: '/#concurso', correio: '/#correio', fotos: '/#fotos' };
 // Liberada de madrugada (ex.: Previsões às 00:00 de sexta): o aviso espera até as 8h.
 async function atividadeLiberada(atividade, agora = relogio()) {
   const [titulo, corpo] = TEXTOS_LIBERADA[atividade.id]

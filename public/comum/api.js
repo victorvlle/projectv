@@ -122,15 +122,17 @@
 
   // Foto protegida (precisa da sessão no cabeçalho): baixa uma vez e devolve um endereço blob:.
   const fotos = new Map();
-  function foto(url, token) {
+  function baixarFoto(url, token) {
     if (!fotos.has(url)) {
       fotos.set(url, fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
         .then((r) => { if (!r.ok) throw new Error(`foto ${r.status}`); return r.blob(); })
-        .then((b) => URL.createObjectURL(b))
+        .then((blob) => ({ blob, src: URL.createObjectURL(blob) }))
         .catch((e) => { fotos.delete(url); throw e; }));
     }
     return fotos.get(url);
   }
+  const foto = (url, token) => baixarFoto(url, token).then((x) => x.src);
+  const fotoBlob = (url, token) => baixarFoto(url, token).then((x) => x.blob);
   // Preenche <img data-foto="url"> dentro de um elemento, só quando a foto chega perto da tela
   // (uma lista com muitas fotos não baixa tudo de uma vez).
   function carregarFoto(img, token) {
@@ -147,5 +149,5 @@
     imgs.forEach((img) => olho.observe(img));
   }
 
-  window.PV = { foto, preencherFotos, guardado, chamar, ErroApi, relogio, contagem, dataHora, dataCurta, periodo, esc, avisar, conectar, adiar, FUSO };
+  window.PV = { foto, fotoBlob, preencherFotos, guardado, chamar, ErroApi, relogio, contagem, dataHora, dataCurta, periodo, esc, avisar, conectar, adiar, FUSO };
 })();

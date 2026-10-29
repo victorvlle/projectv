@@ -129,12 +129,13 @@ async function seLiberado(id, req, montar) {
 }
 async function jogosDaFesta(req) {
   const eu = req.convidado.id;
-  const [q, c, k] = await Promise.all([
+  const [q, c, k, f] = await Promise.all([
     seLiberado('quiz', req, () => quiz.paraConvidado(eu)),
     seLiberado('concurso', req, () => concurso.paraConvidado(eu)),
     seLiberado('correio', req, () => correio.paraConvidado(eu)),
+    seLiberado('fotos', req, () => correio.galeria()),
   ]);
-  return { quiz: q, concurso: c, correio: k };
+  return { quiz: q, concurso: c, correio: k, fotos: f };
 }
 
 router.get('/festa', soConvidado, assincrono(async (req, res) => {
@@ -314,17 +315,33 @@ router.get('/correio', soConvidado, assincrono(async (req, res) => {
 }));
 router.post('/correio', soConvidado, freiarJogos, assincrono(async (req, res) => {
   const { texto, para, foto } = req.body || {};
-  await correio.enviar(req.convidado, { texto, para, foto });
+  const r = await correio.enviar(req.convidado, { texto, para, foto });
   avisar.admin('atualizar', { oque: 'correio' });
+  if (r.noTelao) avisar.telao('atualizar', { oque: 'correio' });
   res.json({ ok: true, correio: await seLiberado('correio', req, () => correio.paraConvidado(req.convidado.id)) });
 }));
 
-// A própria foto (para a pessoa ver o que mandou). Foto dos outros: 404.
+// A própria foto (para a pessoa ver o que mandou). Foto dos outros: 404, a não ser que as
+// Fotos da festa já estejam abertas para esta pessoa (aí vale qualquer foto aprovada).
 router.get('/correio/foto/:id', soConvidado, assincrono(async (req, res) => {
-  const buf = await correio.foto(req.params.id, { autorId: req.convidado.id });
+  const galeria = (await atividades.acesso('fotos', req.convidado)).liberada;
+  const buf = await correio.foto(req.params.id, { autorId: req.convidado.id, galeria });
   if (!buf) return res.status(404).json({ ok: false, erro: 'Foto não encontrada.' });
   res.set({ 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, max-age=86400' });
   return res.send(buf);
+}));
+
+// Fotos da festa: lista e todas num .zip.
+router.get('/fotos', soConvidado, assincrono(async (req, res) => {
+  const f = await seLiberado('fotos', req, () => correio.galeria());
+  if (!f) return res.status(403).json({ ok: false, erro: 'As fotos da festa só abrem depois da festa.' });
+  return res.json({ ok: true, fotos: f });
+}));
+router.get('/fotos/zip', soConvidado, freiarJogos, assincrono(async (req, res) => {
+  if (!(await atividades.acesso('fotos', req.convidado)).liberada) return res.status(403).json({ ok: false, erro: 'As fotos da festa só abrem depois da festa.' });
+  res.set({ 'Content-Type': 'application/zip', 'Content-Disposition': 'attachment; filename="project-v-halloween-fotos.zip"', 'Cache-Control': 'no-store' });
+  await correio.escreverZip((pedaco) => new Promise((ok) => { if (res.write(pedaco)) ok(); else res.once('drain', ok); }));
+  return res.end();
 }));
 
 // Maldição em cena que é minha (para o celular mostrar o aviso depois de reconectar).

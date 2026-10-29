@@ -422,7 +422,7 @@ async function main() {
     let cartasAceitas = 0;
     for (let i = 0; i < 5; i++) { if ((await req('POST', '/api/correio', { token: tT, corpo: { texto: `spam no telão ${i}` } })).status === 200) cartasAceitas++; }
     const noTelao = (await req('GET', '/api/admin/telao', { token: admin })).json.correio.cartas.length;
-    barrado(GJ, 'Encher o telão de cartas do Correio', cartasAceitas === 1 && noTelao === 0, `${cartasAceitas} de 5 aceitas (1 por minuto) e nenhuma vai ao telão sem aprovação`);
+    barrado(GJ, 'Encher o telão de recados do Mural', cartasAceitas === 1 && noTelao <= 1, `${cartasAceitas} de 5 aceitas (1 a cada 30 s); ${noTelao} no telão; o organizador pode travar e apagar`);
     const aprovarConv = await req('POST', '/api/admin/correio/1/aprovar', { token: tT });
     barrado(GJ, 'Convidado aprovar a própria carta', aprovarConv.status === 401, `HTTP ${aprovarConv.status}`);
     const html = Buffer.from('<html><script>alert(1)</script></html>'.padEnd(2000, ' ')).toString('base64');
@@ -436,8 +436,14 @@ async function main() {
     const fotoAlheia = await req('GET', `/api/correio/foto/${idFoto}`, { token: tA });
     const fotoAdminConv = await req('GET', `/api/admin/correio/foto/${idFoto}`, { token: tA });
     const fotoSemLogin = await req('GET', `/api/correio/foto/${idFoto}`);
-    barrado(GJ, 'Ver foto do Mural de outra pessoa (antes da aprovação)', Boolean(idFoto) && fotoAlheia.status === 404 && fotoAdminConv.status === 401 && fotoSemLogin.status === 401,
+    barrado(GJ, 'Ver foto do Mural de outra pessoa (com as Fotos da festa fechadas)', Boolean(idFoto) && fotoAlheia.status === 404 && fotoAdminConv.status === 401 && fotoSemLogin.status === 401,
       `HTTP ${fotoAlheia.status}, ${fotoAdminConv.status}, ${fotoSemLogin.status} (foto ${idFoto ? 'existe' : 'NÃO criada'})`);
+    const galeriaAntes = await req('GET', '/api/fotos', { token: tA });
+    const zipAntes = await req('GET', '/api/fotos/zip', { token: tA });
+    barrado(GJ, 'Ver ou baixar as Fotos da festa antes de domingo', galeriaAntes.status === 403 && zipAntes.status === 403, `HTTP ${galeriaAntes.status}, ${zipAntes.status}`);
+    const travarConv = await req('PUT', '/api/admin/correio-auto', { token: tA, corpo: { auto: true } });
+    const apagarUmConv = await req('DELETE', `/api/admin/correio/${idFoto}`, { token: tA });
+    barrado(GJ, 'Convidado destravar o Mural ou apagar envio de alguém', travarConv.status === 401 && apagarUmConv.status === 401, `HTTP ${travarConv.status}, ${apagarUmConv.status}`);
     const apagarFotosConv = await req('POST', '/api/admin/correio-fotos/apagar', { token: tA });
     barrado(GJ, 'Convidado apagar as fotos do Mural', apagarFotosConv.status === 401, `HTTP ${apagarFotosConv.status}`);
     const apagarConv = await req('POST', '/api/admin/teste/apagar', { token: tA });

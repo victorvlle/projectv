@@ -558,4 +558,11 @@ module.exports = [
       )
     `,
   },
+  {
+    nome: 'Mural entra direto no telão; tela "Fotos da festa" abre domingo 9h',
+    sql: `
+      INSERT OR IGNORE INTO atividades (id, estado, abre_em, atualizado_em) VALUES ('fotos', 'agendada', 1793538000000, 0);
+      UPDATE correio SET estado = 'aprovada', moderado_em = criado_em WHERE estado = 'pendente'
+    `,
+  },
 ];

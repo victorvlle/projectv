@@ -65,9 +65,10 @@ Atualizado em 27/10/2026.
 - [x] Concurso de Fantasia: votação (não vota em si), apuração com empate, pódio no telão
 - [x] Correio das Trevas: carta anônima com aprovação do organizador, telão com rodízio
 - [x] Correio vira **Mural das Trevas** (29/10): recado OU foto (legenda opcional), anônimo, aprovação do organizador; foto reduzida no celular (até 1600 px, ~350 KB, sem dados da câmera); telão mostra um por vez, foto inteira 12 s e recado 9 s; fotos fora do backup; botão "Apagar todas as fotos" no admin. Formato final do telão ainda a definir
+- [x] Mural (29/10, 18h35): entra direto no telão (aviso de nada ofensivo/constrangedor); admin pode travar (aprovar um por um) e apagar qualquer envio; tela **Fotos da festa** abre domingo 01/11 às 9h (editável em Atividades) para todos verem e baixarem as fotos aprovadas, uma a uma (no celular: compartilhar/salvar) ou todas em .zip
 - [x] Mural de Fotos e O Monstro tirados do site (decisão de 29/10); pergunta 6 das Previsões trocada para o Correio
 - [x] Previsões revisadas (sem jogos da festa), lista com todos os cadastrados e botão "Enviar previsões" que trava as escolhas
-- [x] Testes automatizados: 98 passando; 71 ataques barrados; roteiro de testes em PDF para Victor e Lucas
+- [x] Testes automatizados: 100 passando; 73 ataques barrados; roteiro de testes em PDF para Victor e Lucas
 - [x] Deploy no Render + Turso: https://projectv-pec1.onrender.com (`/saude` responde `banco: turso`, verificado em 24/10)
 
 ## Pendente (Etapa C, em ordem)
@@ -80,7 +81,7 @@ Atualizado em 27/10/2026.
 - [x] Concurso de Fantasia: lista "Quero desfilar!" (só quem entra concorre), tela "Hora do Desfile Macabro" no telão, abrir a votação troca o telão sozinho, telão mostra quem já votou (voto secreto)
 - [ ] Teste real (Victor e Lucas) de Quiz, Concurso, Correio, Maldição e Previsões no celular e na TV
 - [ ] Sábado antes das 17h: "Apagar dados de teste" e conferir que nada ficou "Em teste"
-- [ ] Depois da festa: "Apagar todas as fotos" do Mural (ficam no Turso até lá)
+- [ ] Fotos ficam guardadas para a tela "Fotos da festa"; decidir depois quando apagar (botão "Apagar todas as fotos" no admin)
 
 ## Decisões tomadas
 

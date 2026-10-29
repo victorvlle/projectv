@@ -208,12 +208,20 @@
       <div class="item-acoes" style="margin-top:8px">
         ${x.estado !== 'aprovada' ? `<button class="botao pequeno" type="button" data-acao="cor-aprovar" data-id="${x.id}">Aprovar (vai ao telão)</button>` : ''}
         ${x.estado !== 'recusada' ? `<button class="botao secundario pequeno" type="button" data-acao="cor-recusar" data-id="${x.id}">${x.estado === 'aprovada' ? 'Tirar do telão' : 'Recusar'}</button>` : ''}
+        <button class="botao secundario pequeno" type="button" data-acao="cor-apagar" data-id="${x.id}">🗑️ Apagar</button>
       </div></div>`).join('');
     pintar('j-correio', `
       ${k.liberada ? '' : '<p class="aviso-inline">O Mural está bloqueado: libere (ou coloque "Em teste") em Atividades.</p>'}
       ${k.emTeste ? '<p class="selo teste" style="display:inline-block">🧪 Em teste: só os testadores mandam</p>' : ''}
-      <p><b>${k.pendentes}</b> ${k.pendentes === 1 ? 'envio esperando' : 'envios esperando'} aprovação. Só os aprovados aparecem no telão; quem mandou é anônimo para todos, menos para você.</p>
-      <p class="fraco">${k.fotos} ${k.fotos === 1 ? 'foto guardada' : 'fotos guardadas'} (${String(k.fotosMb).replace('.', ',')} MB). As fotos não entram no backup.</p>
+      <div class="item ${k.auto ? '' : 'travado'}" style="margin:8px 0">
+        <div class="item-nome">${k.auto ? '🟢 Entrada automática: o que mandam vai direto ao telão' : '🔒 Travado: cada envio espera você aprovar'}</div>
+        <div class="item-acoes" style="margin-top:8px">${k.auto
+          ? '<button class="botao secundario pequeno" type="button" data-acao="cor-auto" data-auto="0">🔒 Travar (aprovar um por um)</button>'
+          : '<button class="botao pequeno" type="button" data-acao="cor-auto" data-auto="1">🟢 Destravar (entra direto)</button>'}</div>
+        ${k.auto ? '' : `<p class="fraco" style="margin:8px 0 0"><b>${k.pendentes}</b> ${k.pendentes === 1 ? 'envio esperando' : 'envios esperando'} aprovação. Destravar não aprova os que já estão esperando.</p>`}
+      </div>
+      <p class="fraco">Quem mandou é anônimo para todos, menos para você. Apagar tira do telão e das Fotos da festa de vez.</p>
+      <p class="fraco">${k.fotos} ${k.fotos === 1 ? 'foto guardada' : 'fotos guardadas'} (${String(k.fotosMb).replace('.', ',')} MB). As aprovadas aparecem em "Fotos da festa" (abre domingo) para todos baixarem. As fotos não entram no backup.</p>
       <div class="item-acoes"><button class="botao secundario pequeno" type="button" data-acao="tel-modo" data-modo="correio">Mostrar mural no telão</button>
         ${k.fotos ? '<button class="botao secundario pequeno" type="button" data-acao="cor-apagar-fotos">Apagar todas as fotos</button>' : ''}</div>
       <div class="lista" style="margin-top:10px">${cartas || '<p class="fraco">Nada enviado ainda.</p>'}</div>`);
@@ -296,7 +304,9 @@
     if (oque === 'conc-despublicar') { if (confirmarToque(b)) await fazer(() => api('POST', '/concurso/despublicar'), 'Resultado despublicado.'); }
     if (oque === 'cor-aprovar') await fazer(() => api('POST', `/correio/${id}/aprovar`), 'Aprovado: vai para o telão.');
     if (oque === 'cor-recusar') await fazer(() => api('POST', `/correio/${id}/recusar`), 'Fora do telão.');
-    if (oque === 'cor-apagar-fotos') { if (confirmarToque(b, 'Toque de novo: apagar TODAS as fotos')) await fazer(() => api('POST', '/correio-fotos/apagar'), 'Fotos apagadas.'); }
+    if (oque === 'cor-auto') await fazer(() => api('PUT', '/correio-auto', { auto: b.dataset.auto === '1' }), b.dataset.auto === '1' ? 'Destravado: entra direto no telão.' : 'Travado: você aprova cada envio.');
+    if (oque === 'cor-apagar') { if (confirmarToque(b, 'Toque de novo: apagar')) await fazer(() => api('DELETE', `/correio/${id}`), 'Apagado.'); }
+    if (oque === 'cor-apagar-fotos') { if (confirmarToque(b, 'Toque de novo: apagar TODAS (some das Fotos da festa)')) await fazer(() => api('POST', '/correio-fotos/apagar'), 'Fotos apagadas.'); }
     if (oque === 'beb-desfazer') await fazer(() => api('PUT', `/colaboracao/bebida/${encodeURIComponent(id)}`, { levou: false }), 'Desfeito.');
   });
 

@@ -337,6 +337,19 @@ router.post('/correio-fotos/apagar', assincrono(async (req, res) => {
   avisar.atualizar('correio');
   return res.json({ ok: true, ...r });
 }));
+router.put('/correio-auto', assincrono(async (req, res) => {
+  await correio.definirAuto(Boolean((req.body || {}).auto));
+  avisar.admin('atualizar', { oque: 'correio' });
+  avisar.atualizar('correio');
+  return res.json({ ok: true, auto: (await correio.config()).auto });
+}));
+router.delete('/correio/:id', assincrono(async (req, res) => {
+  await correio.apagar(req.params.id);
+  avisar.admin('atualizar', { oque: 'correio' });
+  avisar.telao('atualizar', { oque: 'correio' });
+  avisar.atualizar('correio');
+  return res.json({ ok: true });
+}));
 router.post('/correio/:id/:estado', assincrono(async (req, res) => {
   const estado = { aprovar: 'aprovada', recusar: 'recusada' }[req.params.estado];
   if (!estado) return res.status(404).json({ ok: false, erro: 'Ação desconhecida.' });

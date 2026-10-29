@@ -244,8 +244,12 @@ test('concurso: não vota em si, troca o voto, contagem escondida; empate divide
   await perto(lucas.token, 1375);
 });
 
-test('correio: anônimo, com freio, só aprovadas vão ao telão (sem o autor)', async () => {
+test('correio travado: anônimo, com freio, só aprovadas vão ao telão (sem o autor)', async () => {
+  assert.equal((await festa(victor)).correio.auto, true, 'padrão: entra direto');
+  assert.equal((await s.req('PUT', '/api/admin/correio-auto', { token: victor.token, corpo: { auto: false } })).status, 401);
+  assert.equal((await s.req('PUT', '/api/admin/correio-auto', { token: admin, corpo: { auto: false } })).json.auto, false);
   const k = (await festa(victor)).correio;
+  assert.equal(k.auto, false);
   const para = k.pessoas.find((p) => p.nome === 'Lucas Teste').id;
   assert.ok(!k.pessoas.some((p) => p.nome === 'Victor Teste'), 'não manda carta para si');
   const mandar = (c, texto, p = null) => s.req('POST', '/api/correio', { token: c.token, corpo: { texto, para: p } });
@@ -312,6 +316,62 @@ test('mural: foto (JPEG de verdade), só o dono e o organizador veem, telão mos
   // Uma foto de teste fica para o "Apagar dados de teste" levar junto.
   await destravar();
   assert.equal((await mandar(lucas, { texto: 'legenda', foto: jpeg.toString('base64') })).status, 200);
+});
+
+test('mural automático: entra direto no telão; organizador apaga um envio', async () => {
+  await s.req('PUT', '/api/admin/correio-auto', { token: admin, corpo: { auto: true } });
+  await banco.rodar('UPDATE correio SET criado_em = criado_em - 120000');
+  assert.equal((await s.req('POST', '/api/correio', { token: victor.token, corpo: { texto: 'direto pro telão!' } })).status, 200);
+  const t = (await telao()).correio.cartas;
+  const nova = t.find((c) => c.texto === 'direto pro telão!');
+  assert.ok(nova, 'sem esperar aprovação');
+  assert.equal((await festa(victor)).correio.minhas[0].estado, 'aprovada');
+  assert.equal((await s.req('DELETE', `/api/admin/correio/${nova.id}`, { token: victor.token })).status, 401);
+  assert.equal((await s.req('DELETE', `/api/admin/correio/${nova.id}`, { token: admin })).status, 200);
+  assert.equal((await s.req('DELETE', `/api/admin/correio/${nova.id}`, { token: admin })).status, 404);
+  assert.ok(!(await telao()).correio.cartas.some((c) => c.id === nova.id), 'apagado some do telão');
+});
+
+test('fotos da festa: fechada até domingo; aberta, todos veem e baixam as aprovadas (uma a uma e .zip)', async () => {
+  await banco.rodar('UPDATE correio SET criado_em = criado_em - 120000');
+  const jpeg = (n) => Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(2000, n)]);
+  await s.req('POST', '/api/correio', { token: lucas.token, corpo: { texto: 'foto boa', foto: jpeg(1).toString('base64') } });
+  await s.req('PUT', '/api/admin/correio-auto', { token: admin, corpo: { auto: false } });
+  await banco.rodar('UPDATE correio SET criado_em = criado_em - 120000');
+  await s.req('POST', '/api/correio', { token: lucas.token, corpo: { foto: jpeg(2).toString('base64') } });
+  await s.req('PUT', '/api/admin/correio-auto', { token: admin, corpo: { auto: true } });
+  const ids = (await adminJogos()).correio.cartas.filter((c) => c.foto).map((c) => [c.id, c.estado]);
+  const aprovada = ids.find((x) => x[1] === 'aprovada')[0];
+  const pendente = ids.find((x) => x[1] === 'pendente')[0];
+
+  const fechado = await festa(victor);
+  assert.equal(fechado.fotos, null, 'fechada antes de domingo');
+  assert.equal((await s.req('GET', '/api/fotos', { token: victor.token })).status, 403);
+  assert.equal((await s.req('GET', '/api/fotos/zip', { token: victor.token })).status, 403);
+  assert.equal((await s.req('GET', `/api/correio/foto/${aprovada}`, { token: victor.token })).status, 404, 'foto dos outros ainda não');
+
+  await h.liberar('fotos', 'liberada');
+  const g = (await festa(outra)).fotos;
+  assert.deepEqual(g.fotos.map((f) => f.id), [aprovada], 'só as aprovadas');
+  assert.equal(g.fotos[0].texto, 'foto boa');
+  assert.ok(!JSON.stringify(g).includes('Lucas'), 'sem o autor');
+  const r = await s.req('GET', `/api/correio/foto/${aprovada}`, { token: outra.token, cru: true });
+  assert.equal(r.status, 200);
+  assert.ok(Buffer.from(await r.arrayBuffer()).equals(jpeg(1)));
+  assert.equal((await s.req('GET', `/api/correio/foto/${pendente}`, { token: outra.token })).status, 404, 'não aprovada continua escondida');
+
+  const z = await s.req('GET', '/api/fotos/zip', { token: outra.token, cru: true });
+  assert.equal(z.status, 200);
+  assert.equal(z.headers.get('content-type'), 'application/zip');
+  const zip = Buffer.from(await z.arrayBuffer());
+  assert.equal(zip.readUInt32LE(0), 0x04034b50);
+  const fim = zip.length - 22;
+  assert.equal(zip.readUInt32LE(fim), 0x06054b50);
+  assert.equal(zip.readUInt16LE(fim + 10), 1, '1 foto no zip');
+  const nomeLen = zip.readUInt16LE(26);
+  assert.ok(zip.subarray(30 + nomeLen, 30 + nomeLen + 2004).equals(jpeg(1)), 'a foto vai inteira');
+  assert.equal(zip.readUInt32LE(14), require('../server/dados/correio').crc32(jpeg(1)));
+  await h.liberar('fotos', 'agendada');
 });
 
 test('previsões em teste: só testador palpita; +1000 por acerto marcado como teste', async () => {

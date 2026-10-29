@@ -451,3 +451,21 @@ body.sem-rolagem { overflow: hidden; }
 .quiz-entrar { margin: 14px 0 6px; font-size: 1.1rem; min-height: 56px; }
 .quiz-sala-conta { margin: 10px 0 0; text-align: center; color: var(--texto-2); }
 .quiz-contagem { font-size: 4.5rem; font-weight: 800; text-align: center; color: var(--laranja-claro); line-height: 1.1; margin: 6px 0; font-variant-numeric: tabular-nums; }
+
+/* Mural: aviso */
+.mural-aviso { font-size: .85rem; color: var(--laranja-claro); background: rgba(232, 98, 12, .1); border: 1px solid rgba(232, 98, 12, .35);
+  border-radius: 10px; padding: 8px 10px; margin: 0 0 12px; }
+/* Fotos da festa */
+#fotos-zip { margin: 4px 0 14px; }
+.galeria { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.galeria-item { appearance: none; border: 0; padding: 0; aspect-ratio: 1; background: var(--cartao-2); border-radius: 6px; overflow: hidden; cursor: pointer; }
+.galeria-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.foto-visor { position: fixed; inset: 0; z-index: 300; background: rgba(0, 0, 0, .94); display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; padding: calc(12px + env(safe-area-inset-top)) 12px calc(16px + env(safe-area-inset-bottom)); }
+.foto-visor img { max-width: 100%; max-height: 70dvh; object-fit: contain; border-radius: 8px; min-height: 120px; }
+.foto-visor-legenda { margin: 0; text-align: center; max-width: 520px; overflow-wrap: anywhere; }
+.foto-visor-acoes { display: flex; gap: 8px; align-items: center; }
+.foto-visor-conta { margin: 0; }
+.foto-visor-fechar { position: absolute; top: calc(10px + env(safe-area-inset-top)); right: 12px; width: 44px; height: 44px; border-radius: 50%;
+  border: 1px solid var(--borda); background: var(--cartao); color: var(--texto); font-size: 1.1rem; }
+body.sem-rolar { overflow: hidden; }
