@@ -61,7 +61,7 @@ test('quiz: uma resposta só, dentro do tempo; a certa não sai antes de revelar
 
   const responder = (c, escolha) => s.req('POST', '/api/quiz/q1/resposta', { token: c.token, corpo: { escolha } });
   assert.equal((await responder(victor, 9)).status, 400);
-  assert.equal((await responder(victor, 1)).status, 200); // Overlook (certa)
+  assert.equal((await responder(victor, 2)).status, 200); // Irlanda (certa)
   assert.equal((await responder(victor, 2)).status, 409, 'só vale uma resposta');
   assert.equal((await responder(lucas, 0)).status, 200); // errada
   assert.equal((await responder(outra, 1)).status, 403, 'quem não testa não responde');
@@ -76,7 +76,7 @@ test('quiz: uma resposta só, dentro do tempo; a certa não sai antes de revelar
   assert.equal(await h.pontosDe(victor.token), 500);
   assert.equal(await h.pontosDe(lucas.token), 0);
   const fv2 = await festa(victor);
-  assert.equal(fv2.quiz.atual.correta, 1);
+  assert.equal(fv2.quiz.atual.correta, 2);
   assert.equal(fv2.quiz.atual.acertei, true);
   const t = await telao();
   assert.deepEqual(t.quiz.atual.acertaram.map((a) => a.nome), ['Victor Teste']);

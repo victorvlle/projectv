@@ -109,19 +109,32 @@ const ENIGMAS = DIAS.flatMap(([dia, nomeDia, data], d) => PERIODOS.map(([periodo
 const PONTOS_ENIGMA = 10;
 const BONUS_ENIGMA_PADRAO = [10, 5, 3];
 
-// Quiz de Terror Relâmpago: 5 perguntas de múltipla escolha lançadas pelo admin na festa.
+// Quiz de Terror Relâmpago: 10 perguntas de múltipla escolha lançadas pelo admin na festa.
 // Uma resposta só por pergunta, com tempo. Acertou: +500. `correta` é o índice da opção.
+// Bem diferente do pré-festa (que foi só "adivinhe o filme"): origem do Halloween, clássicos da
+// literatura de terror e lendas, inclusive do folclore brasileiro.
 const QUIZ = [
-  { id: 'q1', ordem: 1, texto: 'Qual é o nome do hotel de "O Iluminado"?',
-    opcoes: ['Hotel Cecil', 'Hotel Overlook', 'Bates Motel', 'Hotel Stanley'], correta: 1 },
-  { id: 'q2', ordem: 2, texto: 'Em "Halloween" (1978), a máscara de Michael Myers foi feita a partir da máscara de quem?',
-    opcoes: ['Capitão Kirk, de Jornada nas Estrelas', 'Elvis Presley', 'Frankenstein', 'Um palhaço de circo'], correta: 0 },
-  { id: 'q3', ordem: 3, texto: 'No título original de "A Hora do Pesadelo", qual é o nome da rua?',
-    opcoes: ['Maple Street', 'Oak Street', 'Main Street', 'Elm Street'], correta: 3 },
-  { id: 'q4', ordem: 4, texto: 'Quem é o assassino no primeiro "Sexta-Feira 13" (1980)?',
-    opcoes: ['Jason Voorhees', 'Freddy Krueger', 'Pamela Voorhees, a mãe do Jason', 'O cozinheiro do acampamento'], correta: 2 },
-  { id: 'q5', ordem: 5, texto: 'Qual boneca de "Invocação do Mal" ganhou filmes próprios?',
-    opcoes: ['Chucky', 'Annabelle', 'M3GAN', 'Robert'], correta: 1 },
+  { id: 'q1', ordem: 1, texto: 'De que país vem o Samhain, a festa antiga que deu origem ao Halloween?',
+    opcoes: ['Estados Unidos', 'México', 'Irlanda', 'Inglaterra'], correta: 2 },
+  { id: 'q2', ordem: 2, texto: 'Quem escreveu "Frankenstein"?',
+    opcoes: ['Mary Shelley', 'Bram Stoker', 'Edgar Allan Poe', 'Stephen King'], correta: 0 },
+  { id: 'q3', ordem: 3, texto: 'Em que país fica a Transilvânia, a terra do Conde Drácula?',
+    opcoes: ['Hungria', 'Bulgária', 'Sérvia', 'Romênia'], correta: 3 },
+  { id: 'q4', ordem: 4, texto: 'Na lenda brasileira, por onde a Mula sem Cabeça solta fogo?',
+    opcoes: ['Pelos olhos', 'Pelo pescoço', 'Pelas patas', 'Pelo rabo'], correta: 1 },
+  { id: 'q5', ordem: 5, texto: 'Antes da abóbora, o que os irlandeses esculpiam para fazer as lanternas de Halloween?',
+    opcoes: ['Melão', 'Coco', 'Nabo', 'Pepino'], correta: 2 },
+  // Clássicos do cinema que todo mundo conhece.
+  { id: 'q6', ordem: 6, texto: 'Em "Jogos Mortais", como se chama o boneco de bochechas vermelhas que aparece no triciclo?',
+    opcoes: ['Chucky', 'Billy', 'Jigsaw', 'Annabelle'], correta: 1 },
+  { id: 'q7', ordem: 7, texto: 'Em "Sexta-Feira 13", que máscara virou a marca registrada do Jason?',
+    opcoes: ['Máscara de hóquei', 'Saco de pano', 'Máscara de palhaço', 'Máscara de gás'], correta: 0 },
+  { id: 'q8', ordem: 8, texto: 'Quais são as cores do suéter listrado do Freddy Krueger?',
+    opcoes: ['Preto e branco', 'Laranja e roxo', 'Vermelho e verde', 'Vermelho e preto'], correta: 2 },
+  { id: 'q9', ordem: 9, texto: 'Qual é o nome do palhaço de "It: A Coisa"?',
+    opcoes: ['Krusty', 'Bozo', 'Coringa', 'Pennywise'], correta: 3 },
+  { id: 'q10', ordem: 10, texto: 'Em "Pânico", que pergunta o assassino faz ao telefone?',
+    opcoes: ['Quer brincar comigo?', 'Qual é o seu filme de terror favorito?', 'Você está sozinha em casa?', 'Sabe o que fez no verão passado?'], correta: 1 },
 ];
 const PONTOS_QUIZ = 500;
 const QUIZ_TEMPO_PADRAO_S = 20;

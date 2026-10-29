@@ -392,7 +392,7 @@ async function main() {
     const quizA = await req('POST', '/api/quiz/q1/resposta', { token: tA, corpo: { escolha: 1 } });
     const cartaA = await req('POST', '/api/correio', { token: tA, corpo: { texto: 'entrei no teste' } });
     barrado(GJ, 'Jogar um jogo "Em teste" sem ser testador', festaA.quiz === null && quizA.status === 403 && cartaA.status === 403
-      && !JSON.stringify(festaA).includes('Overlook'), `quiz HTTP ${quizA.status}, correio HTTP ${cartaA.status}; a pergunta não chega a quem não testa`);
+      && !JSON.stringify(festaA).includes('Samhain'), `quiz HTTP ${quizA.status}, correio HTTP ${cartaA.status}; a pergunta não chega a quem não testa`);
     const quizV = JSON.stringify((await req('GET', '/api/quiz', { token: tT })).json);
     barrado(GJ, 'Ler a resposta certa do quiz antes da revelação', !quizV.includes('"correta"'), 'a certa só sai do servidor depois que o organizador revela');
     let aceitas = 0;

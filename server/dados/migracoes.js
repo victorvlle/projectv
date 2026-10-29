@@ -505,4 +505,26 @@ module.exports = [
         args: [p.id, p.ordem, p.texto, p.tipo, JSON.stringify(p.opcoes)] });
     },
   },
+  {
+    nome: 'quiz: perguntas novas, diferentes dos enigmas do pré-festa',
+    sql: 'SELECT 1',
+    async depois(c) {
+      const { QUIZ } = require('../jogos/conteudo');
+      for (const q of QUIZ) {
+        await c.execute({ sql: 'UPDATE quiz_perguntas SET texto = ?, opcoes = ?, correta = ? WHERE id = ?',
+          args: [q.texto, JSON.stringify(q.opcoes), q.correta, q.id] });
+      }
+    },
+  },
+  {
+    nome: 'quiz: mais 5 perguntas sobre clássicos do cinema de terror',
+    sql: 'SELECT 1',
+    async depois(c) {
+      const { QUIZ } = require('../jogos/conteudo');
+      for (const q of QUIZ) {
+        await c.execute({ sql: 'INSERT OR IGNORE INTO quiz_perguntas (id, ordem, texto, opcoes, correta) VALUES (?, ?, ?, ?, ?)',
+          args: [q.id, q.ordem, q.texto, JSON.stringify(q.opcoes), q.correta] });
+      }
+    },
+  },
 ];
