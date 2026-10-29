@@ -193,3 +193,5 @@ body { overflow: hidden; cursor: default; }
 .desfile-sub { font-size: 5vh; font-weight: 800; margin: 1.5vh 0 0; }
 @media (prefers-reduced-motion: reduce) { .desfile-titulo { animation: none; } }
 #concurso-telao { text-align: center; }
+.contador-votos { display: inline-block; font-size: 3.4vh; padding: 1vh 2vw; border-radius: 99px; background: rgba(34, 26, 45, .9); border: .3vh solid var(--laranja); }
+.contador-votos b { color: var(--laranja-claro); font-size: 4.4vh; }

@@ -294,6 +294,12 @@ router.get('/concurso', soConvidado, assincrono(async (req, res) => {
   if (!c) return proibido(res, 'O Concurso');
   return res.json({ ok: true, concurso: c });
 }));
+router.put('/concurso/desfilar', soConvidado, freiarJogos, assincrono(async (req, res) => {
+  await concurso.desfilar(req.convidado, (req.body || {}).quero === true);
+  avisar.admin('atualizar', { oque: 'concurso' });
+  avisar.telao('atualizar', { oque: 'concurso' });
+  res.json({ ok: true, concurso: await seLiberado('concurso', req, () => concurso.paraConvidado(req.convidado.id)) });
+}));
 router.put('/concurso/voto', soConvidado, freiarJogos, assincrono(async (req, res) => {
   await concurso.votar(req.convidado, (req.body || {}).candidato);
   avisar.admin('atualizar', { oque: 'concurso' });

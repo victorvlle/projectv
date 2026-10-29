@@ -310,6 +310,7 @@ router.put('/quiz/:id', assincrono(async (req, res) => { await quiz.editar(req.p
 router.put('/quiz-tempo', assincrono(async (req, res) => { await quiz.definirTempo((req.body || {}).segundos); jogosMudou(res, 'quiz'); }));
 
 // ------------------------------------------------------------- concurso
+router.delete('/concurso/desfilantes/:id', assincrono(async (req, res) => { await concurso.tirarDesfilante(req.params.id); jogosMudou(res, 'concurso'); }));
 router.post('/concurso/:estado', assincrono(async (req, res) => {
   const e = req.params.estado;
   if (e === 'desfile') await concurso.mudar('desfile');

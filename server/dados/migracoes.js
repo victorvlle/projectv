@@ -538,4 +538,14 @@ module.exports = [
       DELETE FROM config WHERE chave = 'quiz'
     `,
   },
+  {
+    nome: 'concurso: lista "Quero desfilar!"',
+    sql: `
+      CREATE TABLE IF NOT EXISTS concurso_inscritos (
+        convidado_id TEXT PRIMARY KEY REFERENCES convidados(id) ON DELETE CASCADE,
+        inscrito_em INTEGER NOT NULL,
+        teste INTEGER NOT NULL DEFAULT 0
+      )
+    `,
+  },
 ];

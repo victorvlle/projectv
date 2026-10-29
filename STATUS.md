@@ -66,7 +66,7 @@ Atualizado em 27/10/2026.
 - [x] Correio das Trevas: carta anônima com aprovação do organizador, telão com rodízio
 - [x] Mural de Fotos e O Monstro tirados do site (decisão de 29/10); pergunta 6 das Previsões trocada para o Correio
 - [x] Previsões revisadas (sem jogos da festa), lista com todos os cadastrados e botão "Enviar previsões" que trava as escolhas
-- [x] Testes automatizados: 96 passando; 67 ataques barrados; roteiro de testes em PDF para Victor e Lucas
+- [x] Testes automatizados: 96 passando; 68 ataques barrados; roteiro de testes em PDF para Victor e Lucas
 - [x] Deploy no Render + Turso: https://projectv-pec1.onrender.com (`/saude` responde `banco: turso`, verificado em 24/10)
 
 ## Pendente (Etapa C, em ordem)
@@ -75,7 +75,7 @@ Atualizado em 27/10/2026.
 
 - [ ] **Avisos de telão para todas as gincanas** (pedido em 29/10): cada jogo ganha uma tela de chamada no telão antes de começar.
       Os horários de cada gincana ainda vão ser definidos (regra de horário fica para depois).
-- [x] Concurso de Fantasia: tela "Hora do Desfile Macabro" no telão (botão no admin); abrir a votação troca o telão sozinho
+- [x] Concurso de Fantasia: lista "Quero desfilar!" (só quem entra concorre), tela "Hora do Desfile Macabro" no telão, abrir a votação troca o telão sozinho, telão mostra quem já votou (voto secreto)
 - [ ] Teste real (Victor e Lucas) de Quiz, Concurso, Correio, Maldição e Previsões no celular e na TV
 - [ ] Sábado antes das 17h: "Apagar dados de teste" e conferir que nada ficou "Em teste"
 

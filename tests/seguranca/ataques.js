@@ -408,6 +408,10 @@ async function main() {
     const zerarConv = await req('POST', '/api/admin/quiz/recomecar', { token: tT });
     barrado(GJ, 'Convidado iniciar, parar ou zerar o quiz', [lancarConv, pararConv, zerarConv].every((r) => r.status === 401),
       `HTTP ${lancarConv.status}, ${pararConv.status}, ${zerarConv.status}`);
+    await req('PATCH', `/api/admin/convidados/${vitima.id}`, { token: admin, corpo: { testador: true } });
+    for (const t of [tT, tV]) await req('PUT', '/api/concurso/desfilar', { token: t, corpo: { quero: true } });
+    const desfilarA = await req('PUT', '/api/concurso/desfilar', { token: tA, corpo: { quero: true } });
+    barrado(GJ, 'Entrar no Concurso "Em teste" sem ser testador', desfilarA.status === 403, `HTTP ${desfilarA.status}`);
     await req('POST', '/api/admin/concurso/abrir', { token: admin });
     const cand = (await req('GET', '/api/concurso', { token: tT })).json.concurso.candidatos;
     const proprio = cand.find((c) => c.souEu);

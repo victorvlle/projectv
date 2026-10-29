@@ -181,11 +181,17 @@
     const premios = `1º +${pts(c.premios[0])} · 2º +${pts(c.premios[1])} · 3º +${pts(c.premios[2])}`;
     const meu = c.meuVoto ? c.candidatos.find((x) => x.id === c.meuVoto) : null;
     let topo;
+    const quantos = `<p class="quiz-sala-conta">👑 <b>${c.desfilantes}</b> ${c.desfilantes === 1 ? 'pessoa vai' : 'pessoas vão'} desfilar</p>`;
+    const botaoDesfile = c.vouDesfilar
+      ? `<p class="quiz-veredito" style="margin-top:12px">✓ Você vai desfilar!</p>
+         <button class="botao-discreto" type="button" data-desfilar="0">Desistir de desfilar</button>`
+      : '<button class="botao largo quiz-entrar" type="button" data-desfilar="1">Quero desfilar! 👑</button>';
     if (c.estado === 'desfile') {
-      topo = `<section class="cartao prev-aviso aberta"><b>🎭 Hora do Desfile Macabro!</b><p class="mudo">Entre na fila e desfile a sua fantasia.
-        Logo depois do desfile a votação abre aqui no celular. Prêmios: ${premios}.</p></section>`;
+      topo = `<section class="cartao prev-aviso aberta"><b>🎭 Hora do Desfile Macabro!</b><p class="mudo">${c.vouDesfilar ? 'Entre na fila e desfile a sua fantasia.' : 'Ainda dá tempo de entrar na fila.'}
+        Só quem desfila concorre. Logo depois do desfile a votação abre aqui no celular. Prêmios: ${premios}.</p>${botaoDesfile}${quantos}</section>`;
     } else if (c.estado === 'fechado') {
-      topo = `<section class="cartao"><b>🔒 A votação abre durante a festa</b><p class="mudo">Capriche na fantasia. Os três mais votados ganham: ${premios} pontos.</p></section>`;
+      topo = `<section class="cartao"><b>👑 Concurso de Fantasia</b><p class="mudo">Quer concorrer? Toque em <b>Quero desfilar!</b>: na hora do desfile você entra na fila,
+        e na votação só aparece quem desfilou. Os três mais votados ganham ${premios} pontos.</p>${botaoDesfile}${quantos}</section>`;
     } else if (c.estado === 'aberto') {
       topo = `<section class="cartao prev-aviso aberta"><b>Votação aberta</b><p class="mudo">Vote na melhor fantasia da noite (não vale votar em você).
         Dá para trocar o voto até fechar. Ninguém vê em quem você votou. Prêmios: ${premios}.</p>
@@ -214,6 +220,16 @@
   }
   $('concurso').addEventListener('input', (e) => { if (e.target.id === 'concurso-busca') listarCandidatos(); });
   $('concurso').addEventListener('click', async (e) => {
+    const d = e.target.closest('[data-desfilar]');
+    if (d && !d.disabled) {
+      d.disabled = true;
+      try {
+        const r = await C().api('PUT', '/api/concurso/desfilar', { quero: d.dataset.desfilar === '1' });
+        C().atualizarParte('concurso', r.concurso);
+        PV.avisar(d.dataset.desfilar === '1' ? 'Você está na lista do desfile! 👑' : 'Você saiu da lista do desfile.', 'ok');
+      } catch (erro) { d.disabled = false; if (erro.status !== 401) PV.avisar(erro.message, 'erro'); }
+      return;
+    }
     const b = e.target.closest('[data-votar-em]');
     if (!b || b.disabled || votando) return;
     if (concurso.meuVoto === b.dataset.votarEm) return;

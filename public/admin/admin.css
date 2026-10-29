@@ -96,3 +96,5 @@ h3 { font-size: 1.05rem; margin-bottom: 6px; }
 .sala-admin { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip-sala { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px 3px 3px; border-radius: 99px; background: var(--fundo-2); font-size: .85rem; }
 .avatar.mini { width: 24px; height: 24px; font-size: 14px; }
+
+.chip-sala .tirar { appearance: none; border: 0; background: none; color: var(--texto-3); cursor: pointer; padding: 0 2px 0 4px; font-size: .9rem; }

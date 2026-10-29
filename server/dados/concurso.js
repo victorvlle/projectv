@@ -2,6 +2,7 @@
 // enquanto a votação estiver aberta. O admin encerra e publica: os três mais votados ganham
 // 1000 / 800 / 500 pontos. Empate divide a colocação (dois em 1º ganham 1000 cada; o próximo é 3º).
 //
+// QUEM CONCORRE: só quem tocou em "Quero desfilar!" no celular (pode desistir até a votação abrir).
 // ESTADOS (config 'concurso'): fechado · desfile (telão chama o Desfile Macabro) · aberto · encerrado · publicado.
 // PRIVACIDADE: ninguém vê a contagem antes de publicar (só o admin). Os outros aparecem por um
 // apelido opaco, nunca pelo id interno.
@@ -38,15 +39,23 @@ async function contagem() {
   });
 }
 
+async function inscritos() {
+  return banco.tudo(`SELECT c.id, c.nome, c.avatar, i.inscrito_em FROM concurso_inscritos i
+    JOIN convidados c ON c.id = i.convidado_id AND c.ativo = 1 ORDER BY i.inscrito_em`);
+}
+const iniciais = (nome) => nome.trim().split(/\s+/).slice(0, 2).map((x) => x[0].toUpperCase()).join('');
+
 const podio = (lista) => lista.filter((x) => x.pontos > 0).map((x) => ({ nome: x.nome, avatar: x.avatar, votos: x.votos, posicao: x.posicao, pontos: x.pontos }));
 
 async function paraConvidado(euId) {
   const [cfg, pessoas, meu] = await Promise.all([
-    config(), convidados.confirmados(), banco.um('SELECT candidato_id FROM concurso_votos WHERE eleitor_id = ?', [euId]),
+    config(), inscritos(), banco.um('SELECT candidato_id FROM concurso_votos WHERE eleitor_id = ?', [euId]),
   ]);
   const saida = {
     estado: cfg.estado, premios: PONTOS_CONCURSO,
     meuVoto: meu ? apelido(meu.candidato_id) : null,
+    vouDesfilar: pessoas.some((c) => c.id === euId),
+    desfilantes: pessoas.length,
     candidatos: pessoas.map((c) => ({ id: apelido(c.id), nome: c.nome, avatar: c.avatar, souEu: c.id === euId })),
   };
   if (cfg.estado === 'publicado') saida.podio = podio(await contagem());
@@ -58,8 +67,8 @@ async function votar(eu, candidatoApelido, agora = Date.now()) {
   if (!liberada) throw new ErroValidacao('O Concurso de Fantasia ainda não está aberto.', 403);
   const cfg = await config();
   if (cfg.estado !== 'aberto') throw new ErroValidacao(['fechado', 'desfile'].includes(cfg.estado) ? 'A votação ainda não começou.' : 'A votação já fechou.', 409);
-  const alvo = (await convidados.confirmados()).find((c) => apelido(c.id) === String(candidatoApelido));
-  if (!alvo) throw new ErroValidacao('Escolha uma pessoa da lista.');
+  const alvo = (await inscritos()).find((c) => apelido(c.id) === String(candidatoApelido));
+  if (!alvo) throw new ErroValidacao('Escolha uma das pessoas que desfilaram.');
   if (alvo.id === eu.id) throw new ErroValidacao('Não vale votar em você mesmo. 😉');
   await banco.rodar(
     `INSERT INTO concurso_votos (eleitor_id, candidato_id, votado_em, teste) VALUES (?, ?, ?, ?)
@@ -67,12 +76,30 @@ async function votar(eu, candidatoApelido, agora = Date.now()) {
     [eu.id, alvo.id, agora, teste ? 1 : 0]);
 }
 
+// "Quero desfilar!": entra (ou sai) da lista de quem concorre. Só antes da votação abrir.
+async function desfilar(eu, quer, agora = Date.now()) {
+  const { liberada, teste } = await atividades.acesso('concurso', eu, agora);
+  if (!liberada) throw new ErroValidacao('O Concurso de Fantasia ainda não está aberto.', 403);
+  const cfg = await config();
+  if (!['fechado', 'desfile'].includes(cfg.estado)) throw new ErroValidacao('A votação já começou: a lista de quem desfila está fechada.', 409);
+  if (quer) await banco.rodar('INSERT OR IGNORE INTO concurso_inscritos (convidado_id, inscrito_em, teste) VALUES (?, ?, ?)', [eu.id, agora, teste ? 1 : 0]);
+  else await banco.rodar('DELETE FROM concurso_inscritos WHERE convidado_id = ?', [eu.id]);
+}
+
 // ------------------------------------------------------------------ admin
 async function paraAdmin(agora = Date.now()) {
-  const [cfg, lista, eleitores, uso] = await Promise.all([
-    config(), contagem(), banco.um('SELECT COUNT(*) AS n FROM concurso_votos'), atividades.emUso('concurso', agora),
+  const [cfg, lista, eleitores, uso, quem] = await Promise.all([
+    config(), contagem(), banco.um('SELECT COUNT(*) AS n FROM concurso_votos'), atividades.emUso('concurso', agora), inscritos(),
   ]);
-  return { ...cfg, premios: PONTOS_CONCURSO, liberada: uso.ativa, emTeste: uso.teste, eleitores: Number(eleitores.n), contagem: lista };
+  return { ...cfg, premios: PONTOS_CONCURSO, liberada: uso.ativa, emTeste: uso.teste, eleitores: Number(eleitores.n), contagem: lista,
+    desfilantes: quem.map((c) => ({ id: c.id, nome: c.nome, avatar: c.avatar })) };
+}
+
+// O organizador tira alguém da lista (desistiu, foi embora…).
+async function tirarDesfilante(id) {
+  const cfg = await config();
+  if (!['fechado', 'desfile'].includes(cfg.estado)) throw new ErroValidacao('A votação já começou: a lista está fechada.', 409);
+  await banco.rodar('DELETE FROM concurso_inscritos WHERE convidado_id = ?', [String(id)]);
 }
 
 async function mudar(estado, agora = Date.now()) {
@@ -84,6 +111,7 @@ async function mudar(estado, agora = Date.now()) {
   }
   if (estado === 'aberto') {
     if (!uso.ativa) throw new ErroValidacao('Libere o Concurso (ou coloque "Em teste") na aba Atividades antes de abrir a votação.', 409);
+    if ((await inscritos()).length < 2) throw new ErroValidacao('Precisa de pelo menos 2 pessoas na lista "Quero desfilar" para abrir a votação.', 409);
     if (cfg.estado === 'publicado') throw new ErroValidacao('O resultado já foi publicado. Despublique antes de reabrir.', 409);
   }
   if (estado === 'encerrado' && cfg.estado !== 'aberto') throw new ErroValidacao('A votação não está aberta.', 409);
@@ -121,11 +149,20 @@ async function paraTelao() {
   const votos = await banco.um('SELECT COUNT(*) AS n FROM concurso_votos');
   const saida = { estado: cfg.estado, votos: Number(votos.n), premios: PONTOS_CONCURSO };
   if (cfg.estado === 'publicado') saida.podio = podio(await contagem());
-  if (cfg.estado === 'desfile') {
-    const pessoas = await convidados.confirmados();
-    saida.desfile = pessoas.map((c) => ({ avatar: c.avatar, iniciais: c.nome.trim().split(/\s+/).slice(0, 2).map((x) => x[0].toUpperCase()).join('') }));
+  if (cfg.estado === 'desfile' || cfg.estado === 'fechado') {
+    // A fila do desfile: só quem tocou em "Quero desfilar!".
+    saida.desfile = (await inscritos()).map((c) => ({ avatar: c.avatar, iniciais: iniciais(c.nome) }));
+  }
+  // Durante a votação o telão mostra QUEM já votou (monstro e iniciais), nunca em quem: o voto é secreto.
+  if (cfg.estado === 'aberto' || cfg.estado === 'encerrado') {
+    const [quem, pessoas] = await Promise.all([
+      banco.tudo('SELECT c.nome, c.avatar FROM concurso_votos v JOIN convidados c ON c.id = v.eleitor_id ORDER BY v.rowid'),
+      convidados.confirmados(),
+    ]);
+    saida.eleitores = quem.map((c) => ({ avatar: c.avatar, iniciais: iniciais(c.nome) }));
+    saida.podemVotar = pessoas.length;
   }
   return saida;
 }
 
-module.exports = { config, paraConvidado, votar, paraAdmin, mudar, publicar, despublicar, paraTelao, apelido };
+module.exports = { config, paraConvidado, votar, desfilar, tirarDesfilante, paraAdmin, mudar, publicar, despublicar, paraTelao, apelido };

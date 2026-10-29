@@ -93,15 +93,28 @@
     }
     if (c.estado === 'desfile') {
       $('concurso-telao').innerHTML = `<div class="desfile-chamada"><p class="desfile-titulo terror">Hora do Desfile Macabro</p>
-        <p class="desfile-sub">Formem a fila! 👑</p></div>
+        <p class="desfile-sub">Formem a fila! 👑 · ${(c.desfile || []).length} ${(c.desfile || []).length === 1 ? 'vai' : 'vão'} desfilar</p></div>
         <div class="sala-bolhas">${(c.desfile || []).map((p, i) => `<div class="bolha" style="animation-delay:${(i % 7) * 0.35}s">
           <span class="avatar">${emoji(p.avatar)}</span><b>${esc(p.iniciais)}</b></div>`).join('')}</div>
         <p class="prev-dica">Depois do desfile, a votação abre no celular · 1º +${pts(c.premios[0])} · 2º +${pts(c.premios[1])} · 3º +${pts(c.premios[2])}</p>`;
       return;
     }
     const txt = { fechado: 'A votação abre em breve. Capriche na pose!', aberto: 'Votação aberta! Vote pelo celular na melhor fantasia.', encerrado: 'Votação encerrada. O resultado vem aí…' }[c.estado];
+    const eleitores = c.eleitores || [];
     $('concurso-telao').innerHTML = `<p class="prev-pergunta" style="font-size:5vh">${txt}</p>
-      ${c.estado !== 'fechado' ? `<div class="quiz-cronometro">${c.votos}</div><p class="prev-dica">${c.votos === 1 ? 'voto' : 'votos'}</p>` : ''}
+      ${c.estado === 'fechado' ? `<div class="contador-votos">👑 <b>${(c.desfile || []).length}</b> ${(c.desfile || []).length === 1 ? 'vai' : 'vão'} desfilar</div>
+        <div class="sala-bolhas">${(c.desfile || []).map((p, i) => `<div class="bolha" style="animation-delay:${(i % 7) * 0.35}s">
+          <span class="avatar">${emoji(p.avatar)}</span><b>${esc(p.iniciais)}</b></div>`).join('')}</div>
+        <p class="prev-dica">Quer concorrer? No celular: Concurso de Fantasia → <b>Quero desfilar!</b></p>` : ''}
+      ${c.estado !== 'fechado' ? `<div class="contador-votos">🗳️ <b>${eleitores.length}</b> de ${c.podemVotar || 0} votaram</div>
+        <div class="sala-bolhas">${eleitores.map((p, i) => {
+          const chave = `v:${p.avatar}:${p.iniciais}:${i}`;
+          const nova = !vistos.has(chave);
+          vistos.add(chave);
+          return `<div class="bolha ${nova ? 'chegou' : ''}" style="animation-delay:${nova ? 0 : (i % 7) * 0.35}s, ${(i % 5) * 0.5}s">
+            <span class="avatar">${emoji(p.avatar)}</span><b>${esc(p.iniciais)}</b></div>`;
+        }).join('') || '<p class="prev-dica">Ninguém votou ainda…</p>'}</div>
+        <p class="prev-dica">O voto é secreto: aqui aparece só quem já votou.</p>` : ''}
       <p class="prev-dica">1º +${pts(c.premios[0])} · 2º +${pts(c.premios[1])} · 3º +${pts(c.premios[2])}</p>`;
   }
 

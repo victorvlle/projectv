@@ -195,6 +195,7 @@ async function excluir(id) {
     { sql: 'DELETE FROM quiz_respostas WHERE convidado_id = ?', args: [id] },
     { sql: 'DELETE FROM quiz_sala WHERE convidado_id = ?', args: [id] },
     { sql: 'DELETE FROM concurso_votos WHERE eleitor_id = ? OR candidato_id = ?', args: [id, id] },
+    { sql: 'DELETE FROM concurso_inscritos WHERE convidado_id = ?', args: [id] },
     { sql: 'UPDATE correio SET para_id = NULL WHERE para_id = ?', args: [id] },
     { sql: 'DELETE FROM correio WHERE autor_id = ?', args: [id] },
     { sql: 'DELETE FROM convidados WHERE id = ?', args: [id] },

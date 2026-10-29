@@ -183,11 +183,15 @@
     const cont = c.contagem.slice(0, 12).map((x) => `<div class="item"><div class="item-topo"><b style="width:30px;text-align:center">${x.posicao}º</b>
       <span class="avatar">${A().emojiDe(x.avatar)}</span><div class="item-nome" style="flex:1">${esc(x.nome)}</div>
       <span>${x.votos} ${x.votos === 1 ? 'voto' : 'votos'}${x.pontos ? ` · <b style="color:var(--laranja-claro)">+${x.pontos}</b>` : ''}</span></div></div>`).join('');
+    const fila = (c.desfilantes || []).map((p) => `<span class="chip-sala"><span class="avatar mini">${A().emojiDe(p.avatar)}</span>${esc(p.nome)}
+        ${['fechado', 'desfile'].includes(c.estado) ? `<button type="button" class="tirar" data-acao="conc-tirar" data-id="${esc(p.id)}" aria-label="Tirar ${esc(p.nome)} da lista">✕</button>` : ''}</span>`).join('');
     pintar('j-concurso', `
       ${c.liberada ? '' : '<p class="aviso-inline">O Concurso está bloqueado: libere (ou coloque "Em teste") em Atividades antes de abrir a votação.</p>'}
       ${c.emTeste ? '<p class="selo teste" style="display:inline-block">🧪 Em teste: só os testadores votam</p>' : ''}
       <p><span class="selo ${rot[1]}">${rot[0]}</span> · ${c.eleitores} ${c.eleitores === 1 ? 'pessoa votou' : 'pessoas votaram'} · prêmios ${c.premios.join(' / ')}</p>
-      <div class="item-acoes">${acoes.join('')}<button class="botao secundario pequeno" type="button" data-acao="tel-modo" data-modo="concurso">Mostrar no telão</button></div>
+      <p style="margin:10px 0 6px"><b>Querem desfilar (${(c.desfilantes || []).length}):</b> <span class="fraco">só essas pessoas aparecem na votação</span></p>
+      <div class="sala-admin">${fila || '<span class="fraco">Ninguém ainda. Cada um toca em "Quero desfilar!" no celular.</span>'}</div>
+      <div class="item-acoes" style="margin-top:10px">${acoes.join('')}<button class="botao secundario pequeno" type="button" data-acao="tel-modo" data-modo="concurso">Mostrar no telão</button></div>
       <p class="fraco" style="margin:8px 0">Ordem: <b>Hora do Desfile Macabro</b> (o telão chama a fila) → desfile ao vivo → <b>abrir votação</b> (o telão troca sozinho) → encerrar → publicar.
         Só você vê a contagem. Empate divide a colocação.</p>
       <div class="lista">${cont || '<p class="fraco">Nenhum voto ainda.</p>'}</div>`);
@@ -280,6 +284,7 @@
     if (oque === 'quiz-encerrar') { if (confirmarToque(b)) await fazer(() => api('POST', '/quiz/encerrar'), 'Quiz parado.'); }
     if (oque === 'quiz-recomecar') { if (confirmarToque(b, 'Toque de novo: apagar respostas e pontos do quiz')) await fazer(() => api('POST', '/quiz/recomecar'), 'Quiz zerado.'); }
     if (oque === 'quiz-tempo') await fazer(() => api('PUT', '/quiz-tempo', { segundos: Number($('quiz-tempo').value) }), 'Tempo salvo.');
+    if (oque === 'conc-tirar') await fazer(() => api('DELETE', `/concurso/desfilantes/${encodeURIComponent(id)}`), 'Tirado da lista do desfile.');
     if (oque === 'conc-desfile') await fazer(() => api('POST', '/concurso/desfile'), 'Telão: Hora do Desfile Macabro!');
     if (oque === 'conc-abrir') await fazer(() => api('POST', '/concurso/abrir'), 'Votação aberta. O telão já mostra.');
     if (oque === 'conc-encerrar') { if (confirmarToque(b)) await fazer(() => api('POST', '/concurso/encerrar'), 'Votação encerrada.'); }
