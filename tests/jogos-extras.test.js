@@ -171,7 +171,7 @@ test('bebida: só com confirmação do admin, só no dia da festa, uma vez; desf
 test('ranking com empate divide a posição e o extrato mostra de onde vieram os pontos', async () => {
   const r = (await s.req('GET', '/api/ranking', { token: p1.token })).json.ranking;
   assert.equal(r.eu.pontos, 20);
-  assert.ok(r.extrato.porAtividade.some((a) => a.nome === 'Enigmas' && a.pontos === 20));
+  assert.ok(r.extrato.porAtividade.some((a) => a.nome === 'Enigmas (pré-festa)' && a.pontos === 20));
   const empatados = r.top.filter((x) => x.pontos === r.top[0].pontos);
   assert.ok(empatados.every((x) => x.posicao === 1));
 });

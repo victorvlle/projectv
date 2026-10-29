@@ -358,7 +358,8 @@ async function main() {
     const espiar = await req('GET', '/api/previsoes', { token: tA });
     const palpiteVazou = /"votos"|"resposta"/.test(JSON.stringify(espiar.json)) || (espiar.json.previsoes.perguntas.find((q) => q.id === 'longnecks') || {}).minha === 'mais-10';
     barrado(GJ, 'Ver os palpites dos outros nas Previsões enquanto estão abertas', !palpiteVazou, 'só o próprio palpite volta do servidor');
-    const enigmaTexto = JSON.stringify((await req('GET', '/api/enigmas', { token: tA })).json).toLowerCase();
+    // Só os enigmas ainda abertos (os já fechados mostram a resposta de propósito).
+    const enigmaTexto = JSON.stringify((await req('GET', '/api/enigmas', { token: tA })).json.enigmas.enigmas.filter((x) => x.estado !== 'fechado')).toLowerCase();
     barrado(GJ, 'Ler a resposta do enigma pelo site', !enigmaTexto.includes('"it"') && !enigmaTexto.includes('respostas'), 'a resposta nunca sai do servidor enquanto o enigma está aberto');
     await req('PUT', '/api/admin/enigmas/quarta', { token: admin, corpo: { abreEm: Date.now() - 60000, fechaEm: Date.now() + 86400000 } });
     const semRevelar = await req('POST', '/api/enigmas/quarta/resposta', { token: tA, corpo: { resposta: 'it' } });
@@ -377,6 +378,44 @@ async function main() {
     for (let i = 0; i < 3; i++) await req('PUT', '/api/caronas/minha', { token: tV, corpo: { vagas: 3 + i, trajeto: 'ida', saindo: 'X' } });
     const ganhoV = (await pontosDeV()) - antesV;
     barrado(GJ, 'Ganhar pontos repetidos oferecendo a mesma carona várias vezes', ganhoV <= 5, `+${ganhoV} ponto(s) com 7 ofertas (carona vale +5 uma vez)`);
+
+    // ----- jogos da festa e modo teste (uma testadora nova, com freios zerados; o atacante não testa)
+    const testadora = (await req('POST', '/api/admin/convidados', { token: admin, corpo: { nome: 'Testadora Lima' } })).json.criados[0];
+    const tT = (await req('POST', '/api/entrar', { corpo: { codigo: testadora.codigo } })).json.token;
+    await req('PUT', '/api/eu/perfil', { token: tT, corpo: { avatar: 'fantasma' } });
+    await req('PATCH', `/api/admin/convidados/${testadora.id}`, { token: admin, corpo: { testador: true } });
+    const virarTestador = await req('PATCH', `/api/admin/convidados/${atacante.id}`, { token: tA, corpo: { testador: true } });
+    barrado(GJ, 'Convidado se marcar como testador', virarTestador.status === 401, `HTTP ${virarTestador.status}`);
+    for (const id of ['quiz', 'concurso', 'correio']) await req('PUT', `/api/admin/atividades/${id}`, { token: admin, corpo: { estado: 'teste' } });
+    await req('POST', '/api/admin/quiz/q1/lancar', { token: admin });
+    const festaA = (await req('GET', '/api/festa', { token: tA })).json;
+    const quizA = await req('POST', '/api/quiz/q1/resposta', { token: tA, corpo: { escolha: 1 } });
+    const cartaA = await req('POST', '/api/correio', { token: tA, corpo: { texto: 'entrei no teste' } });
+    barrado(GJ, 'Jogar um jogo "Em teste" sem ser testador', festaA.quiz === null && quizA.status === 403 && cartaA.status === 403
+      && !JSON.stringify(festaA).includes('Overlook'), `quiz HTTP ${quizA.status}, correio HTTP ${cartaA.status}; a pergunta não chega a quem não testa`);
+    const quizV = JSON.stringify((await req('GET', '/api/quiz', { token: tT })).json);
+    barrado(GJ, 'Ler a resposta certa do quiz antes da revelação', !quizV.includes('"correta"'), 'a certa só sai do servidor depois que o organizador revela');
+    let aceitas = 0;
+    for (let i = 0; i < 4; i++) { if ((await req('POST', '/api/quiz/q1/resposta', { token: tT, corpo: { escolha: i } })).status === 200) aceitas++; }
+    barrado(GJ, 'Responder o quiz várias vezes (uma em cada opção)', aceitas === 1, `${aceitas} resposta aceita de 4 tentativas`);
+    const lancarConv = await req('POST', '/api/admin/quiz/q2/lancar', { token: tT });
+    const revelarConv = await req('POST', '/api/admin/quiz/q1/revelar', { token: tT });
+    barrado(GJ, 'Convidado lançar ou revelar pergunta do quiz', lancarConv.status === 401 && revelarConv.status === 401, `HTTP ${lancarConv.status}, ${revelarConv.status}`);
+    await req('POST', '/api/admin/concurso/abrir', { token: admin });
+    const cand = (await req('GET', '/api/concurso', { token: tT })).json.concurso.candidatos;
+    const proprio = cand.find((c) => c.souEu);
+    const votoProprio = await req('PUT', '/api/concurso/voto', { token: tT, corpo: { candidato: proprio.id } });
+    const votoIdCru = await req('PUT', '/api/concurso/voto', { token: tT, corpo: { candidato: atacante.id } });
+    barrado(GJ, 'Votar em si mesmo no Concurso (ou votar usando o id interno)', votoProprio.status === 400 && votoIdCru.status === 400,
+      `HTTP ${votoProprio.status}, ${votoIdCru.status}`);
+    let cartasAceitas = 0;
+    for (let i = 0; i < 5; i++) { if ((await req('POST', '/api/correio', { token: tT, corpo: { texto: `spam no telão ${i}` } })).status === 200) cartasAceitas++; }
+    const noTelao = (await req('GET', '/api/admin/telao', { token: admin })).json.correio.cartas.length;
+    barrado(GJ, 'Encher o telão de cartas do Correio', cartasAceitas === 1 && noTelao === 0, `${cartasAceitas} de 5 aceitas (1 por minuto) e nenhuma vai ao telão sem aprovação`);
+    const aprovarConv = await req('POST', '/api/admin/correio/1/aprovar', { token: tT });
+    barrado(GJ, 'Convidado aprovar a própria carta', aprovarConv.status === 401, `HTTP ${aprovarConv.status}`);
+    const apagarConv = await req('POST', '/api/admin/teste/apagar', { token: tA });
+    barrado(GJ, 'Convidado apagar dados de teste', apagarConv.status === 401, `HTTP ${apagarConv.status}`);
 
     // =========================================== 9. FORÇA BRUTA (por último: esgota os freios)
     const GF = 'Força bruta';

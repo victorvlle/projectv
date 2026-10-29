@@ -12,6 +12,9 @@ const previsoes = require('../dados/previsoes');
 const enigmas = require('../dados/enigmas');
 const pontos = require('../dados/pontos');
 const maldicao = require('../dados/maldicao');
+const quiz = require('../dados/quiz');
+const concurso = require('../dados/concurso');
+const correio = require('../dados/correio');
 const notificacoes = require('../notificacoes');
 const seg = require('../seguranca');
 const { AVATARES } = require('../avatares');
@@ -115,18 +118,35 @@ router.put('/eu/perfil', soConvidado, assincrono(async (req, res) => {
 
 // Tudo o que a tela do convidado precisa, numa ida só. `agora` é o relógio do
 // servidor: a contagem regressiva calcula a diferença e ignora o relógio do celular.
+// Jogos da festa: só saem para quem pode jogar (liberado, ou testador com a atividade em teste).
+const testador = (req) => Boolean(Number(req.convidado.testador));
+async function seLiberado(id, req, montar) {
+  const a = await atividades.acesso(id, req.convidado);
+  return a.liberada ? { ...(await montar()), teste: a.teste } : null;
+}
+async function jogosDaFesta(req) {
+  const eu = req.convidado.id;
+  const [q, c, k] = await Promise.all([
+    seLiberado('quiz', req, () => quiz.paraConvidado(eu)),
+    seLiberado('concurso', req, () => concurso.paraConvidado(eu)),
+    seLiberado('correio', req, () => correio.paraConvidado(eu)),
+  ]);
+  return { quiz: q, concurso: c, correio: k };
+}
+
 router.get('/festa', soConvidado, assincrono(async (req, res) => {
   const eu = req.convidado.id;
-  const [info, ativs, lista, beb, musicas, carros, noite, prev, enig, rank] = await Promise.all([
-    festa.info(), atividades.paraConvidado(), convidados.confirmados(), bebidas.paraConvidado(eu),
-    playlist.listar(eu), caronas.listar(eu), pos.paraConvidado(eu), previsoes.paraConvidado(eu), enigmas.paraConvidado(eu),
-    pontos.paraConvidado(eu),
+  const t = testador(req);
+  const [info, ativs, lista, beb, musicas, carros, noite, prev, enig, rank, jogos] = await Promise.all([
+    festa.info(), atividades.paraConvidado(Date.now(), t), convidados.confirmados(), bebidas.paraConvidado(eu),
+    playlist.listar(eu), caronas.listar(eu), pos.paraConvidado(eu), previsoes.paraConvidado(eu, Date.now(), t), enigmas.paraConvidado(eu),
+    pontos.paraConvidado(eu, t), jogosDaFesta(req),
   ]);
   // O id interno dos outros convidados não sai: só nome, monstro e "sou eu".
   const confirmados = lista.map((c) => ({ nome: c.nome, avatar: c.avatar, souEu: c.id === req.convidado.id }));
   res.json({
     ok: true, agora: Date.now(), festa: info, atividades: ativs, confirmados, bebidas: beb,
-    playlist: musicas, caronas: carros, pos: noite, previsoes: prev, enigmas: enig, ranking: rank,
+    playlist: musicas, caronas: carros, pos: noite, previsoes: prev, enigmas: enig, ranking: rank, ...jogos,
   });
 }));
 
@@ -212,11 +232,11 @@ function freiarJogos(req, res, next) {
 }
 
 router.get('/previsoes', soConvidado, assincrono(async (req, res) => {
-  res.json({ ok: true, previsoes: await previsoes.paraConvidado(req.convidado.id) });
+  res.json({ ok: true, previsoes: await previsoes.paraConvidado(req.convidado.id, Date.now(), testador(req)) });
 }));
 router.put('/previsoes/:id', soConvidado, freiarJogos, assincrono(async (req, res) => {
-  await previsoes.responder(req.convidado.id, req.params.id, (req.body || {}).escolha ?? null);
-  res.json({ ok: true, previsoes: await previsoes.paraConvidado(req.convidado.id) });
+  await previsoes.responder(req.convidado.id, req.params.id, (req.body || {}).escolha ?? null, Date.now(), testador(req));
+  res.json({ ok: true, previsoes: await previsoes.paraConvidado(req.convidado.id, Date.now(), testador(req)) });
 }));
 
 router.get('/enigmas', soConvidado, assincrono(async (req, res) => {
@@ -237,7 +257,45 @@ router.post('/enigmas/:id/resposta', soConvidado, freiarJogos, assincrono(async 
 }));
 
 router.get('/ranking', soConvidado, assincrono(async (req, res) => {
-  res.json({ ok: true, ranking: await pontos.paraConvidado(req.convidado.id) });
+  res.json({ ok: true, ranking: await pontos.paraConvidado(req.convidado.id, testador(req)) });
+}));
+
+// ------------------------------------------- quiz, concurso e correio
+const proibido = (res, nome) => res.status(403).json({ ok: false, erro: `${nome} ainda não está aberto.` });
+router.get('/quiz', soConvidado, assincrono(async (req, res) => {
+  const q = await seLiberado('quiz', req, () => quiz.paraConvidado(req.convidado.id));
+  if (!q) return proibido(res, 'O Quiz');
+  return res.json({ ok: true, quiz: q });
+}));
+router.post('/quiz/:id/resposta', soConvidado, freiarJogos, assincrono(async (req, res) => {
+  await quiz.responder(req.convidado, req.params.id, (req.body || {}).escolha);
+  avisar.admin('atualizar', { oque: 'quiz' });
+  avisar.telao('quiz:resposta', {});
+  res.json({ ok: true, quiz: { ...(await quiz.paraConvidado(req.convidado.id)), teste: (await atividades.acesso('quiz', req.convidado)).teste } });
+}));
+
+router.get('/concurso', soConvidado, assincrono(async (req, res) => {
+  const c = await seLiberado('concurso', req, () => concurso.paraConvidado(req.convidado.id));
+  if (!c) return proibido(res, 'O Concurso');
+  return res.json({ ok: true, concurso: c });
+}));
+router.put('/concurso/voto', soConvidado, freiarJogos, assincrono(async (req, res) => {
+  await concurso.votar(req.convidado, (req.body || {}).candidato);
+  avisar.admin('atualizar', { oque: 'concurso' });
+  avisar.telao('atualizar', { oque: 'concurso' });
+  res.json({ ok: true, concurso: await seLiberado('concurso', req, () => concurso.paraConvidado(req.convidado.id)) });
+}));
+
+router.get('/correio', soConvidado, assincrono(async (req, res) => {
+  const k = await seLiberado('correio', req, () => correio.paraConvidado(req.convidado.id));
+  if (!k) return proibido(res, 'O Correio');
+  return res.json({ ok: true, correio: k });
+}));
+router.post('/correio', soConvidado, freiarJogos, assincrono(async (req, res) => {
+  const { texto, para } = req.body || {};
+  await correio.enviar(req.convidado, { texto, para });
+  avisar.admin('atualizar', { oque: 'correio' });
+  res.json({ ok: true, correio: await seLiberado('correio', req, () => correio.paraConvidado(req.convidado.id)) });
 }));
 
 // Maldição em cena que é minha (para o celular mostrar o aviso depois de reconectar).

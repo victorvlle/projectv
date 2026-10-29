@@ -32,6 +32,7 @@ function paraAdmin(l) {
     codigo: l.codigo,
     ativo: Boolean(l.ativo),
     fora: Boolean(l.fora),
+    testador: Boolean(l.testador),
     perfilCompleto: Boolean(l.avatar),
     primeiroAcessoEm: l.primeiro_acesso_em,
     criadoEm: l.criado_em,
@@ -140,7 +141,7 @@ async function editar(id, campos) {
     if (campos.avatar !== null && !avatarValido(campos.avatar)) throw new ErroValidacao('Avatar inválido.');
     sets.push('avatar = ?'); args.push(campos.avatar);
   }
-  for (const flag of ['ativo', 'fora']) {
+  for (const flag of ['ativo', 'fora', 'testador']) {
     if (campos[flag] !== undefined) { sets.push(`${flag} = ?`); args.push(campos[flag] ? 1 : 0); }
   }
   if (!sets.length) return atual;
@@ -184,6 +185,10 @@ async function excluir(id) {
     { sql: 'UPDATE maldicoes SET parceiro_id = NULL WHERE parceiro_id = ?', args: [id] },
     { sql: 'DELETE FROM maldicoes WHERE convidado_id = ?', args: [id] },
     { sql: 'DELETE FROM enigma_tentativas WHERE convidado_id = ?', args: [id] },
+    { sql: 'DELETE FROM quiz_respostas WHERE convidado_id = ?', args: [id] },
+    { sql: 'DELETE FROM concurso_votos WHERE eleitor_id = ? OR candidato_id = ?', args: [id, id] },
+    { sql: 'UPDATE correio SET para_id = NULL WHERE para_id = ?', args: [id] },
+    { sql: 'DELETE FROM correio WHERE autor_id = ?', args: [id] },
     { sql: 'DELETE FROM convidados WHERE id = ?', args: [id] },
   ]);
   if (!r[r.length - 1].rowsAffected) throw new ErroValidacao('Convidado não encontrado.', 404);

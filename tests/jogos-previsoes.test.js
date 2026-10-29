@@ -82,25 +82,25 @@ test('resultados: pontos certos, uma vez só (publicar repetido e ao mesmo tempo
   assert.equal((await set('longnecks', 'xx')).status, 400);
   const pubs = await Promise.all([1, 2, 3].map(() => s.req('POST', '/api/admin/previsoes/publicar', { token: admin })));
   assert.ok(pubs.every((r) => r.status === 200));
-  assert.equal(await h.pontosDe(ana.token), 30); // longnecks + rei + sem-fantasia
-  assert.equal(await h.pontosDe(caio.token), 10); // rei
+  assert.equal(await h.pontosDe(ana.token), 3000); // longnecks + rei + sem-fantasia
+  assert.equal(await h.pontosDe(caio.token), 1000); // rei
   assert.equal(await h.pontosDe(beto.token), 0);
   await s.req('POST', '/api/admin/previsoes/publicar', { token: admin });
-  assert.equal(await h.pontosDe(ana.token), 30, 'publicar de novo não duplica');
+  assert.equal(await h.pontosDe(ana.token), 3000, 'publicar de novo não duplica');
   const p = await prev(ana.token);
   assert.equal(p.estado, 'publicada');
   assert.equal(p.acertos, 3);
   assert.equal(p.perguntas.find((x) => x.id === 'rei-trevas').respostaNome, 'Beto');
   const r = (await s.req('GET', '/api/ranking', { token: beto.token })).json.ranking;
-  assert.deepEqual(r.top.slice(0, 2).map((x) => [x.nome, x.pontos, x.posicao]), [['Ana', 30, 1], ['Caio', 10, 2]]);
+  assert.deepEqual(r.top.slice(0, 2).map((x) => [x.nome, x.pontos, x.posicao]), [['Ana', 3000, 1], ['Caio', 1000, 2]]);
   assert.equal(r.eu.nome, 'Beto');
   assert.ok(!JSON.stringify(r).includes(ana.id), 'ranking não expõe ids');
 });
 
 test('corrigir uma resposta depois de publicar recalcula; despublicar tira os pontos', async () => {
   await s.req('PUT', '/api/admin/previsoes/sem-fantasia/resposta', { token: admin, corpo: { resposta: 'nao' } });
-  assert.equal(await h.pontosDe(ana.token), 20);
-  assert.equal(await h.pontosDe(caio.token), 20);
+  assert.equal(await h.pontosDe(ana.token), 2000);
+  assert.equal(await h.pontosDe(caio.token), 2000);
   const t = (await s.req('GET', '/api/admin/telao', { token: admin })).json.previsao;
   assert.ok(Array.isArray(t.votos));
   await s.req('PUT', '/api/admin/telao', { token: admin, corpo: { modo: 'previsoes', previsao: 9 } });

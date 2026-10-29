@@ -57,19 +57,23 @@ Atualizado em 27/10/2026.
 - [x] Pontos retroativos: quem já tinha sugerido música ou oferecido carona ganha os +5 (uma vez)
 - [x] Enigmas de terça (8h, 13h, 19h): 12 no total; cada enigma fecha quando o próximo abre
 - [x] Voto na playlist instantâneo (a tela muda na hora; desfaz se o servidor recusar)
-- [x] Testes automatizados: 85 passando; 57 ataques barrados
+- [x] Enigmas só até quinta (9 no total); o último fecha quinta 23:59
+- [x] Autor não vota na própria música
+- [x] Modo teste: estado "Em teste" nas atividades, testadores marcados no admin, pontos/dados de teste separados e botão "Apagar dados de teste"
+- [x] Pontuação da festa: Previsões +1000 por acerto, Maldição +500, Quiz +500 por acerto, Concurso 1000/800/500
+- [x] Quiz de Terror Relâmpago: 5 perguntas de múltipla escolha, uma chance, tempo no servidor, telão com contagem e revelação
+- [x] Concurso de Fantasia: votação (não vota em si), apuração com empate, pódio no telão
+- [x] Correio das Trevas: carta anônima com aprovação do organizador, telão com rodízio
+- [x] Mural de Fotos e O Monstro tirados do site (decisão de 29/10); pergunta 6 das Previsões trocada para o Correio
+- [x] Testes automatizados: 94 passando; 66 ataques barrados; roteiro de testes em PDF para Victor e Lucas
 - [x] Deploy no Render + Turso: https://projectv-pec1.onrender.com (`/saude` responde `banco: turso`, verificado em 24/10)
 
 ## Pendente (Etapa C, em ordem)
 
 - [ ] Adivinhe a fantasia (deixado para depois)
 
-- [ ] Correio das Trevas (fila de aprovação, autor protegido)
-- [ ] Concurso de Fantasia
-- [ ] Mural de Fotos ao Vivo (sharp, fotos no banco)
-- [ ] Quiz de Terror Relâmpago
-- [ ] O Monstro está entre nós
-- [ ] Sons e animações extras
+- [ ] Teste real (Victor e Lucas) de Quiz, Concurso, Correio, Maldição e Previsões no celular e na TV
+- [ ] Sábado antes das 17h: "Apagar dados de teste" e conferir que nada ficou "Em teste"
 
 ## Decisões tomadas
 

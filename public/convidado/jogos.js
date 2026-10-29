@@ -32,7 +32,7 @@
       else if (proximo) enigmaQuando = `Próximo: ${PV.dataCurta(proximo.abreEm)}`;
       else enigmaQuando = 'Liberado · todos resolvidos ou fechados';
     }
-    const pos = r && r.eu ? `${r.eu.posicao}º lugar · ${r.eu.pontos} pts` : 'Ainda sem pontos';
+    const pos = r && r.eu ? `${r.eu.posicao}º lugar · ${r.eu.pontos.toLocaleString('pt-BR')} pts` : 'Ainda sem pontos';
     const card = (href, icone, nome, quando) => `<a class="atividade contrib" href="${href}">
       <div class="icone">${icone}</div>
       <div><div class="nome">${nome}</div><div class="quando">${esc(quando)}</div></div></a>`;
@@ -328,17 +328,18 @@
     const linha = (x) => `<li class="rank-linha ${x.souEu ? 'rank-minha' : ''} ${x.posicao <= 3 ? `top${x.posicao}` : ''}">
       <span class="rank-pos">${x.posicao <= 3 ? ['🥇', '🥈', '🥉'][x.posicao - 1] : `${x.posicao}º`}</span>
       <span class="avatar">${emoji(x.avatar)}</span><span class="rank-nome">${esc(x.souEu ? `${x.nome} (você)` : x.nome)}</span>
-      <span class="rank-pts">${x.pontos}</span></li>`;
+      <span class="rank-pts">${x.pontos.toLocaleString('pt-BR')}</span></li>`;
     const euFora = r.eu && !r.top.some((x) => x.souEu);
     const ex = r.extrato;
     pintar('ranking', `
       ${r.eu ? `<section class="cartao rank-eu"><div><small>Sua posição</small><b>${r.eu.posicao}º</b></div>
-        <div><small>Seus pontos</small><b>${r.eu.pontos}</b></div><div><small>Na disputa</small><b>${r.total}</b></div></section>` : ''}
+        <div><small>Seus pontos</small><b>${r.eu.pontos.toLocaleString('pt-BR')}</b></div><div><small>Na disputa</small><b>${r.total}</b></div></section>` : ''}
       <ol class="rank-lista">${r.top.map(linha).join('')}${euFora ? `<li class="rank-sep">…</li>${linha(r.eu)}` : ''}</ol>
       ${r.top.every((x) => x.pontos === 0) ? '<p class="fraco">Ninguém pontuou ainda. Resolva o enigma do dia, ofereça carona ou sugira músicas.</p>' : ''}
       <section class="cartao pref-bloco"><h2 class="titulo-secao" style="margin-top:0">De onde vêm seus pontos</h2>
-        ${ex.porAtividade.length ? `<ul class="rank-extrato">${ex.porAtividade.map((a) => `<li><span>${esc(a.nome)}</span><b>${a.pontos}</b></li>`).join('')}</ul>` : '<p class="fraco">Nada ainda.</p>'}
-        <p class="fraco">Como ganhar: Previsões +10 por acerto · Enigma +10 e bônus · Maldição cumprida +5 · Carona +5 · Música +5 · Bebida levada +5 (confirmada na festa).</p>
+        ${ex.porAtividade.length ? `<ul class="rank-extrato">${ex.porAtividade.map((a) => `<li><span>${esc(a.nome)}</span><b>${a.pontos.toLocaleString('pt-BR')}</b></li>`).join('')}</ul>` : '<p class="fraco">Nada ainda.</p>'}
+        <p class="fraco">Os pontos grandes são na festa: Previsões +1000 por acerto · Quiz Relâmpago +500 por acerto · Concurso de Fantasia 1º +1000, 2º +800, 3º +500 · Maldição cumprida +500.
+          Pré-festa (bônus): Enigma +10 e bônus · Carona +5 · Música +5 · Bebida levada +5 (confirmada na festa).</p>
       </section>`);
   }
 
@@ -385,7 +386,7 @@
       const m = r.maldicao;
       pintar('maldicao-minha', m
         ? `<section class="cartao maldicao-cartao"><b>💀 A maldição está sobre você</b><p>${esc(m.castigo)}</p>
-            <p class="fraco">Cumpra no telão. O organizador confirma e você ganha +5 pontos.</p></section>`
+            <p class="fraco">Cumpra no telão. O organizador confirma e você ganha +500 pontos.</p></section>`
         : `<section class="cartao"><b>Nenhuma maldição sobre você agora.</b>
             <p class="mudo">Durante a festa, de tempos em tempos alguém é sorteado no telão para um castigo de bebida. Se for você, o celular avisa.</p></section>`);
       // Abriu o celular depois do sorteio (ex.: tocou na notificação): mostra o aviso também.

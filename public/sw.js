@@ -2,7 +2,7 @@
 // para nunca servir versão velha do site).
 
 // Telas que um toque na notificação pode abrir (a mesma lista do servidor).
-const DESTINOS = ['/', '/#contribuicoes', '/#playlist', '/#caronas', '/#chegar', '/#pos', '/#avisos', '/#previsoes', '/#enigma', '/#ranking', '/#maldicao'];
+const DESTINOS = ['/', '/#contribuicoes', '/#playlist', '/#caronas', '/#chegar', '/#pos', '/#avisos', '/#previsoes', '/#enigma', '/#ranking', '/#maldicao', '/#quiz', '/#concurso', '/#correio'];
 const destinoSeguro = (u) => (DESTINOS.includes(u) ? u : '/');
 
 self.addEventListener('install', () => self.skipWaiting());

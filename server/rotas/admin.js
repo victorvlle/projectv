@@ -17,6 +17,10 @@ const maldicao = require('../dados/maldicao');
 const enigmas = require('../dados/enigmas');
 const pontos = require('../dados/pontos');
 const colaboracao = require('../dados/colaboracao');
+const quiz = require('../dados/quiz');
+const concurso = require('../dados/concurso');
+const correio = require('../dados/correio');
+const teste = require('../dados/teste');
 const anunciar = require('../jogos/anunciar');
 const notificacoes = require('../notificacoes');
 const { porId } = require('../atividades/catalogo');
@@ -92,7 +96,7 @@ router.post('/convidados', assincrono(async (req, res) => {
 }));
 
 router.patch('/convidados/:id', assincrono(async (req, res) => {
-  const permitidos = ['nome', 'avatar', 'ativo', 'fora'];
+  const permitidos = ['nome', 'avatar', 'ativo', 'fora', 'testador'];
   const campos = Object.fromEntries(Object.entries(req.body || {}).filter(([k]) => permitidos.includes(k)));
   const c = await convidados.editar(req.params.id, campos);
   if (campos.ativo === false) {
@@ -145,15 +149,16 @@ router.put('/telao', assincrono(async (req, res) => {
 
 // Dados do telão (mesma sessão do admin; o telão roda no notebook do organizador).
 router.get('/telao', assincrono(async (req, res) => {
-  const [info, ativs, lista, telao, rank, mal] = await Promise.all([
+  const [info, ativs, lista, telao, rank, mal, qz, conc, cartas] = await Promise.all([
     festa.info(), atividades.paraConvidado(), convidados.confirmados(), festa.telao(), pontos.ranking(), maldicao.atual(),
+    quiz.paraTelao(), concurso.paraTelao(), correio.paraTelao(),
   ]);
   const confirmados = lista.map((c) => ({ nome: c.nome, avatar: c.avatar }));
   res.json({
     ok: true, agora: Date.now(), festa: info, atividades: ativs, confirmados, telao, pos: await pos.resultado(),
     previsao: await previsoes.paraTelao(telao.previsao),
     ranking: rank.slice(0, 10).map((r) => ({ nome: r.nome, avatar: r.avatar, pontos: r.pontos, posicao: r.posicao })),
-    maldicao: mal,
+    maldicao: mal, quiz: qz, concurso: conc, correio: cartas,
   });
 }));
 
@@ -246,10 +251,11 @@ router.post('/avisos/teste', assincrono(async (req, res) => {
 
 // ----------------------------------------------------------------- jogos
 router.get('/jogos', assincrono(async (_req, res) => {
-  const [prev, mal, enig, rank, beb] = await Promise.all([
+  const [prev, mal, enig, rank, beb, qz, conc, cartas] = await Promise.all([
     previsoes.paraAdmin(), maldicao.paraAdmin(), enigmas.paraAdmin(), pontos.ranking(), colaboracao.bebidasParaAdmin(),
+    quiz.paraAdmin(), concurso.paraAdmin(), correio.paraAdmin(),
   ]);
-  res.json({ ok: true, agora: Date.now(), previsoes: prev, maldicao: mal, enigmas: enig, ranking: rank, bebidas: beb });
+  res.json({ ok: true, agora: Date.now(), previsoes: prev, maldicao: mal, enigmas: enig, ranking: rank, bebidas: beb, quiz: qz, concurso: conc, correio: cartas });
 }));
 const jogosMudou = (res, oque = 'jogos') => { avisar.atualizar(oque); res.json({ ok: true }); };
 
@@ -293,6 +299,47 @@ router.put('/enigmas-tempo', assincrono(async (req, res) => { await enigmas.defi
 router.put('/colaboracao/bebida/:convidadoId', assincrono(async (req, res) => {
   const r = await colaboracao.confirmarBebida(req.params.convidadoId, (req.body || {}).levou === true);
   avisar.atualizar('ranking');
+  res.json({ ok: true, ...r });
+}));
+
+// ----------------------------------------------------------------- quiz
+router.post('/quiz/:id/lancar', assincrono(async (req, res) => { await quiz.lancar(req.params.id); jogosMudou(res, 'quiz'); }));
+router.post('/quiz/:id/revelar', assincrono(async (req, res) => {
+  const r = await quiz.revelar(req.params.id);
+  avisar.atualizar('quiz');
+  avisar.atualizar('ranking');
+  res.json({ ok: true, ...r });
+}));
+router.post('/quiz/:id/cancelar', assincrono(async (req, res) => { await quiz.cancelar(req.params.id); jogosMudou(res, 'quiz'); }));
+router.put('/quiz/:id', assincrono(async (req, res) => { await quiz.editar(req.params.id, req.body || {}); jogosMudou(res, 'quiz'); }));
+router.put('/quiz-tempo', assincrono(async (req, res) => { await quiz.definirTempo((req.body || {}).segundos); jogosMudou(res, 'quiz'); }));
+
+// ------------------------------------------------------------- concurso
+router.post('/concurso/:estado', assincrono(async (req, res) => {
+  const e = req.params.estado;
+  if (e === 'abrir') await concurso.mudar('aberto');
+  else if (e === 'encerrar') await concurso.mudar('encerrado');
+  else if (e === 'publicar') { const r = await concurso.publicar(); avisar.atualizar('ranking'); return res.json({ ok: true, ...r }); }
+  else if (e === 'despublicar') { await concurso.despublicar(); avisar.atualizar('ranking'); }
+  else return res.status(404).json({ ok: false, erro: 'Ação desconhecida.' });
+  return jogosMudou(res, 'concurso');
+}));
+
+// --------------------------------------------------------------- correio
+router.post('/correio/:id/:estado', assincrono(async (req, res) => {
+  const estado = { aprovar: 'aprovada', recusar: 'recusada' }[req.params.estado];
+  if (!estado) return res.status(404).json({ ok: false, erro: 'Ação desconhecida.' });
+  await correio.moderar(req.params.id, estado);
+  avisar.admin('atualizar', { oque: 'correio' });
+  avisar.telao('atualizar', { oque: 'correio' });
+  avisar.atualizar('correio');
+  return res.json({ ok: true });
+}));
+
+// ---------------------------------------------------------- modo teste
+router.post('/teste/apagar', assincrono(async (_req, res) => {
+  const r = await teste.apagarDadosDeTeste();
+  avisar.atualizar('tudo');
   res.json({ ok: true, ...r });
 }));
 

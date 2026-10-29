@@ -82,6 +82,7 @@
     }
     desenharPrevisao(estado.previsao);
     desenharRanking(estado.ranking || []);
+    if (window.PVTelaoFesta) window.PVTelaoFesta.desenhar(estado);
     trocarCena(estado.telao.modo);
     if (estado.maldicao && window.PVMaldicao) window.PVMaldicao.iniciar(estado.maldicao);
     tic();
@@ -93,7 +94,7 @@
     if (p.estado === 'aberta' || p.estado === 'aguardando') {
       $('prev-rotulo').textContent = 'Previsões';
       $('prev-pergunta').textContent = p.estado === 'aberta' ? 'As apostas estão abertas' : 'As Previsões abrem em breve';
-      $('prev-corpo').innerHTML = `<p class="prev-dica">${p.estado === 'aberta' ? `Aposte pelo celular até ${PV.esc(PV.dataCurta(p.fechaEm))}. Cada acerto vale 10 pontos.` : 'Fique de olho no site.'}</p>`;
+      $('prev-corpo').innerHTML = `<p class="prev-dica">${p.estado === 'aberta' ? `Aposte pelo celular até ${PV.esc(PV.dataCurta(p.fechaEm))}. Cada acerto vale 1.000 pontos.` : 'Fique de olho no site.'}</p>`;
       return;
     }
     $('prev-rotulo').textContent = `Previsão ${p.indice + 1} de ${p.total}`;
@@ -114,10 +115,10 @@
     const podio = r.filter((x) => x.posicao <= 3).slice(0, 3);
     const ordem = [podio[1], podio[0], podio[2]].filter(Boolean);
     $('podio').innerHTML = r.some((x) => x.pontos > 0) ? ordem.map((x) => `<div class="degrau d${x.posicao}">
-        <span class="avatar">${emojiDe(x.avatar)}</span><b>${PV.esc(x.nome)}</b><span class="pts">${x.pontos} pts</span>
+        <span class="avatar">${emojiDe(x.avatar)}</span><b>${PV.esc(x.nome)}</b><span class="pts">${x.pontos.toLocaleString('pt-BR')} pts</span>
         <div class="bloco">${x.posicao}º</div></div>`).join('') : '<p class="prev-dica">Ninguém pontuou ainda.</p>';
     $('rank-telao').innerHTML = r.filter((x) => x.posicao > 3).slice(0, 7).map((x) => `<li><span class="p">${x.posicao}º</span>
-      <span class="avatar">${emojiDe(x.avatar)}</span><span class="n">${PV.esc(x.nome)}</span><span class="pts">${x.pontos}</span></li>`).join('');
+      <span class="avatar">${emojiDe(x.avatar)}</span><span class="n">${PV.esc(x.nome)}</span><span class="pts">${x.pontos.toLocaleString('pt-BR')}</span></li>`).join('');
   }
 
   const dois = (n) => String(n).padStart(2, '0');
@@ -162,6 +163,7 @@
         atualizar: recarregar,
         maldicao: (m) => window.PVMaldicao && window.PVMaldicao.iniciar(m),
         'maldicao:resolvida': (d) => window.PVMaldicao && window.PVMaldicao.resolvida(d),
+        'quiz:resposta': recarregar,
       },
     });
     if (window.PVMaldicao) window.PVMaldicao.mostrarBotaoSom();

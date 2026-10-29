@@ -8,7 +8,7 @@ const PERGUNTAS = [
   { id: 'ganha-concurso', ordem: 3, tipo: 'convidado', texto: 'Quem vai ganhar o Concurso de Fantasia?' },
   { id: 'mais-amaldicoado', ordem: 4, tipo: 'convidado', texto: 'Quem vai ser mais amaldiçoado pela Maldição?' },
   { id: 'primeiro-dancar', ordem: 5, tipo: 'convidado', texto: 'Quem vai ser o primeiro a dançar?' },
-  { id: 'mais-fotos', ordem: 6, tipo: 'convidado', texto: 'Quem vai mandar mais fotos no Mural?' },
+  { id: 'mais-fotos', ordem: 6, tipo: 'convidado', texto: 'Quem vai receber mais cartas no Correio das Trevas?' },
   { id: 'rei-trevas', ordem: 7, tipo: 'convidado', texto: 'Quem vai ser coroado Rei ou Rainha das Trevas?' },
   { id: 'longnecks', ordem: 8, tipo: 'opcoes', texto: 'Quantas longnecks vão sobrar?',
     opcoes: [{ id: 'nenhuma', nome: 'Nenhuma' }, { id: '1-5', nome: '1 a 5' }, { id: '6-10', nome: '6 a 10' }, { id: 'mais-10', nome: 'Mais de 10' }] },
@@ -17,7 +17,7 @@ const PERGUNTAS = [
   { id: 'sem-fantasia', ordem: 10, tipo: 'opcoes', texto: 'Alguém vai chegar sem fantasia?',
     opcoes: [{ id: 'sim', nome: 'Sim' }, { id: 'nao', nome: 'Não' }] },
 ];
-const PONTOS_PREVISAO = 10;
+const PONTOS_PREVISAO = 1000;
 
 // Castigos da Maldição: todos de bebida (cada um bebe o que estiver bebendo).
 // nivel: 1 = leve, 2 = moderado, 3 = caos. Cada intensidade usa os castigos até o seu nível.
@@ -39,7 +39,7 @@ const INTENSIDADES = {
   moderado: { nome: 'Moderado', nivel: 2, minMin: 20, maxMin: 30 },
   caos: { nome: 'Caos', nivel: 3, minMin: 10, maxMin: 15 },
 };
-const PONTOS_MALDICAO = 5;
+const PONTOS_MALDICAO = 500;
 
 // Enigmas: 3 por dia (manhã 8h, tarde 13h, noite 19h) de terça a quinta. Cada um fecha quando o
 // próximo abre; o último fecha quinta às 23:59. Respostas aceitas comparadas sem acento, maiúsculas, artigos e pontuação.
@@ -104,10 +104,30 @@ const ENIGMAS = DIAS.flatMap(([dia, nomeDia, data], d) => PERIODOS.map(([periodo
 const PONTOS_ENIGMA = 10;
 const BONUS_ENIGMA_PADRAO = [10, 5, 3];
 
+// Quiz de Terror Relâmpago: 5 perguntas de múltipla escolha lançadas pelo admin na festa.
+// Uma resposta só por pergunta, com tempo. Acertou: +500. `correta` é o índice da opção.
+const QUIZ = [
+  { id: 'q1', ordem: 1, texto: 'Qual é o nome do hotel de "O Iluminado"?',
+    opcoes: ['Hotel Cecil', 'Hotel Overlook', 'Bates Motel', 'Hotel Stanley'], correta: 1 },
+  { id: 'q2', ordem: 2, texto: 'Em "Halloween" (1978), a máscara de Michael Myers foi feita a partir da máscara de quem?',
+    opcoes: ['Capitão Kirk, de Jornada nas Estrelas', 'Elvis Presley', 'Frankenstein', 'Um palhaço de circo'], correta: 0 },
+  { id: 'q3', ordem: 3, texto: 'No título original de "A Hora do Pesadelo", qual é o nome da rua?',
+    opcoes: ['Maple Street', 'Oak Street', 'Main Street', 'Elm Street'], correta: 3 },
+  { id: 'q4', ordem: 4, texto: 'Quem é o assassino no primeiro "Sexta-Feira 13" (1980)?',
+    opcoes: ['Jason Voorhees', 'Freddy Krueger', 'Pamela Voorhees, a mãe do Jason', 'O cozinheiro do acampamento'], correta: 2 },
+  { id: 'q5', ordem: 5, texto: 'Qual boneca de "Invocação do Mal" ganhou filmes próprios?',
+    opcoes: ['Chucky', 'Annabelle', 'M3GAN', 'Robert'], correta: 1 },
+];
+const PONTOS_QUIZ = 500;
+const QUIZ_TEMPO_PADRAO_S = 20;
+
+// Concurso de Fantasia: votação; os três mais votados ganham estes pontos (empate divide a colocação).
+const PONTOS_CONCURSO = [1000, 800, 500];
+
 // Colaborar conta ponto.
 const PONTOS_COLABORACAO = { carona: 5, musica: 5, bebida: 5 };
 
 module.exports = {
   PERGUNTAS, PONTOS_PREVISAO, CASTIGOS, INTENSIDADES, PONTOS_MALDICAO, ENIGMAS, PONTOS_ENIGMA, BONUS_ENIGMA_PADRAO,
-  PONTOS_COLABORACAO,
+  PONTOS_COLABORACAO, QUIZ, PONTOS_QUIZ, QUIZ_TEMPO_PADRAO_S, PONTOS_CONCURSO,
 };

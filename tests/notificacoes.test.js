@@ -131,7 +131,7 @@ test('atividade liberada avisa uma vez só', async () => {
   await new Promise((r) => setTimeout(r, 100));
   const msgs = recebeu(c.sub);
   assert.equal(msgs.length, 1);
-  assert.equal(msgs[0].titulo, 'Project V: Quiz de Terror Relâmpago liberado');
+  assert.equal(msgs[0].titulo, 'Project V: Quiz Relâmpago');
   await s.req('PUT', '/api/admin/atividades/quiz', { token: admin, corpo: { estado: 'bloqueada' } });
 });
 

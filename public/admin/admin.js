@@ -87,8 +87,9 @@
               ${!c.ativo ? '<span class="selo off">desativado</span>'
                 : c.perfilCompleto ? '<span class="selo ok">entrou</span>' : '<span class="selo pendente">não entrou</span>'}
               ${c.fora ? '<span class="selo fora">fora</span>' : ''}
+              ${c.testador ? '<span class="selo teste">🧪 testador</span>' : ''}
             </div>
-            <div class="item-sub">${c.pontos} pts</div>
+            <div class="item-sub">${c.pontos.toLocaleString('pt-BR')} pts</div>
           </div>
         </div>
         <div class="item-acoes">
@@ -98,6 +99,7 @@
           <button class="botao secundario pequeno" data-acao="regenerar">Novo link</button>
           <button class="botao secundario pequeno" data-acao="ativo">${c.ativo ? 'Desativar' : 'Reativar'}</button>
           <button class="botao secundario pequeno" data-acao="renomear">Renomear</button>
+          <button class="botao secundario pequeno" data-acao="testador">${c.testador ? 'Tirar de testador' : 'Marcar testador'}</button>
           <button class="botao perigo pequeno" data-acao="excluir">Excluir</button>
         </div>
       </div>`).join('') || '<p class="fraco">Nenhum convidado ainda.</p>';
@@ -172,6 +174,10 @@
       case 'whats':
         return window.open(`https://wa.me/?text=${encodeURIComponent(mensagemConvite(primeiro, c.link))}`, '_blank', 'noopener');
       case 'fora': await acao(() => api('PATCH', `/convidados/${id}`, { fora: !c.fora })); break;
+      case 'testador':
+        await acao(() => api('PATCH', `/convidados/${id}`, { testador: !c.testador }),
+          c.testador ? `${c.nome} não é mais testador.` : `${c.nome} agora vê as atividades "Em teste".`);
+        break;
       case 'ativo':
         if (c.ativo && !confirm(`Desativar ${c.nome}? O link dele para de funcionar.`)) return;
         await acao(() => api('PATCH', `/convidados/${id}`, { ativo: !c.ativo }), c.ativo ? 'Desativado.' : 'Reativado.');
@@ -422,17 +428,17 @@
   // -------------------------------------------------------------- atividades
   function desenharAtividades() {
     $('lista-atividades').innerHTML = estado.atividades.map((a) => `
-      <div class="item" data-id="${a.id}">
+      <div class="item ${a.estado === 'teste' ? 'item-teste' : ''}" data-id="${a.id}">
         <div class="item-topo">
           <span class="avatar">${a.icone}</span>
           <div>
             <div class="item-nome">${PV.esc(a.nome)}</div>
-            <div class="item-sub">Cadeado: “${PV.esc(a.enigma)}” · agora: <b>${a.efetivo}</b>
+            <div class="item-sub">Cadeado: “${PV.esc(a.enigma)}” · agora: <b>${a.efetivo === 'teste' ? 'em teste (só testadores)' : a.efetivo}</b>
               ${a.estado === 'agendada' && a.abreEm ? ` · abre ${PV.dataCurta(a.abreEm)}` : ''}</div>
           </div>
         </div>
         <div class="estados">
-          ${['bloqueada', 'agendada', 'liberada'].map((s) => `<button data-estado="${s}" class="${a.estado === s ? 'ativo' : ''}">${s[0].toUpperCase() + s.slice(1)}</button>`).join('')}
+          ${[['bloqueada', 'Bloqueada'], ['teste', '🧪 Em teste'], ['agendada', 'Agendada'], ['liberada', 'Liberada']].map(([s, rot]) => `<button data-estado="${s}" class="${a.estado === s ? 'ativo' : ''}">${rot}</button>`).join('')}
         </div>
         <div class="agendar">
           <input type="datetime-local" value="${a.abreEm ? msParaLocal(a.abreEm) : ''}" aria-label="Data e hora para abrir">
@@ -457,6 +463,22 @@
       return carregar();
     }
     return null;
+  });
+
+  // Testadores e botão de apagar dados de teste.
+  function desenharTeste() {
+    const t = estado.convidados.filter((c) => c.testador && c.ativo).map((c) => c.nome);
+    const emTeste = estado.atividades.filter((a) => a.estado === 'teste').map((a) => a.nome);
+    $('teste-resumo').textContent = `Testadores: ${t.length ? t.join(', ') : 'ninguém (marque na aba Convidados)'}. `
+      + `Em teste agora: ${emTeste.length ? emTeste.join(', ') : 'nenhuma atividade'}.`;
+  }
+  $('apagar-teste').addEventListener('click', async () => {
+    if (!confirm('Apagar todos os dados de teste? Pontos, respostas, votos, cartas e maldições de teste somem, e as atividades em teste voltam a ficar bloqueadas.')) return;
+    const r = await acao(() => api('POST', '/teste/apagar'));
+    if (r) {
+      PV.avisar(`Dados de teste apagados: ${r.pontos} pontos, ${r.quiz} respostas, ${r.votos} votos, ${r.cartas} cartas, ${r.maldicoes} maldições, ${r.palpites} palpites.`, 'ok');
+      carregar();
+    }
   });
 
   // ------------------------------------------------------------------- telão
@@ -555,6 +577,7 @@
     $('info-banco').textContent = ondeBanco;
     desenharConvidados();
     desenharAtividades();
+    desenharTeste();
     desenharTelao();
   }
 

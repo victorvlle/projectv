@@ -406,4 +406,67 @@ module.exports = [
       UPDATE enigmas SET fecha_em = 1793332740000 WHERE fecha_em > 1793332740000
     `,
   },
+  {
+    nome: 'modo teste, Quiz Relâmpago, Concurso de Fantasia e Correio das Trevas',
+    sql: `
+      DROP TABLE IF EXISTS atividades_nova;
+      CREATE TABLE atividades_nova (
+        id TEXT PRIMARY KEY,
+        estado TEXT NOT NULL CHECK (estado IN ('bloqueada', 'agendada', 'liberada', 'teste')),
+        abre_em INTEGER,
+        atualizado_em INTEGER NOT NULL
+      );
+      INSERT INTO atividades_nova (id, estado, abre_em, atualizado_em) SELECT id, estado, abre_em, atualizado_em FROM atividades;
+      DROP TABLE atividades;
+      ALTER TABLE atividades_nova RENAME TO atividades;
+      CREATE TABLE IF NOT EXISTS quiz_perguntas (
+        id TEXT PRIMARY KEY,
+        ordem INTEGER NOT NULL,
+        texto TEXT NOT NULL,
+        opcoes TEXT NOT NULL,
+        correta INTEGER NOT NULL,
+        lancada_em INTEGER,
+        revelada_em INTEGER,
+        teste INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE TABLE IF NOT EXISTS quiz_respostas (
+        pergunta_id TEXT NOT NULL REFERENCES quiz_perguntas(id) ON DELETE CASCADE,
+        convidado_id TEXT NOT NULL REFERENCES convidados(id) ON DELETE CASCADE,
+        escolha INTEGER NOT NULL,
+        respondida_em INTEGER NOT NULL,
+        teste INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (pergunta_id, convidado_id)
+      );
+      CREATE TABLE IF NOT EXISTS concurso_votos (
+        eleitor_id TEXT PRIMARY KEY REFERENCES convidados(id) ON DELETE CASCADE,
+        candidato_id TEXT NOT NULL REFERENCES convidados(id) ON DELETE CASCADE,
+        votado_em INTEGER NOT NULL,
+        teste INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE TABLE IF NOT EXISTS correio (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        autor_id TEXT NOT NULL REFERENCES convidados(id) ON DELETE CASCADE,
+        para_id TEXT REFERENCES convidados(id) ON DELETE SET NULL,
+        texto TEXT NOT NULL,
+        estado TEXT NOT NULL DEFAULT 'pendente' CHECK (estado IN ('pendente', 'aprovada', 'recusada')),
+        criado_em INTEGER NOT NULL,
+        moderado_em INTEGER,
+        teste INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE INDEX IF NOT EXISTS idx_correio_estado ON correio (estado, criado_em);
+      UPDATE previsoes_perguntas SET texto = 'Quem vai receber mais cartas no Correio das Trevas?' WHERE id = 'mais-fotos'
+    `,
+    async depois(c) {
+      // ALTER TABLE não tem "IF NOT EXISTS": confere as colunas antes (migração pode rodar de novo em teste).
+      const cols = async (t) => new Set((await c.execute(`SELECT name FROM pragma_table_info('${t}')`)).rows.map((r) => r.name));
+      for (const [tabela, coluna] of [['convidados', 'testador'], ['pontos_log', 'teste'], ['maldicoes', 'teste'], ['previsoes_palpites', 'teste']]) {
+        if (!(await cols(tabela)).has(coluna)) await c.execute(`ALTER TABLE ${tabela} ADD COLUMN ${coluna} INTEGER NOT NULL DEFAULT 0`);
+      }
+      const { QUIZ } = require('../jogos/conteudo');
+      for (const q of QUIZ) {
+        await c.execute({ sql: 'INSERT OR IGNORE INTO quiz_perguntas (id, ordem, texto, opcoes, correta) VALUES (?, ?, ?, ?, ?)',
+          args: [q.id, q.ordem, q.texto, JSON.stringify(q.opcoes), q.correta] });
+      }
+    },
+  },
 ];

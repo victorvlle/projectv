@@ -1,5 +1,6 @@
 // As atividades da festa. Fonte única de verdade para nomes, ordem e estado inicial.
 // Enquanto bloqueada, o convidado só vê o nome enigmático; o nome real aparece ao liberar.
+// "Em teste": aberta só para os testadores marcados no admin; os outros veem o cadeado.
 
 const ATIVIDADES = [
   {
@@ -32,15 +33,7 @@ const ATIVIDADES = [
     nome: 'Concurso de Fantasia',
     enigma: 'O Desfile Macabro',
     icone: '👑',
-    descricao: 'Vote nas melhores fantasias da noite.',
-    padrao: { estado: 'bloqueada' },
-  },
-  {
-    id: 'mural',
-    nome: 'Mural de Fotos',
-    enigma: 'O Espelho',
-    icone: '📸',
-    descricao: 'Suas fotos aparecem no telão em segundos.',
+    descricao: 'Vote na melhor fantasia da noite. Os três mais votados ganham 1000, 800 e 500 pontos.',
     padrao: { estado: 'bloqueada' },
   },
   {
@@ -48,15 +41,7 @@ const ATIVIDADES = [
     nome: 'Quiz de Terror Relâmpago',
     enigma: 'O Teste do Medo',
     icone: '⚡',
-    descricao: 'Perguntas rápidas: quem responde certo mais rápido ganha mais.',
-    padrao: { estado: 'bloqueada' },
-  },
-  {
-    id: 'monstro',
-    nome: 'O Monstro está entre nós',
-    enigma: 'Há um monstro entre vocês',
-    icone: '🐺',
-    descricao: 'Papéis secretos. Descubra os monstros antes que eles peguem todo mundo.',
+    descricao: 'Perguntas no telão, resposta pelo celular. Uma chance só: acertou, +500.',
     padrao: { estado: 'bloqueada' },
   },
   {

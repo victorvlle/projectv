@@ -118,3 +118,32 @@ body { overflow: hidden; cursor: default; }
 @media (prefers-reduced-motion: reduce) {
   .maldicao-palco[data-fase="alerta"], .bruxa .anel, .bruxa .anel2, .bruxa .voo, .revela-topo .avatar, .roleta-janela .avatar.pula { animation: none; }
 }
+
+/* ------------------------------------------------ quiz, concurso, correio */
+.avatar.mini { display: inline-grid; width: 4.5vh; height: 4.5vh; font-size: 2.8vh; vertical-align: middle; margin-right: .6vw; }
+.quiz-pergunta-telao { font-size: 6vh; margin-bottom: 3vh; }
+.quiz-grade { display: grid; grid-template-columns: 1fr 1fr; gap: 2vh 2vw; width: min(90vw, 170vh); }
+.quiz-op-telao { position: relative; overflow: hidden; display: flex; align-items: center; gap: 1.5vw; padding: 2.2vh 2vw; border-radius: 2vh;
+  background: rgba(34, 26, 45, .9); border: .4vh solid var(--borda); font-size: 3.6vh; font-weight: 700; }
+.quiz-op-telao b { flex: none; display: grid; place-items: center; width: 7vh; height: 7vh; border-radius: 1.4vh; font-size: 4vh; position: relative; z-index: 1; }
+.quiz-op-telao span, .quiz-op-telao em { position: relative; z-index: 1; }
+.quiz-op-telao em { margin-left: auto; font-style: normal; color: var(--texto-2); }
+.quiz-op-telao i { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(255, 255, 255, .06); }
+.quiz-op-telao.op0 b { background: #7a1f2c; } .quiz-op-telao.op1 b { background: #1f4f7a; } .quiz-op-telao.op2 b { background: #7a5a1f; } .quiz-op-telao.op3 b { background: #2f6a2a; }
+.quiz-op-telao.certa { border-color: var(--lima); box-shadow: 0 0 4vh rgba(123, 199, 77, .35); }
+.quiz-op-telao.certa i { background: rgba(123, 199, 77, .22); }
+.quiz-op-telao.errada { opacity: .5; }
+.quiz-rodape { margin-top: 3vh; text-align: center; min-height: 14vh; }
+.quiz-cronometro { font-size: 11vh; font-weight: 800; color: var(--laranja-claro); line-height: 1; font-variant-numeric: tabular-nums; }
+.quiz-cronometro.acabando { color: var(--sangue); animation: pulsar .5s ease-in-out infinite alternate; }
+@keyframes pulsar { from { transform: scale(1); } to { transform: scale(1.12); } }
+.quiz-esgotado { font-size: 8vh; color: var(--sangue); margin: 0; }
+.quiz-acertaram { font-size: 3vh; max-width: 90vw; display: flex; flex-wrap: wrap; justify-content: center; gap: 1vh 2vw; }
+.quiz-acertaram > span { white-space: nowrap; }
+.carta-telao { width: min(80vw, 140vh); }
+.carta-papel { padding: 5vh 5vw; border-radius: 2vh; background: linear-gradient(160deg, #2b2138, #1b1424); border: .3vh solid var(--laranja);
+  box-shadow: 0 2vh 6vh rgba(0, 0, 0, .5); animation: entrar .6s ease both; }
+.carta-para { font-size: 3.4vh; color: var(--laranja-claro); margin: 0 0 2vh; font-weight: 700; }
+.carta-corpo { font-size: 5.4vh; line-height: 1.25; margin: 0; overflow-wrap: anywhere; }
+.carta-assinatura { text-align: right; font-size: 3vh; color: var(--texto-2); margin: 3vh 0 0; }
+@media (prefers-reduced-motion: reduce) { .quiz-cronometro.acabando, .carta-papel { animation: none; } }

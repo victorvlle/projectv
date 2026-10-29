@@ -4,7 +4,10 @@
 //  - aguardando: a atividade ainda não abriu (agendada para sexta 30/10, 00:00).
 //  - aberta: dá para responder e trocar a resposta.
 //  - encerrada: fechou (início da festa ou o admin encerrou); ninguém muda mais nada.
-//  - publicada: o admin publicou os resultados; pontos calculados (+10 por acerto).
+//  - publicada: o admin publicou os resultados; pontos calculados (+1000 por acerto).
+//
+// MODO TESTE: com a atividade "Em teste", só os testadores respondem; os palpites e pontos
+// ficam marcados e o "Apagar dados de teste" volta tudo ao que era (inclusive respostas oficiais).
 //
 // PRIVACIDADE
 //  - Enquanto estiver aberta, cada um só vê as próprias respostas (nem contagem de votos).
@@ -25,11 +28,14 @@ async function config() {
   return { fechaEm: null, publicadas: false, ...((await festa.ler('previsoes')) || {}) };
 }
 
-async function situacao(agora = Date.now()) {
-  const [cfg, info, liberada, linha] = await Promise.all([
+// `veTeste`: quem pergunta enxerga a atividade em teste (testador ou admin).
+async function situacao(agora = Date.now(), veTeste = true) {
+  const [cfg, info, liberadaDeVerdade, linha] = await Promise.all([
     config(), festa.info(), atividades.estaLiberada('previsoes', agora),
     banco.um("SELECT estado, abre_em FROM atividades WHERE id = 'previsoes'"),
   ]);
+  const emTeste = Boolean(linha) && linha.estado === 'teste';
+  const liberada = liberadaDeVerdade || (emTeste && veTeste);
   const fechaEm = cfg.fechaEm != null ? Number(cfg.fechaEm) : info.inicioMs;
   let estado;
   if (cfg.publicadas) estado = 'publicada';
@@ -37,7 +43,13 @@ async function situacao(agora = Date.now()) {
   else if (agora < fechaEm) estado = 'aberta';
   else estado = 'encerrada';
   const abreEm = linha && linha.estado === 'agendada' && linha.abre_em != null ? Number(linha.abre_em) : null;
-  return { estado, fechaEm, abreEm, publicadas: Boolean(cfg.publicadas) };
+  return { estado, fechaEm, abreEm, publicadas: Boolean(cfg.publicadas), teste: emTeste };
+}
+// Ação do admin feita com a atividade em teste: marca para o "Apagar dados de teste" desfazer.
+async function marcarTeste() {
+  if (!(await atividades.emTeste('previsoes'))) return;
+  const cfg = await config();
+  if (!cfg.teste) await festa.gravar('previsoes', { ...cfg, teste: true });
 }
 
 async function perguntas() {
@@ -53,9 +65,9 @@ function rotuloEscolha(p, escolha, pessoasPorId) {
 }
 
 // Visão do convidado.
-async function paraConvidado(euId, agora = Date.now()) {
+async function paraConvidado(euId, agora = Date.now(), testador = false) {
   const [sit, lista, pessoas, meus] = await Promise.all([
-    situacao(agora), perguntas(), convidados.confirmados(),
+    situacao(agora, testador), perguntas(), convidados.confirmados(),
     banco.tudo('SELECT pergunta_id, escolha FROM previsoes_palpites WHERE convidado_id = ?', [euId]),
   ]);
   const minhas = new Map(meus.map((m) => [m.pergunta_id, m.escolha]));
@@ -83,8 +95,8 @@ async function paraConvidado(euId, agora = Date.now()) {
   };
 }
 
-async function responder(euId, perguntaId, escolha, agora = Date.now()) {
-  const sit = await situacao(agora);
+async function responder(euId, perguntaId, escolha, agora = Date.now(), testador = false) {
+  const sit = await situacao(agora, testador);
   if (sit.estado !== 'aberta') {
     throw new ErroValidacao(sit.estado === 'aguardando' ? 'As Previsões ainda não abriram.' : 'As Previsões já fecharam. Não dá mais para mudar.', 409);
   }
@@ -105,9 +117,9 @@ async function responder(euId, perguntaId, escolha, agora = Date.now()) {
     await banco.rodar('DELETE FROM previsoes_palpites WHERE convidado_id = ? AND pergunta_id = ?', [euId, p.id]);
   } else {
     await banco.rodar(
-      `INSERT INTO previsoes_palpites (convidado_id, pergunta_id, escolha, atualizado_em) VALUES (?, ?, ?, ?)
-       ON CONFLICT(convidado_id, pergunta_id) DO UPDATE SET escolha = excluded.escolha, atualizado_em = excluded.atualizado_em`,
-      [euId, p.id, valor, agora]);
+      `INSERT INTO previsoes_palpites (convidado_id, pergunta_id, escolha, atualizado_em, teste) VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(convidado_id, pergunta_id) DO UPDATE SET escolha = excluded.escolha, atualizado_em = excluded.atualizado_em, teste = excluded.teste`,
+      [euId, p.id, valor, agora, sit.teste ? 1 : 0]);
   }
 }
 
@@ -145,6 +157,7 @@ async function paraAdmin(agora = Date.now()) {
 }
 
 async function encerrar(agora = Date.now()) {
+  await marcarTeste();
   const cfg = await config();
   await festa.gravar('previsoes', { ...cfg, fechaEm: agora });
 }
@@ -164,6 +177,7 @@ async function definirResposta(perguntaId, resposta) {
     if (p.tipo === 'convidado' && !(await convidados.confirmados()).some((c) => c.id === resposta)) throw new ErroValidacao('Pessoa inválida.');
     valor = resposta;
   }
+  await marcarTeste();
   await banco.rodar('UPDATE previsoes_perguntas SET resposta = ? WHERE id = ?', [valor, p.id]);
   // Já publicado: recalcula na hora (correção de resposta não deixa ponto errado para trás).
   if ((await config()).publicadas) await calcularPontos();
@@ -175,12 +189,12 @@ async function calcularPontos() {
   return banco.transacao(async (tx) => {
     await tx.execute({ sql: "DELETE FROM pontos_log WHERE atividade = 'previsoes'", args: [] });
     const certos = await tx.execute({
-      sql: `SELECT p.convidado_id, q.id AS pergunta_id, q.texto FROM previsoes_palpites p
+      sql: `SELECT p.convidado_id, p.teste, q.id AS pergunta_id, q.texto FROM previsoes_palpites p
               JOIN previsoes_perguntas q ON q.id = p.pergunta_id AND q.resposta IS NOT NULL AND q.resposta = p.escolha
               JOIN convidados c ON c.id = p.convidado_id`, args: [] });
     for (const l of certos.rows) {
       await pontos.conceder({ convidadoId: l.convidado_id, atividade: 'previsoes', pontos: PONTOS_PREVISAO,
-        motivo: `Acertou: ${l.texto}`, chave: `previsao:${l.pergunta_id}:${l.convidado_id}` }, tx);
+        motivo: `Acertou: ${l.texto}`, chave: `previsao:${l.pergunta_id}:${l.convidado_id}`, teste: Boolean(Number(l.teste)) }, tx);
     }
     return certos.rows.length;
   });
@@ -189,6 +203,7 @@ async function calcularPontos() {
 async function publicar(agora = Date.now()) {
   const sit = await situacao(agora);
   if (sit.estado === 'aberta' || sit.estado === 'aguardando') throw new ErroValidacao('Encerre as Previsões antes de publicar os resultados.', 409);
+  await marcarTeste();
   const acertos = await calcularPontos();
   const cfg = await config();
   await festa.gravar('previsoes', { ...cfg, fechaEm: cfg.fechaEm ?? sit.fechaEm, publicadas: true });
@@ -228,5 +243,5 @@ async function paraTelao(indice, agora = Date.now()) {
 
 module.exports = {
   situacao, perguntas, paraConvidado, responder, paraAdmin, encerrar, reabrir, definirResposta, calcularPontos,
-  publicar, despublicar, paraTelao, apelido,
+  publicar, despublicar, paraTelao, apelido, config,
 };

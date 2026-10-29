@@ -32,7 +32,7 @@ const { ErroValidacao } = require('./dados/convidados');
 
 const MAX_POR_CONVIDADO = 5;
 // Destinos que um toque na notificação pode abrir. Qualquer outro vira a página inicial.
-const DESTINOS = new Set(['/', '/#contribuicoes', '/#playlist', '/#caronas', '/#chegar', '/#pos', '/#avisos', '/#previsoes', '/#enigma', '/#ranking', '/#maldicao']);
+const DESTINOS = new Set(['/', '/#contribuicoes', '/#playlist', '/#caronas', '/#chegar', '/#pos', '/#avisos', '/#previsoes', '/#enigma', '/#ranking', '/#maldicao', '/#quiz', '/#concurso', '/#correio']);
 const destinoSeguro = (u) => (DESTINOS.has(u) ? u : '/');
 const HOSTS_PERMITIDOS = [
   /^fcm\.googleapis\.com$/, /^android\.googleapis\.com$/,
@@ -466,10 +466,13 @@ async function despacharSociais(agora = Date.now()) {
 
 // ------------------------------------------------------- atividade liberada
 const TEXTOS_LIBERADA = {
-  previsoes: ['Project V: Previsões abertas', 'As apostas sobre a festa estão abertas até sábado às 17h. Cada acerto vale 10 pontos.'],
+  previsoes: ['Project V: Previsões abertas', 'As apostas sobre a festa estão abertas até sábado às 17h. Cada acerto vale 1000 pontos.'],
   pos: ['Project V: votação do pós aberta', 'Vote no lugar para onde o grupo vai depois da meia-noite.'],
+  quiz: ['Project V: Quiz Relâmpago', 'As perguntas aparecem no telão. Responda pelo celular: cada acerto vale 500 pontos.'],
+  concurso: ['Project V: Concurso de Fantasia', 'A votação da melhor fantasia está aberta no site da festa.'],
+  correio: ['Project V: Correio das Trevas', 'Mande uma carta anônima para alguém da festa. As aprovadas aparecem no telão.'],
 };
-const URL_LIBERADA = { pos: '/#pos', previsoes: '/#previsoes' };
+const URL_LIBERADA = { pos: '/#pos', previsoes: '/#previsoes', quiz: '/#quiz', concurso: '/#concurso', correio: '/#correio' };
 // Liberada de madrugada (ex.: Previsões às 00:00 de sexta): o aviso espera até as 8h.
 async function atividadeLiberada(atividade, agora = relogio()) {
   const [titulo, corpo] = TEXTOS_LIBERADA[atividade.id]

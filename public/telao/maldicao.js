@@ -205,7 +205,8 @@
     clearInterval(timer); timer = null;
     if (estado === 'cumprida') {
       mostrarFase('cumprida');
-      $('cumprida-pontos').textContent = atual.parceiro ? '+5 pontos para cada um' : '+5 pontos';
+      const p = Number(atual.pontos || 500).toLocaleString('pt-BR');
+      $('cumprida-pontos').textContent = atual.parceiro ? `+${p} pontos para cada um` : `+${p} pontos`;
       sino(0.4);
       setTimeout(esconder, 4500);
     } else {

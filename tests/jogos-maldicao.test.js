@@ -58,16 +58,16 @@ test('sorteio manual: telões e celular recebem uma vez; push sai uma vez; cliqu
   telao1.close(); telao2.close(); cel.close();
 });
 
-test('confirmar cumprida: +5 uma vez só (cliques simultâneos); cancelada não dá ponto', async () => {
+test('confirmar cumprida: +500 uma vez só (cliques simultâneos); cancelada não dá ponto', async () => {
   const atual = (await s.req('GET', '/api/admin/jogos', { token: admin })).json.maldicao.historico[0];
   const rs = await Promise.all([1, 2, 3].map(() => s.req('POST', `/api/admin/maldicao/${atual.id}/resolver`, { token: admin, corpo: { estado: 'cumprida' } })));
   assert.ok(rs.every((r) => r.status === 200));
   assert.equal(rs.filter((r) => !r.json.jaResolvida).length, 1);
-  assert.equal(await h.pontosDe(unica.token), 5);
+  assert.equal(await h.pontosDe(unica.token), 500);
   const outra = await s.req('POST', '/api/admin/maldicao/sortear', { token: admin, corpo: { id: h.idClique() } });
   await s.req('POST', `/api/admin/maldicao/${outra.json.maldicao.id}/resolver`, { token: admin, corpo: { estado: 'cancelada' } });
   await s.req('POST', `/api/admin/maldicao/${outra.json.maldicao.id}/resolver`, { token: admin, corpo: { estado: 'cumprida' } });
-  assert.equal(await h.pontosDe(unica.token), 5, 'cancelada não vira cumprida depois');
+  assert.equal(await h.pontosDe(unica.token), 500, 'cancelada não vira cumprida depois');
   assert.equal((await s.req('POST', `/api/admin/maldicao/${atual.id}/resolver`, { token: unica.token, corpo: { estado: 'cumprida' } })).status, 401);
 });
 

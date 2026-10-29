@@ -42,6 +42,9 @@ h3 { font-size: 1.05rem; margin-bottom: 6px; }
 .estados button.ativo[data-estado="bloqueada"] { background: rgba(179, 18, 46, .25); border-color: var(--sangue); color: #fff; }
 .estados button.ativo[data-estado="agendada"] { background: rgba(232, 98, 12, .2); border-color: var(--laranja); color: #fff; }
 .estados button.ativo[data-estado="liberada"] { background: rgba(123, 199, 77, .2); border-color: var(--lima); color: #fff; }
+.estados button.ativo[data-estado="teste"] { background: rgba(123, 199, 77, .1); border: 1px dashed var(--lima); color: #fff; }
+#lista-atividades .estados { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 480px) { #lista-atividades .estados { grid-template-columns: repeat(2, 1fr); } }
 .agendar { display: flex; gap: 6px; margin-top: 8px; }
 .agendar input { flex: 1; min-width: 0; }
 
@@ -80,3 +83,12 @@ h3 { font-size: 1.05rem; margin-bottom: 6px; }
 .enigma-admin summary { cursor: pointer; color: var(--laranja-claro); font-weight: 600; }
 .botao.perigo { background: linear-gradient(180deg, #D3203F, var(--sangue)); }
 .det-prev summary { cursor: pointer; color: var(--laranja-claro); font-weight: 600; }
+
+.selo.teste { background: rgba(123, 199, 77, .12); color: var(--lima); border: 1px dashed var(--lima); }
+.item.item-teste { border-style: dashed; border-color: var(--lima); }
+.quiz-admin-op { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
+.quiz-admin-op input[type=text] { flex: 1; }
+.quiz-barra { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.quiz-barra span { font-size: .8rem; padding: 3px 8px; border-radius: 8px; background: var(--fundo-2); }
+.quiz-barra span.certa { background: rgba(123, 199, 77, .2); color: var(--lima); }
+.carta-admin p { margin: 6px 0 0; overflow-wrap: anywhere; }

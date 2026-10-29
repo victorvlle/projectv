@@ -22,9 +22,9 @@ Sem `TURSO_URL`, o banco é o arquivo `data/projectv.db`.
 npm test
 ```
 
-85 testes: acesso por link, perfil, admin, atividades e agendamento, tempo real, bebidas, extras, notificações (aparelhos, limite, fila, agendados), segurança, backup/restauração e reinício real do servidor.
+94 testes: acesso por link, perfil, admin, atividades e agendamento, tempo real, bebidas, extras, notificações (aparelhos, limite, fila, agendados), segurança, backup/restauração e reinício real do servidor.
 
-`npm run seguranca` roda 57 ataques simulados contra uma cópia local.
+`npm run seguranca` roda 66 ataques simulados contra uma cópia local.
 
 ## Variáveis de ambiente
 

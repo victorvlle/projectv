@@ -8,7 +8,7 @@ const CAMPOS_TEXTO = {
   // Como chegar
   chegadaEndereco: 160, chegadaPortaria: 300, chegadaEstacionamento: 300, chegadaObs: 400,
 };
-const MODOS_TELAO = new Set(['contagem', 'confirmados', 'atividades', 'mensagem', 'pos', 'previsoes', 'ranking']);
+const MODOS_TELAO = new Set(['contagem', 'confirmados', 'atividades', 'mensagem', 'pos', 'previsoes', 'ranking', 'quiz', 'concurso', 'correio']);
 
 async function ler(chave) {
   const l = await banco.um('SELECT valor FROM config WHERE chave = ?', [chave]);

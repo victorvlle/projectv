@@ -9,7 +9,10 @@
 //   0–4 s alerta · 4–9 s suspense (roleta) · 9 s revelação · 9–69 s contagem para cumprir.
 // Um telão que reconecta no meio pega a fase certa sem tocar o som de novo.
 //
-// PONTOS: só quando o admin confirma que cumpriu (+5; no castigo duplo, os dois).
+// PONTOS: só quando o admin confirma que cumpriu (+500; no castigo duplo, os dois).
+//
+// MODO TESTE: com a atividade "Em teste", só os testadores são sorteados e tudo fica marcado
+// (some no "Apagar dados de teste").
 
 const crypto = require('crypto');
 const banco = require('./banco');
@@ -58,8 +61,8 @@ async function configurar({ ligada, intensidade, minMin, maxMin }, agora = Date.
   return novo;
 }
 
-async function elegiveis() {
-  return banco.tudo('SELECT id, nome, avatar FROM convidados WHERE ativo = 1 AND fora = 0 AND avatar IS NOT NULL');
+async function elegiveis(soTestadores = false) {
+  return banco.tudo(`SELECT id, nome, avatar FROM convidados WHERE ativo = 1 AND fora = 0 AND avatar IS NOT NULL${soTestadores ? ' AND testador = 1' : ''}`);
 }
 
 function escolherCastigo(nivel, temParceiro) {
@@ -72,8 +75,9 @@ async function sortear({ origem, chave, agora = Date.now() }) {
   const existente = await banco.um('SELECT id FROM maldicoes WHERE chave = ?', [chave]);
   if (existente) return { repetido: true, maldicao: await buscar(Number(existente.id)) };
   const cfg = await config();
-  const pessoas = await elegiveis();
-  if (!pessoas.length) throw new ErroValidacao('Ninguém disponível para sortear (todos fora ou sem monstro).', 409);
+  const teste = await atividades.emTeste('maldicao');
+  const pessoas = await elegiveis(teste);
+  if (!pessoas.length) throw new ErroValidacao(teste ? 'Em teste só os testadores são sorteados, e nenhum está disponível (marque no admin quem testa).' : 'Ninguém disponível para sortear (todos fora ou sem monstro).', 409);
   // Quem foi amaldiçoado por último não é sorteado de novo em seguida (se houver outra opção).
   const ultimo = await banco.um("SELECT convidado_id FROM maldicoes WHERE estado != 'cancelada' ORDER BY id DESC LIMIT 1");
   const candidatos = pessoas.length > 1 && ultimo ? pessoas.filter((p) => p.id !== ultimo.convidado_id) : pessoas;
@@ -84,9 +88,9 @@ async function sortear({ origem, chave, agora = Date.now() }) {
   const parceiro = castigo.duplo ? outros[crypto.randomInt(0, outros.length)] : null;
   const texto = castigo.texto.replace('{a}', alvo.nome).replace('{b}', parceiro ? parceiro.nome : '');
   const r = await banco.rodar(
-    `INSERT OR IGNORE INTO maldicoes (convidado_id, parceiro_id, castigo, estado, origem, chave, sorteada_em)
-     VALUES (?, ?, ?, 'sorteada', ?, ?, ?)`,
-    [alvo.id, parceiro ? parceiro.id : null, texto, origem, chave, agora]);
+    `INSERT OR IGNORE INTO maldicoes (convidado_id, parceiro_id, castigo, estado, origem, chave, sorteada_em, teste)
+     VALUES (?, ?, ?, 'sorteada', ?, ?, ?, ?)`,
+    [alvo.id, parceiro ? parceiro.id : null, texto, origem, chave, agora, teste ? 1 : 0]);
   const linha = await banco.um('SELECT id FROM maldicoes WHERE chave = ?', [chave]);
   return { repetido: !r.rowsAffected, maldicao: await buscar(Number(linha.id)) };
 }
@@ -101,19 +105,19 @@ async function buscar(id) {
     id: Number(l.id), convidadoId: l.convidado_id, nome: l.nome, avatar: l.avatar,
     parceiro: l.parceiro_id ? { id: l.parceiro_id, nome: l.parceiro_nome, avatar: l.parceiro_avatar } : null,
     castigo: l.castigo, estado: l.estado, origem: l.origem, sorteadaEm: Number(l.sorteada_em),
-    resolvidaEm: l.resolvida_em != null ? Number(l.resolvida_em) : null,
+    resolvidaEm: l.resolvida_em != null ? Number(l.resolvida_em) : null, teste: Boolean(Number(l.teste)),
   };
 }
 
 // O que o telão precisa para a animação (a roleta usa monstros de quem está na festa).
 async function paraTelao(m) {
-  const pessoas = await elegiveis();
+  const pessoas = await elegiveis(m.teste);
   const roleta = pessoas.map((p) => p.avatar);
   for (let i = roleta.length - 1; i > 0; i--) { const j = crypto.randomInt(0, i + 1); [roleta[i], roleta[j]] = [roleta[j], roleta[i]]; }
   return {
     id: m.id, sorteadaEm: m.sorteadaEm, fases: FASES, nome: m.nome, avatar: m.avatar, castigo: m.castigo,
     parceiro: m.parceiro ? { nome: m.parceiro.nome, avatar: m.parceiro.avatar } : null,
-    estado: m.estado, roleta: roleta.slice(0, 18),
+    estado: m.estado, roleta: roleta.slice(0, 18), pontos: PONTOS_MALDICAO,
   };
 }
 
@@ -133,7 +137,7 @@ async function resolver(id, estado, agora = Date.now()) {
   if (r.rowsAffected && estado === 'cumprida') {
     for (const pessoa of [m.convidadoId, m.parceiro && m.parceiro.id].filter(Boolean)) {
       await pontos.conceder({ convidadoId: pessoa, atividade: 'maldicao', pontos: PONTOS_MALDICAO,
-        motivo: 'Cumpriu a maldição', chave: `maldicao:${m.id}:${pessoa}` });
+        motivo: 'Cumpriu a maldição', chave: `maldicao:${m.id}:${pessoa}`, teste: m.teste });
     }
   }
   return { jaResolvida: !r.rowsAffected, maldicao: await buscar(m.id) };
@@ -145,12 +149,12 @@ async function historico(limite = 30) {
 }
 
 async function paraAdmin(agora = Date.now()) {
-  const [cfg, liberada, lista, contagem] = await Promise.all([
-    config(), atividades.estaLiberada('maldicao', agora), historico(),
+  const [cfg, uso, lista, contagem] = await Promise.all([
+    config(), atividades.emUso('maldicao', agora), historico(),
     banco.tudo("SELECT c.nome, COUNT(*) AS n FROM maldicoes m JOIN convidados c ON c.id = m.convidado_id WHERE m.estado != 'cancelada' GROUP BY c.id, c.nome ORDER BY n DESC LIMIT 5"),
   ]);
   return {
-    config: cfg, liberada, intensidades: INTENSIDADES, pontos: PONTOS_MALDICAO, fases: FASES,
+    config: cfg, liberada: uso.ativa, emTeste: uso.teste, intensidades: INTENSIDADES, pontos: PONTOS_MALDICAO, fases: FASES,
     historico: lista, maisAmaldicoados: contagem.map((l) => ({ nome: l.nome, n: Number(l.n) })),
   };
 }
@@ -159,7 +163,7 @@ async function paraAdmin(agora = Date.now()) {
 async function tic(agora = Date.now()) {
   const cfg = await config();
   if (!cfg.ligada) return null;
-  if (!(await atividades.estaLiberada('maldicao', agora))) return null;
+  if (!(await atividades.emUso('maldicao', agora)).ativa) return null;
   if (cfg.proximaEm == null) { await festa.gravar('maldicao', { ...cfg, proximaEm: proximoHorario(cfg, agora) }); return null; }
   if (agora < Number(cfg.proximaEm)) return null;
   const previsto = Number(cfg.proximaEm);

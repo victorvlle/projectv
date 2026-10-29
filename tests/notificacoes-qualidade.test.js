@@ -130,7 +130,7 @@ test('agendado e liberação disparados ao mesmo tempo saem uma vez só', async 
   const agora = M('2026-10-31T17:00:30-04:00');
   await Promise.all([notif.verificarAgendados(agora), notif.verificarAgendados(agora), notif.verificarAgendados(agora)]);
   assert.equal(notif.caixa.filter((m) => m.endpoint === c.sub.endpoint && m.titulo === 'Project V começou').length, 1);
-  await Promise.all([1, 2, 3].map(() => notif.atividadeLiberada({ id: 'concurso', nome: 'Desfile' })));
+  await Promise.all([1, 2, 3].map(() => notif.atividadeLiberada({ id: 'desfile-teste', nome: 'Desfile' })));
   assert.equal(notif.caixa.filter((m) => m.endpoint === c.sub.endpoint && m.titulo === 'Project V: Desfile liberado').length, 1);
 });
 

@@ -3,7 +3,8 @@
   'use strict';
   const $ = (id) => document.getElementById(id);
   const telas = ['tela-carregando', 'tela-bloqueio', 'tela-perfil', 'tela-principal', 'tela-contribuicoes',
-    'tela-playlist', 'tela-caronas', 'tela-chegar', 'tela-pos', 'tela-avisos', 'tela-previsoes', 'tela-enigma', 'tela-ranking', 'tela-maldicao'];
+    'tela-playlist', 'tela-caronas', 'tela-chegar', 'tela-pos', 'tela-avisos', 'tela-previsoes', 'tela-enigma', 'tela-ranking', 'tela-maldicao',
+    'tela-quiz', 'tela-concurso', 'tela-correio'];
   let telaAtual = 'tela-carregando';
   function mostrar(qual) {
     telaAtual = qual;
@@ -121,9 +122,9 @@
       if (a.estado === 'liberada') {
         // Atividade que já tem tela vira link; as outras abrem na festa.
         const tag = TELAS_ATIVIDADE[a.id] ? `a href="#${a.id}"` : 'article';
-        return `<${tag} class="atividade liberada ${recem ? 'recem-aberta' : ''}">
+        return `<${tag} class="atividade liberada ${recem ? 'recem-aberta' : ''} ${a.teste ? 'em-teste' : ''}">
           <div class="icone">${a.icone}</div>
-          <div><div class="nome">${PV.esc(a.nome)}</div><div class="quando">Liberado</div></div>
+          <div><div class="nome">${PV.esc(a.nome)}</div><div class="quando">${a.teste ? '🧪 Em teste · só testadores veem' : 'Liberado'}</div></div>
         </${tag.split(' ')[0]}>`;
       }
       const quando = a.abreEm && a.abreEm > agora ? `Abre ${PV.dataCurta(a.abreEm)}` : 'Abre na festa';
@@ -334,17 +335,21 @@
 
   // ------------------------------------------------------------- navegação
   // #contribuicoes abre a tela de contribuições; o "voltar" do celular funciona.
-  const TELAS_ATIVIDADE = { pos: true, previsoes: true, maldicao: true };
+  const TELAS_ATIVIDADE = { pos: true, previsoes: true, maldicao: true, quiz: true, concurso: true, correio: true };
   // Telas extras: hash -> id da tela. #pos só abre quando a atividade foi liberada.
   const TELAS = {
     '#contribuicoes': 'tela-contribuicoes', '#playlist': 'tela-playlist',
     '#caronas': 'tela-caronas', '#chegar': 'tela-chegar', '#pos': 'tela-pos', '#avisos': 'tela-avisos',
     '#previsoes': 'tela-previsoes', '#enigma': 'tela-enigma', '#ranking': 'tela-ranking', '#maldicao': 'tela-maldicao',
+    '#quiz': 'tela-quiz', '#concurso': 'tela-concurso', '#correio': 'tela-correio',
   };
+  // Telas de jogos da festa: só abrem se o servidor mandou os dados (liberado ou em teste para você).
+  const SO_LIBERADO = { '#quiz': 'quiz', '#concurso': 'concurso', '#correio': 'correio' };
   function irPara(hash) {
     if (!eu || !eu.perfilCompleto) return;
     let tela = TELAS[hash];
     if (hash === '#pos' && !(estado && estado.pos && estado.pos.liberada)) tela = null;
+    if (SO_LIBERADO[hash] && !(estado && estado[SO_LIBERADO[hash]])) tela = null;
     if (tela) {
       if (telaAtual !== tela) window.scrollTo(0, 0);
       mostrar(tela);

@@ -74,14 +74,15 @@
     const ints = Object.entries(m.intensidades).map(([id, x]) => `<button type="button" class="${c.intensidade === id ? 'ativo' : ''}" data-acao="mal-intensidade" data-id="${id}">${esc(x.nome)}<small>${x.minMin}–${x.maxMin} min</small></button>`).join('');
     const hist = m.historico.slice(0, 12).map((x) => `<div class="item">
         <div class="item-topo"><span class="avatar">${A().emojiDe(x.avatar)}</span><div>
-          <div class="item-nome">${esc(x.nome)}${x.parceiro ? ` e ${esc(x.parceiro.nome)}` : ''}
+          <div class="item-nome">${esc(x.nome)}${x.parceiro ? ` e ${esc(x.parceiro.nome)}` : ''}${x.teste ? ' <span class="selo teste">teste</span>' : ''}
             <span class="selo ${x.estado === 'cumprida' ? 'ok' : x.estado === 'cancelada' ? 'off' : 'pendente'}">${x.estado}</span></div>
           <div class="item-sub">${esc(PV.dataCurta(x.sorteadaEm))} · ${x.origem === 'auto' ? 'automático' : 'manual'} · ${esc(x.castigo)}</div></div></div>
         ${x.estado === 'sorteada' ? `<div class="item-acoes">
           <button class="botao pequeno" type="button" data-acao="mal-cumprida" data-id="${x.id}">Cumpriu (+${m.pontos})</button>
           <button class="botao secundario pequeno" type="button" data-acao="mal-cancelar" data-id="${x.id}">Cancelar</button></div>` : ''}</div>`).join('');
     pintar('j-maldicao', `
-      ${m.liberada ? '' : '<p class="aviso-inline">A atividade está bloqueada: libere em Atividades para os sorteios acontecerem (ou use o sorteio manual para testar depois de liberar).</p>'}
+      ${m.liberada ? '' : '<p class="aviso-inline">A atividade está bloqueada: libere (ou coloque "Em teste") em Atividades para os sorteios acontecerem.</p>'}
+      ${m.emTeste ? '<p class="selo teste" style="display:inline-block">🧪 Em teste: só os testadores são sorteados</p>' : ''}
       <p><span class="selo ${c.ligada ? 'ok' : 'fora'}">${c.ligada ? 'Ligada' : 'Pausada'}</span>
         ${c.ligada && c.proximaEm ? `Próximo sorteio por volta de ${esc(PV.dataHora(c.proximaEm, { hour: '2-digit', minute: '2-digit' }))}` : ''}</p>
       <div class="item-acoes">
@@ -125,6 +126,78 @@
       <div class="lista" style="margin-top:10px">${lista}</div>`);
   }
 
+  // ------------------------------------------------------------------ quiz
+  const L = ['A', 'B', 'C', 'D'];
+  function desenharQuiz(q) {
+    const rot = { 'nao-lancada': ['não lançada', 'fora'], respondendo: ['valendo agora', 'pendente'], 'tempo-esgotado': ['tempo esgotado', 'pendente'], revelada: ['revelada', 'ok'] };
+    const valendo = q.perguntas.find((x) => x.fase === 'respondendo');
+    const lista = q.perguntas.map((x) => {
+      const [rotulo, selo] = rot[x.fase];
+      const barra = x.fase !== 'nao-lancada' ? `<div class="quiz-barra">${x.opcoes.map((o, i) => `<span class="${x.fase === 'revelada' && i === x.correta ? 'certa' : ''}">${L[i]}: ${x.porOpcao[i]}</span>`).join('')}<span>Total: ${x.total}</span></div>` : '';
+      let acoes = '';
+      if (x.fase === 'nao-lancada') acoes = `<button class="botao pequeno" type="button" data-acao="quiz-lancar" data-id="${esc(x.id)}" ${valendo || !q.liberada ? 'disabled' : ''}>Lançar no telão</button>`;
+      if (x.fase === 'tempo-esgotado') acoes = `<button class="botao pequeno" type="button" data-acao="quiz-revelar" data-id="${esc(x.id)}">Revelar resposta e dar os pontos</button>`;
+      if (x.fase === 'respondendo' || x.fase === 'tempo-esgotado') acoes += ` <button class="botao secundario pequeno" type="button" data-acao="quiz-cancelar" data-id="${esc(x.id)}">Cancelar (lançou errado)</button>`;
+      if (x.fase === 'revelada') acoes = '<span class="fraco">Pontos dados.</span>';
+      const editar = x.fase === 'nao-lancada' ? `<details style="margin-top:8px"><summary>Editar</summary>
+          <form data-quiz-form="${esc(x.id)}"><label>Pergunta</label><textarea name="texto" rows="2" maxlength="200">${esc(x.texto)}</textarea>
+          ${x.opcoes.map((o, i) => `<div class="quiz-admin-op"><label><input type="radio" name="correta" value="${i}" ${i === x.correta ? 'checked' : ''}> ${L[i]}</label>
+            <input type="text" name="op${i}" maxlength="60" value="${esc(o)}"></div>`).join('')}
+          <p class="fraco">Marque a bolinha da opção certa.</p><button class="botao largo" type="submit">Salvar pergunta</button></form></details>` : '';
+      return `<div class="item"><div class="item-nome">${x.ordem}. ${esc(x.texto)} <span class="selo ${selo}">${rotulo}</span>${x.teste && x.fase !== 'nao-lancada' ? ' <span class="selo teste">teste</span>' : ''}</div>
+        <div class="item-sub">Certa: ${L[x.correta]} · ${esc(x.opcoes[x.correta])}</div>${barra}
+        <div class="item-acoes" style="margin-top:8px">${acoes}</div>${editar}</div>`;
+    }).join('');
+    pintar('j-quiz', `
+      ${q.liberada ? '' : '<p class="aviso-inline">O Quiz está bloqueado: libere (ou coloque "Em teste") em Atividades para lançar perguntas.</p>'}
+      ${q.emTeste ? '<p class="selo teste" style="display:inline-block">🧪 Em teste: só os testadores respondem</p>' : ''}
+      <p class="fraco">Lance uma pergunta por vez: ela aparece no telão e no celular, com ${q.tempoS} s para responder (uma chance só).
+        Quando o tempo acabar, toque em "Revelar": o telão mostra a certa e quem acertou ganha +${q.pontos}.</p>
+      <div class="linha-teste"><label class="fraco">Tempo (s) <input type="number" min="10" max="120" value="${q.tempoS}" id="quiz-tempo" style="width:80px"></label>
+        <button class="botao secundario pequeno" type="button" data-acao="quiz-tempo">Salvar tempo</button>
+        <button class="botao secundario pequeno" type="button" data-acao="tel-modo" data-modo="quiz">Mostrar quiz no telão</button></div>
+      <div class="lista" style="margin-top:10px">${lista}</div>`);
+  }
+
+  // -------------------------------------------------------------- concurso
+  function desenharConcurso(c) {
+    const rot = { fechado: ['Votação fechada', 'fora'], aberto: ['Votação aberta', 'ok'], encerrado: ['Encerrada', 'pendente'], publicado: ['Resultado publicado', 'ok'] }[c.estado];
+    const acoes = [];
+    if (c.estado === 'fechado' || c.estado === 'encerrado') acoes.push(`<button class="botao ${c.estado === 'encerrado' ? 'secundario' : ''}" type="button" data-acao="conc-abrir" ${c.liberada ? '' : 'disabled'}>${c.estado === 'encerrado' ? 'Reabrir votação' : 'Abrir votação'}</button>`);
+    if (c.estado === 'aberto') acoes.push('<button class="botao" type="button" data-acao="conc-encerrar">Encerrar votação</button>');
+    if (c.estado === 'encerrado') acoes.push('<button class="botao" type="button" data-acao="conc-publicar">Publicar resultado e dar os pontos</button>');
+    if (c.estado === 'publicado') acoes.push('<button class="botao secundario" type="button" data-acao="conc-despublicar">Despublicar (tira os pontos)</button>');
+    const cont = c.contagem.slice(0, 12).map((x) => `<div class="item"><div class="item-topo"><b style="width:30px;text-align:center">${x.posicao}º</b>
+      <span class="avatar">${A().emojiDe(x.avatar)}</span><div class="item-nome" style="flex:1">${esc(x.nome)}</div>
+      <span>${x.votos} ${x.votos === 1 ? 'voto' : 'votos'}${x.pontos ? ` · <b style="color:var(--laranja-claro)">+${x.pontos}</b>` : ''}</span></div></div>`).join('');
+    pintar('j-concurso', `
+      ${c.liberada ? '' : '<p class="aviso-inline">O Concurso está bloqueado: libere (ou coloque "Em teste") em Atividades antes de abrir a votação.</p>'}
+      ${c.emTeste ? '<p class="selo teste" style="display:inline-block">🧪 Em teste: só os testadores votam</p>' : ''}
+      <p><span class="selo ${rot[1]}">${rot[0]}</span> · ${c.eleitores} ${c.eleitores === 1 ? 'pessoa votou' : 'pessoas votaram'} · prêmios ${c.premios.join(' / ')}</p>
+      <div class="item-acoes">${acoes.join('')}<button class="botao secundario pequeno" type="button" data-acao="tel-modo" data-modo="concurso">Mostrar no telão</button></div>
+      <p class="fraco" style="margin:8px 0">Só você vê a contagem. Empate divide a colocação.</p>
+      <div class="lista">${cont || '<p class="fraco">Nenhum voto ainda.</p>'}</div>`);
+  }
+
+  // --------------------------------------------------------------- correio
+  function desenharCorreio(k) {
+    const sel = { pendente: 'pendente', aprovada: 'ok', recusada: 'off' };
+    const cartas = k.cartas.slice(0, 60).map((x) => `<div class="item carta-admin">
+      <div class="item-sub">De <b>${esc(x.autor)}</b>${x.para ? ` para <b>${esc(x.para)}</b>` : ''} · ${esc(PV.dataCurta(x.em))}
+        <span class="selo ${sel[x.estado]}">${x.estado}</span>${x.teste ? ' <span class="selo teste">teste</span>' : ''}</div>
+      <p>${esc(x.texto)}</p>
+      <div class="item-acoes" style="margin-top:8px">
+        ${x.estado !== 'aprovada' ? `<button class="botao pequeno" type="button" data-acao="cor-aprovar" data-id="${x.id}">Aprovar (vai ao telão)</button>` : ''}
+        ${x.estado !== 'recusada' ? `<button class="botao secundario pequeno" type="button" data-acao="cor-recusar" data-id="${x.id}">${x.estado === 'aprovada' ? 'Tirar do telão' : 'Recusar'}</button>` : ''}
+      </div></div>`).join('');
+    pintar('j-correio', `
+      ${k.liberada ? '' : '<p class="aviso-inline">O Correio está bloqueado: libere (ou coloque "Em teste") em Atividades.</p>'}
+      ${k.emTeste ? '<p class="selo teste" style="display:inline-block">🧪 Em teste: só os testadores mandam cartas</p>' : ''}
+      <p><b>${k.pendentes}</b> ${k.pendentes === 1 ? 'carta esperando' : 'cartas esperando'} aprovação. Só as aprovadas aparecem no telão; quem mandou é anônimo para todos, menos para você.</p>
+      <div class="item-acoes"><button class="botao secundario pequeno" type="button" data-acao="tel-modo" data-modo="correio">Mostrar correio no telão</button></div>
+      <div class="lista" style="margin-top:10px">${cartas || '<p class="fraco">Nenhuma carta ainda.</p>'}</div>`);
+  }
+
   // ----------------------------------------------------- bebida e ranking
   function desenharBebidas(b) {
     const lista = b.pessoas.map((x) => `<div class="item"><div class="item-topo"><span class="avatar">${A().emojiDe(x.avatar)}</span><div>
@@ -137,10 +210,10 @@
   }
 
   function desenharRanking(r) {
-    pintar('j-ranking', r.length ? r.slice(0, 30).map((x) => `<div class="item"><div class="item-topo">
+    pintar('j-ranking', (r.length ? r.slice(0, 30).map((x) => `<div class="item"><div class="item-topo">
       <b style="width:34px;text-align:center">${x.posicao}º</b><span class="avatar">${A().emojiDe(x.avatar)}</span>
-      <div class="item-nome" style="flex:1">${esc(x.nome)}</div><b style="color:var(--laranja-claro)">${x.pontos}</b></div></div>`).join('')
-      : '<p class="fraco">Ninguém no ranking ainda.</p>'
+      <div class="item-nome" style="flex:1">${esc(x.nome)}</div><b style="color:var(--laranja-claro)">${x.pontos.toLocaleString('pt-BR')}</b></div></div>`).join('')
+      : '<p class="fraco">Ninguém no ranking ainda.</p>')
       + '<button class="botao secundario pequeno" type="button" data-acao="tel-modo" data-modo="ranking" style="margin-top:8px">Mostrar ranking no telão</button>');
   }
 
@@ -151,6 +224,9 @@
     desenharEnigmas(j.enigmas);
     desenharBebidas(j.bebidas);
     desenharRanking(j.ranking);
+    desenharQuiz(j.quiz);
+    desenharConcurso(j.concurso);
+    desenharCorreio(j.correio);
   }
 
   // ------------------------------------------------------------------ ações
@@ -186,6 +262,16 @@
     }
     if (oque === 'tempo-salvar') await fazer(() => api('PUT', '/enigmas-tempo', { segundos: Number($('enigma-tempo').value) }), 'Tempo salvo.');
     if (oque === 'beb-levou') await fazer(() => api('PUT', `/colaboracao/bebida/${encodeURIComponent(id)}`, { levou: true }), 'Confirmado: +5.');
+    if (oque === 'quiz-lancar') { if (confirmarToque(b, 'Toque de novo: lançar agora')) await fazer(() => api('POST', `/quiz/${encodeURIComponent(id)}/lancar`), 'Pergunta lançada! Está no telão.'); }
+    if (oque === 'quiz-revelar') await fazer(() => api('POST', `/quiz/${encodeURIComponent(id)}/revelar`), 'Resposta revelada. Pontos dados.');
+    if (oque === 'quiz-cancelar') { if (confirmarToque(b)) await fazer(() => api('POST', `/quiz/${encodeURIComponent(id)}/cancelar`), 'Pergunta cancelada (pode lançar de novo).'); }
+    if (oque === 'quiz-tempo') await fazer(() => api('PUT', '/quiz-tempo', { segundos: Number($('quiz-tempo').value) }), 'Tempo salvo.');
+    if (oque === 'conc-abrir') await fazer(() => api('POST', '/concurso/abrir'), 'Votação aberta.');
+    if (oque === 'conc-encerrar') { if (confirmarToque(b)) await fazer(() => api('POST', '/concurso/encerrar'), 'Votação encerrada.'); }
+    if (oque === 'conc-publicar') { if (confirmarToque(b, 'Toque de novo: publicar e dar os pontos')) await fazer(() => api('POST', '/concurso/publicar'), 'Resultado no telão. Pontos dados.'); }
+    if (oque === 'conc-despublicar') { if (confirmarToque(b)) await fazer(() => api('POST', '/concurso/despublicar'), 'Resultado despublicado.'); }
+    if (oque === 'cor-aprovar') await fazer(() => api('POST', `/correio/${id}/aprovar`), 'Carta aprovada: vai para o telão.');
+    if (oque === 'cor-recusar') await fazer(() => api('POST', `/correio/${id}/recusar`), 'Carta fora do telão.');
     if (oque === 'beb-desfazer') await fazer(() => api('PUT', `/colaboracao/bebida/${encodeURIComponent(id)}`, { levou: false }), 'Desfeito.');
   });
 
@@ -198,6 +284,17 @@
   });
 
   painel.addEventListener('submit', async (e) => {
+    const fq = e.target.closest('form[data-quiz-form]');
+    if (fq) {
+      e.preventDefault();
+      const correta = fq.querySelector('input[name=correta]:checked');
+      await A().acao(() => A().api('PUT', `/quiz/${encodeURIComponent(fq.dataset.quizForm)}`, {
+        texto: fq.elements.texto.value, opcoes: [0, 1, 2, 3].map((i) => fq.elements[`op${i}`].value), correta: correta ? Number(correta.value) : -1,
+      }), 'Pergunta salva.');
+      document.activeElement.blur();
+      A().recarregar();
+      return;
+    }
     const f = e.target.closest('form[data-enigma]');
     if (!f) return;
     e.preventDefault();

@@ -98,8 +98,17 @@
 
       <!-- ATIVIDADES -->
       <section data-painel="atividades" class="oculto">
-        <p class="mudo">Bloqueada: ninguém vê. Agendada: abre sozinha no horário. Liberada: aberta agora.</p>
+        <p class="mudo">Bloqueada: ninguém vê. <b>Em teste</b>: só quem está marcado como testador (aba Convidados) vê e joga.
+          Agendada: abre sozinha no horário. Liberada: aberta para todos.</p>
         <div id="lista-atividades" class="lista"></div>
+        <div class="cartao" style="margin-top:16px">
+          <h3>🧪 Dados de teste</h3>
+          <p class="fraco" style="margin:0 0 10px">Apaga tudo o que foi feito com atividades "Em teste": pontos, respostas do quiz, votos, cartas,
+            maldições e palpites de teste. As atividades em teste voltam para bloqueada (ou agendada, se tinham horário).
+            Use antes da festa começar. Nada real é apagado.</p>
+          <p class="fraco" id="teste-resumo" style="margin:0 0 10px"></p>
+          <button class="botao perigo largo" type="button" id="apagar-teste">Apagar dados de teste</button>
+        </div>
       </section>
 
       <!-- JOGOS: Previsões, Maldição, Enigmas e pontos -->
@@ -113,11 +122,23 @@
           <div id="j-maldicao"></div>
         </div>
         <div class="cartao" style="margin-top:12px">
+          <h3>⚡ Quiz Relâmpago</h3>
+          <div id="j-quiz"></div>
+        </div>
+        <div class="cartao" style="margin-top:12px">
+          <h3>👑 Concurso de Fantasia</h3>
+          <div id="j-concurso"></div>
+        </div>
+        <div class="cartao" style="margin-top:12px">
+          <h3>✉️ Correio das Trevas</h3>
+          <div id="j-correio"></div>
+        </div>
+        <div class="cartao" style="margin-top:12px">
           <h3>🧩 Enigma do dia</h3>
           <div id="j-enigmas"></div>
         </div>
         <div class="cartao" style="margin-top:12px">
-          <h3>🍻 Bebida levada (+5)</h3>
+          <h3>🍻 Bebida levada</h3>
           <div id="j-bebidas"></div>
         </div>
         <div class="cartao" style="margin-top:12px">
@@ -145,6 +166,11 @@
             <option value="/#caronas">Caronas</option>
             <option value="/#chegar">Como chegar</option>
             <option value="/#pos">O Pós</option>
+            <option value="/#previsoes">Previsões</option>
+            <option value="/#quiz">Quiz Relâmpago</option>
+            <option value="/#concurso">Concurso de Fantasia</option>
+            <option value="/#correio">Correio das Trevas</option>
+            <option value="/#ranking">Ranking</option>
           </select>
           <button class="botao largo" style="margin-top:12px" id="aviso-revisar">Revisar e enviar</button>
           <div id="confirmar-aviso" class="confirmar-aviso oculto" role="region" aria-live="polite"></div>
@@ -186,6 +212,9 @@
             <button data-modo="pos">🌙 Votação do pós</button>
             <button data-modo="previsoes">🔮 Previsões</button>
             <button data-modo="ranking">🏆 Ranking</button>
+            <button data-modo="quiz">⚡ Quiz</button>
+            <button data-modo="concurso">👑 Concurso</button>
+            <button data-modo="correio">✉️ Correio</button>
           </div>
           <label for="msg-telao">Mensagem (modo Mensagem)</label>
           <input id="msg-telao" maxlength="140" placeholder="Ex.: A pizza chegou!">
