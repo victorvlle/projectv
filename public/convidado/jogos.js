@@ -230,7 +230,7 @@
     if (!e) return;
     enigmasAtuais = e;
     const b = e.bonus;
-    pintar('enigma-intro', `Enigmas de filmes de terror, dos clássicos aos de 2026: três por dia, até sexta, de manhã (8h), à tarde (13h) e à noite (19h). Cada enigma fecha quando o próximo abre. Responda com o nome do filme. Acertou: +${e.pontos} pontos; os três primeiros de cada enigma ganham bônus: 1º +${b[0]}, 2º +${b[1]}, 3º +${b[2]}.`);
+    pintar('enigma-intro', `Enigmas de filmes de terror, dos clássicos aos de 2026: três por dia, até quinta, de manhã (8h), à tarde (13h) e à noite (19h). Cada enigma fecha quando o próximo abre. Responda com o nome do filme. Acertou: +${e.pontos} pontos; os três primeiros de cada enigma ganham bônus: 1º +${b[0]}, 2º +${b[1]}, 3º +${b[2]}.`);
     const peso = (x) => (x.fase === 'respondendo' ? -1 : x.estado === 'aberto' && x.fase === 'nao-revelado' ? 0 : x.estado === 'em-breve' ? 1 : 2);
     const ordenados = [...e.enigmas].sort((a, b2) => peso(a) - peso(b2) || (peso(a) === 2 ? b2.abreEm - a.abreEm : a.abreEm - b2.abreEm));
     const proximo = ordenados.find((x) => x.estado === 'em-breve');

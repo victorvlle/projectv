@@ -398,4 +398,12 @@ module.exports = [
     sql: `DELETE FROM playlist_votos
            WHERE EXISTS (SELECT 1 FROM playlist_musicas m WHERE m.id = playlist_votos.musica_id AND m.convidado_id = playlist_votos.convidado_id)`,
   },
+  {
+    nome: 'enigmas só até quinta: sai a sexta e o último fecha quinta 23:59',
+    sql: `
+      DELETE FROM enigma_tentativas WHERE enigma_id IN ('sexta', 'sexta-tarde', 'sexta-noite');
+      DELETE FROM enigmas WHERE id IN ('sexta', 'sexta-tarde', 'sexta-noite');
+      UPDATE enigmas SET fecha_em = 1793332740000 WHERE fecha_em > 1793332740000
+    `,
+  },
 ];

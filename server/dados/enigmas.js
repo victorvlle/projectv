@@ -1,4 +1,4 @@
-// Enigmas de filmes de terror: 3 por dia (terça a sexta). Cada um fecha quando o próximo abre. Acerto +10; os 3 primeiros de cada enigma ganham bônus.
+// Enigmas de filmes de terror: 3 por dia (terça a quinta). Cada um fecha quando o próximo abre. Acerto +10; os 3 primeiros de cada enigma ganham bônus.
 //
 // CONTRA COLA ("modo prova")
 //  - O texto do enigma só sai do servidor quando a pessoa toca em "Revelar". A partir daí o

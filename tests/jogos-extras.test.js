@@ -176,9 +176,10 @@ test('ranking com empate divide a posição e o extrato mostra de onde vieram os
   assert.ok(empatados.every((x) => x.posicao === 1));
 });
 
-test('três enigmas por dia (8h, 13h e 19h), de terça a sexta; cada um fecha quando o próximo abre', async () => {
+test('três enigmas por dia (8h, 13h e 19h), de terça a quinta; cada um fecha quando o próximo abre', async () => {
   const { ENIGMAS } = require('../server/jogos/conteudo');
-  assert.equal(ENIGMAS.length, 12);
+  assert.equal(ENIGMAS.length, 9);
+  assert.ok(!ENIGMAS.some((e) => e.id.startsWith('sexta')));
   const terca = ENIGMAS.filter((e) => e.id.startsWith('terca')).map((e) => [e.titulo, e.abre]);
   assert.deepEqual(terca, [['Terça · manhã', '2026-10-27T08:00:00-04:00'], ['Terça · tarde', '2026-10-27T13:00:00-04:00'], ['Terça · noite', '2026-10-27T19:00:00-04:00']]);
   // Fecha quando o próximo abre
@@ -201,7 +202,8 @@ test('três enigmas por dia (8h, 13h e 19h), de terça a sexta; cada um fecha qu
   // Na prática: o de terça de manhã fecha às 13h, quando abre o da tarde
   const real = await enigmasDados.lista();
   assert.equal(new Date(real.find((e) => e.id === 'terca').fechaEm - 4 * 3600000).toISOString().slice(0, 16), '2026-10-27T13:00');
-  assert.equal(new Date(real.find((e) => e.id === 'sexta-noite').fechaEm - 4 * 3600000).toISOString().slice(0, 16), '2026-10-31T17:00');
+  assert.equal(new Date(real.find((e) => e.id === 'quinta-noite').fechaEm - 4 * 3600000).toISOString().slice(0, 16), '2026-10-29T23:59');
+  assert.ok(!dias.some((d) => d.chave === 'enigma-dia-2026-10-30'));
 });
 
 test('quem sugeriu música ou ofereceu carona antes dos pontos existirem também ganha (sem duplicar)', async () => {

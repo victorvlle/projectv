@@ -41,11 +41,11 @@ const INTENSIDADES = {
 };
 const PONTOS_MALDICAO = 5;
 
-// Enigmas: 3 por dia (manhã 8h, tarde 13h, noite 19h) de quarta a sexta. Cada um fica aberto
-// até a festa começar. Respostas aceitas comparadas sem acento, maiúsculas, artigos e pontuação.
-const FECHA_ENIGMAS = '2026-10-31T17:00:00-04:00';
+// Enigmas: 3 por dia (manhã 8h, tarde 13h, noite 19h) de terça a quinta. Cada um fecha quando o
+// próximo abre; o último fecha quinta às 23:59. Respostas aceitas comparadas sem acento, maiúsculas, artigos e pontuação.
+const FECHA_ENIGMAS = '2026-10-29T23:59:00-04:00';
 const PERIODOS = [['manha', 'manhã', '08:00'], ['tarde', 'tarde', '13:00'], ['noite', 'noite', '19:00']];
-const DIAS = [['terca', 'Terça', '2026-10-27'], ['quarta', 'Quarta', '2026-10-28'], ['quinta', 'Quinta', '2026-10-29'], ['sexta', 'Sexta', '2026-10-30']];
+const DIAS = [['terca', 'Terça', '2026-10-27'], ['quarta', 'Quarta', '2026-10-28'], ['quinta', 'Quinta', '2026-10-29']];
 // Enigmas de filmes de terror: recentes e clássicos misturados. Resposta = nome do filme
 // (título brasileiro ou original). Nada de spoiler do final.
 const TEXTOS_ENIGMAS = {
@@ -94,23 +94,8 @@ const TEXTOS_ENIGMAS = {
     respostas: ['o exorcista', 'exorcista', 'the exorcist'],
     dica: '',
   },
-  'sexta-manha': {
-    pergunta: 'Um restaurante no alto de uma torre nos anos 1960, uma avó que passou décadas isolada numa casa à prova de acidentes e um caderno de regras para enganar quem nunca perde. Qual é o filme de 2025?',
-    respostas: ['premonicao', 'premonicao 6', 'premonicao 6 lacos de sangue', 'premonicao lacos de sangue', 'lacos de sangue', 'final destination', 'final destination bloodlines', 'final destination 6'],
-    dica: '',
-  },
-  'sexta-tarde': {
-    pergunta: 'Haddonfield, Illinois. Um psiquiatra chamado Loomis passou quinze anos avisando que seu paciente não era exatamente uma pessoa. Uma faca de cozinha e uma babá que não desiste. Qual é o clássico de 1978?',
-    respostas: ['halloween', 'halloween a noite do terror', 'a noite do terror'],
-    dica: '',
-  },
-  'sexta-noite': {
-    pergunta: 'Um galho de salgueiro comprado por impulso, partido ao meio junto com um pedido de amor. O pedido é atendido ao pé da letra, e o ciúme vira a coisa mais perigosa da história. Qual é o terror de 2026?',
-    respostas: ['obsessao', 'obsession'],
-    dica: '',
-  },
 };
-// Os três primeiros enigmas mantêm os ids antigos ("quarta", "quinta", "sexta" = turno da manhã).
+// Os três primeiros enigmas mantêm os ids antigos ("terca", "quarta", "quinta" = turno da manhã).
 const idEnigma = (dia, periodo) => (periodo === 'manha' ? dia : `${dia}-${periodo}`);
 const ENIGMAS = DIAS.flatMap(([dia, nomeDia, data], d) => PERIODOS.map(([periodo, nomePeriodo, hora], p) => ({
   id: idEnigma(dia, periodo), ordem: d * 3 + p + 1, titulo: `${nomeDia} · ${nomePeriodo}`,
