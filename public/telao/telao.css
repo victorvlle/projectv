@@ -168,3 +168,21 @@ body { overflow: hidden; cursor: default; }
 @media (prefers-reduced-motion: reduce) { .bolha, .bolha.chegou { animation: none; } }
 
 .quiz-acertaram small { color: var(--laranja-claro); font-size: 2.4vh; }
+
+/* Gráfico de colunas da resposta (estilo Kahoot) */
+.grafico-quiz { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3vw; align-items: end; width: min(80vw, 140vh); height: 36vh; }
+.grafico-quiz .coluna { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
+.grafico-quiz .qtd { font-size: 4.4vh; font-weight: 800; margin-bottom: .8vh; }
+.grafico-quiz .barra { width: 70%; height: var(--alt); border-radius: 1.2vh 1.2vh 0 0; transform-origin: bottom; animation: subir .9s cubic-bezier(.2, .9, .3, 1) both; }
+.grafico-quiz .op0 .barra, .grafico-quiz .op0 .rot b { background: #c0283f; }
+.grafico-quiz .op1 .barra, .grafico-quiz .op1 .rot b { background: #2a6fb5; }
+.grafico-quiz .op2 .barra, .grafico-quiz .op2 .rot b { background: #c48a1c; }
+.grafico-quiz .op3 .barra, .grafico-quiz .op3 .rot b { background: #3d8a35; }
+.grafico-quiz .errada .barra, .grafico-quiz .errada .qtd, .grafico-quiz .errada small { opacity: .45; }
+.grafico-quiz .certa .barra { box-shadow: 0 0 3vh rgba(123, 199, 77, .45); outline: .4vh solid var(--lima); }
+.grafico-quiz .rot { display: flex; align-items: center; gap: .8vw; margin-top: 1vh; }
+.grafico-quiz .rot b { display: grid; place-items: center; width: 6vh; height: 6vh; border-radius: 1.2vh; font-size: 3.4vh; }
+.grafico-quiz .rot .ok { font-size: 4.4vh; color: var(--lima); font-weight: 800; }
+.grafico-quiz small { margin-top: .6vh; font-size: 2.4vh; color: var(--texto-2); text-align: center; overflow-wrap: anywhere; line-height: 1.15; }
+@keyframes subir { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@media (prefers-reduced-motion: reduce) { .grafico-quiz .barra { animation: none; } }

@@ -49,9 +49,18 @@
       const revelada = q.fase === 'revelacao';
       $('quiz-rotulo').textContent = `Pergunta ${x.numero} de ${q.total}`;
       $('quiz-pergunta').textContent = x.texto;
-      const total = revelada ? x.porOpcao.reduce((a, b) => a + b, 0) || 1 : 1;
-      $('quiz-opcoes').innerHTML = x.opcoes.map((o, i) => `<div class="quiz-op-telao op${i} ${revelada ? (i === x.correta ? 'certa' : 'errada') : ''}">
-          <b>${L[i]}</b><span>${esc(o)}</span>${revelada ? `<em>${x.porOpcao[i]}</em><i style="width:${Math.round((x.porOpcao[i] / total) * 100)}%"></i>` : ''}</div>`).join('');
+      if (revelada) {
+        // Gráfico de colunas como no Kahoot: quantos marcaram cada opção, a certa com ✓.
+        const maior = Math.max(1, ...x.porOpcao);
+        $('quiz-opcoes').innerHTML = `<div class="grafico-quiz">${x.opcoes.map((o, i) => `
+          <div class="coluna op${i} ${i === x.correta ? 'certa' : 'errada'}">
+            <span class="qtd">${x.porOpcao[i]}</span>
+            <div class="barra" style="--alt:${Math.max(4, Math.round((x.porOpcao[i] / maior) * 100))}%"></div>
+            <div class="rot"><b>${L[i]}</b>${i === x.correta ? '<span class="ok">✓</span>' : ''}</div>
+            <small>${esc(o)}</small></div>`).join('')}</div>`;
+      } else {
+        $('quiz-opcoes').innerHTML = x.opcoes.map((o, i) => `<div class="quiz-op-telao op${i}"><b>${L[i]}</b><span>${esc(o)}</span></div>`).join('');
+      }
       $('quiz-rodape').innerHTML = revelada
         ? `${x.acertaram.length ? `<p class="quiz-acertaram">Acertaram: ${x.acertaram.map((a) => `<span><span class="avatar mini">${emoji(a.avatar)}</span>${esc(a.nome)} <small>${esc(a.segundos)} s · +${pts(a.pontos)}</small></span>`).join('')}</p>`
           : '<p class="prev-dica">Ninguém acertou essa! 💀</p>'}
