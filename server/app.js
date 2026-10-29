@@ -53,7 +53,12 @@ function criarApp() {
 
   // Corpo JSON pequeno por padrão; só a restauração de backup aceita arquivo grande.
   const jsonPequeno = express.json({ limit: '32kb' });
-  app.use((req, res, next) => (req.path === '/api/admin/restaurar' ? next() : jsonPequeno(req, res, next)));
+  const jsonFoto = express.json({ limit: '1300kb' }); // foto do Mural (já reduzida no celular)
+  app.use((req, res, next) => {
+    if (req.path === '/api/admin/restaurar') return next();
+    if (req.path === '/api/correio' && req.method === 'POST') return jsonFoto(req, res, next);
+    return jsonPequeno(req, res, next);
+  });
 
   // Cada acesso também serve de relógio para os avisos agendados (no máximo 1x a cada 30 s):
   // com o Render free dormindo, quem acorda o servidor já dispara o que estiver na hora.

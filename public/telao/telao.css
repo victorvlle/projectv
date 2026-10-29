@@ -140,13 +140,21 @@ body { overflow: hidden; cursor: default; }
 .quiz-esgotado { font-size: 8vh; color: var(--sangue); margin: 0; }
 .quiz-acertaram { font-size: 3vh; max-width: 90vw; display: flex; flex-wrap: wrap; justify-content: center; gap: 1vh 2vw; }
 .quiz-acertaram > span { white-space: nowrap; }
-.carta-telao { width: min(80vw, 140vh); }
+.carta-telao { width: min(80vw, 140vh); display: grid; place-items: center; }
+.mural-foto { margin: 0; display: grid; justify-items: center; gap: 1.4vh; animation: aparecer .6s ease-out; }
+.mural-foto img { display: block; max-width: 92vw; max-height: 70vh; min-height: 20vh; min-width: 20vw; object-fit: contain; border-radius: 1.4vh;
+  border: .3vh solid var(--laranja); box-shadow: 0 2vh 6vh rgba(0, 0, 0, .6); background: #000; }
+.mural-foto figcaption { font-size: 3.6vh; max-width: 80vw; text-align: center; overflow-wrap: anywhere; }
+.mural-foto .carta-para { margin: 0; }
+[data-cena="correio"].com-foto .titulo-cena { display: none; }
+[data-cena="correio"].com-foto .rodape-cena { margin-top: 1vh; }
+@keyframes aparecer { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
 .carta-papel { padding: 5vh 5vw; border-radius: 2vh; background: linear-gradient(160deg, #2b2138, #1b1424); border: .3vh solid var(--laranja);
   box-shadow: 0 2vh 6vh rgba(0, 0, 0, .5); animation: entrar .6s ease both; }
 .carta-para { font-size: 3.4vh; color: var(--laranja-claro); margin: 0 0 2vh; font-weight: 700; }
 .carta-corpo { font-size: 5.4vh; line-height: 1.25; margin: 0; overflow-wrap: anywhere; }
 .carta-assinatura { text-align: right; font-size: 3vh; color: var(--texto-2); margin: 3vh 0 0; }
-@media (prefers-reduced-motion: reduce) { .quiz-cronometro.acabando, .carta-papel { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .quiz-cronometro.acabando, .carta-papel, .mural-foto { animation: none; } }
 
 /* Sala do quiz: monstros flutuando com as iniciais */
 .quiz-na-sala { position: fixed; top: 12vh; right: 3vw; font-size: 3.4vh; padding: 1vh 2vw; border-radius: 99px; background: rgba(34, 26, 45, .9);

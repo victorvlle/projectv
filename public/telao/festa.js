@@ -1,4 +1,4 @@
-// Telão: cenas do Quiz Relâmpago, do Concurso de Fantasia e do Correio das Trevas.
+// Telão: cenas do Quiz Relâmpago, do Concurso de Fantasia e do Mural das Trevas.
 // Recebe os dados de /api/admin/telao (telao.js chama PVTelaoFesta.desenhar a cada atualização).
 (function () {
   'use strict';
@@ -124,22 +124,43 @@
       <p class="prev-dica">1º +${pts(c.premios[0])} · 2º +${pts(c.premios[1])} · 3º +${pts(c.premios[2])}</p>`;
   }
 
-  // --------------------------------------------------------------- correio
+  // --------------------------------------------------------- mural das trevas
+  // Um por vez: foto inteira na tela (com a legenda embaixo) ou o recado em papel.
+  // Foto fica 12 s, recado 9 s. O que acabou de ser aprovado entra na frente.
   let cartas = [];
   let indice = 0;
   let rodando = null;
   let assinatura = '';
+  const tokenTelao = () => (window.PVTelao ? window.PVTelao.token() : null);
+  const urlFoto = (c) => `/api/admin/correio/foto/${c.id}`;
+  const para = (c) => (c.para ? `<p class="carta-para">Para: ${c.paraAvatar ? `<span class="avatar mini">${emoji(c.paraAvatar)}</span>` : ''}${esc(c.para)}</p>` : '');
   function mostrarCarta() {
+    clearTimeout(rodando);
     if (!cartas.length) {
-      $('carta-telao').innerHTML = '<p class="prev-dica">Nenhuma carta ainda. Mande a sua pelo celular! ✉️</p>';
+      document.querySelector('[data-cena="correio"]').classList.remove('com-foto');
+      $('carta-telao').innerHTML = '<p class="prev-dica">Nada no mural ainda. Mande um recado ou uma foto pelo celular! 📸</p>';
       $('correio-rodape').textContent = '';
       return;
     }
     const c = cartas[indice % cartas.length];
-    $('carta-telao').innerHTML = `<div class="carta-papel">
-        ${c.para ? `<p class="carta-para">Para: ${c.paraAvatar ? `<span class="avatar mini">${emoji(c.paraAvatar)}</span>` : ''}${esc(c.para)}</p>` : '<p class="carta-para">Para: alguém nesta festa…</p>'}
-        <p class="carta-corpo">“${esc(c.texto)}”</p><p class="carta-assinatura">— Anônimo 💀</p></div>`;
-    $('correio-rodape').textContent = `Carta ${(indice % cartas.length) + 1} de ${cartas.length} · mande a sua pelo celular`;
+    // Com foto, o título sai para a foto ocupar a tela.
+    document.querySelector('[data-cena="correio"]').classList.toggle('com-foto', Boolean(c.foto));
+    if (c.foto) {
+      $('carta-telao').innerHTML = `<figure class="mural-foto">${para(c)}<img alt="Foto do mural" data-id="${c.id}">
+        ${c.texto ? `<figcaption>“${esc(c.texto)}”</figcaption>` : ''}</figure>`;
+      const img = $('carta-telao').querySelector('img');
+      PV.foto(urlFoto(c), tokenTelao()).then((src) => { if (img.isConnected) img.src = src; })
+        .catch(() => { clearTimeout(rodando); indice += 1; rodando = setTimeout(mostrarCarta, 3000); });
+    } else {
+      $('carta-telao').innerHTML = `<div class="carta-papel">
+          ${c.para ? para(c) : '<p class="carta-para">Para: alguém nesta festa…</p>'}
+          <p class="carta-corpo">“${esc(c.texto)}”</p><p class="carta-assinatura">— Anônimo 💀</p></div>`;
+    }
+    $('correio-rodape').textContent = `${(indice % cartas.length) + 1} de ${cartas.length} · mande o seu recado ou foto pelo celular`;
+    // Já deixa a próxima foto baixada.
+    const prox = cartas[(indice + 1) % cartas.length];
+    if (prox && prox.foto) PV.foto(urlFoto(prox), tokenTelao()).catch(() => {});
+    rodando = setTimeout(() => { indice += 1; mostrarCarta(); }, c.foto ? 12000 : 9000);
   }
   function desenharCorreio(k) {
     const nova = k ? k.cartas : [];
@@ -147,11 +168,16 @@
     if (ass === assinatura) return;
     const chegouNova = nova.length && (!cartas.length || nova[0].id !== (cartas[0] || {}).id);
     assinatura = ass;
+    const atual = cartas.length ? cartas[indice % cartas.length] : null;
     cartas = nova;
-    if (chegouNova) indice = 0; // a mais nova aparece primeiro
+    if (chegouNova) indice = 0; // o mais novo aparece primeiro
+    else {
+      // Continua de onde estava (sem reiniciar a foto que está na tela).
+      const pos = atual ? cartas.findIndex((c) => c.id === atual.id) : -1;
+      if (pos >= 0) { indice = pos; return; }
+      indice = 0;
+    }
     mostrarCarta();
-    clearInterval(rodando);
-    rodando = setInterval(() => { indice += 1; mostrarCarta(); }, 9000);
   }
 
   window.PVTelaoFesta = {

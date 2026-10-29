@@ -120,5 +120,32 @@
     return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
   }
 
-  window.PV = { guardado, chamar, ErroApi, relogio, contagem, dataHora, dataCurta, periodo, esc, avisar, conectar, adiar, FUSO };
+  // Foto protegida (precisa da sessão no cabeçalho): baixa uma vez e devolve um endereço blob:.
+  const fotos = new Map();
+  function foto(url, token) {
+    if (!fotos.has(url)) {
+      fotos.set(url, fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+        .then((r) => { if (!r.ok) throw new Error(`foto ${r.status}`); return r.blob(); })
+        .then((b) => URL.createObjectURL(b))
+        .catch((e) => { fotos.delete(url); throw e; }));
+    }
+    return fotos.get(url);
+  }
+  // Preenche <img data-foto="url"> dentro de um elemento, só quando a foto chega perto da tela
+  // (uma lista com muitas fotos não baixa tudo de uma vez).
+  function carregarFoto(img, token) {
+    const url = img.dataset.foto;
+    foto(url, token).then((src) => { if (img.dataset.foto === url) img.src = src; }).catch(() => { img.alt = 'Foto indisponível'; });
+  }
+  function preencherFotos(raiz, token) {
+    if (!raiz) return;
+    const imgs = [...raiz.querySelectorAll('img[data-foto]')].filter((img) => !img.src);
+    if (!('IntersectionObserver' in window)) { imgs.forEach((img) => carregarFoto(img, token)); return; }
+    const olho = new IntersectionObserver((entradas) => {
+      entradas.forEach((e) => { if (e.isIntersecting) { olho.unobserve(e.target); carregarFoto(e.target, token); } });
+    }, { rootMargin: '300px' });
+    imgs.forEach((img) => olho.observe(img));
+  }
+
+  window.PV = { foto, preencherFotos, guardado, chamar, ErroApi, relogio, contagem, dataHora, dataCurta, periodo, esc, avisar, conectar, adiar, FUSO };
 })();

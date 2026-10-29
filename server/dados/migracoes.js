@@ -548,4 +548,14 @@ module.exports = [
       )
     `,
   },
+  {
+    nome: 'Mural das Trevas: recado ou foto (a foto fica numa tabela à parte)',
+    sql: `
+      CREATE TABLE IF NOT EXISTS correio_fotos (
+        carta_id INTEGER PRIMARY KEY REFERENCES correio(id) ON DELETE CASCADE,
+        dados TEXT NOT NULL,
+        bytes INTEGER NOT NULL
+      )
+    `,
+  },
 ];

@@ -1,4 +1,4 @@
-// Jogos da festa no celular: Quiz Relâmpago, Concurso de Fantasia e Correio das Trevas.
+// Jogos da festa no celular: Quiz Relâmpago, Concurso de Fantasia e Mural das Trevas.
 // Usa a ponte window.PVConvidado (api, estado, atualizarParte, emojiDe) de convidado.js.
 // Os dados só chegam do servidor quando o jogo está liberado (ou em teste para quem testa).
 (function () {
@@ -252,25 +252,96 @@
     }
   });
 
-  // ============================================================== CORREIO
+  // ======================================================= MURAL DAS TREVAS
+  // Recado OU foto (com legenda opcional). A foto é reduzida aqui no celular (lado maior até
+  // 1600 px, JPEG) antes de subir: fica leve e perde os dados escondidos da câmera (como local).
   let correio = null;
   let mandando = false;
-  const ESTADOS_CARTA = { pendente: ['Aguardando o organizador', 'pendente'], aprovada: ['No telão ✓', 'ok'], recusada: ['Não aprovada', 'off'] };
+  let fotoEscolhida = null; // data URL JPEG já reduzida
+  const ESTADOS_CARTA = { pendente: ['Aguardando o organizador', 'pendente'], aprovada: ['No telão ✓', 'ok'], recusada: ['Não aprovado', 'off'] };
+  const MAX_FOTO = 850 * 1024;
+
+  function carregarImagem(arquivo) {
+    return new Promise((ok, falha) => {
+      const url = URL.createObjectURL(arquivo);
+      const img = new Image();
+      img.onload = () => { ok(img); setTimeout(() => URL.revokeObjectURL(url), 1000); };
+      img.onerror = () => { URL.revokeObjectURL(url); falha(new Error('imagem')); };
+      img.src = url;
+    });
+  }
+  const paraBlob = (canvas, q) => new Promise((ok) => canvas.toBlob(ok, 'image/jpeg', q));
+  const lerDataUrl = (blob) => new Promise((ok, falha) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = falha; r.readAsDataURL(blob); });
+
+  async function reduzirFoto(arquivo) {
+    const img = await carregarImagem(arquivo);
+    const w0 = img.naturalWidth || img.width;
+    const h0 = img.naturalHeight || img.height;
+    if (!w0 || !h0) throw new Error('imagem');
+    for (const lado of [1600, 1280, 1000]) {
+      const k = Math.min(1, lado / Math.max(w0, h0));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(w0 * k);
+      canvas.height = Math.round(h0 * k);
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      for (const q of [0.82, 0.7, 0.58]) {
+        const blob = await paraBlob(canvas, q);
+        if (blob && blob.size <= MAX_FOTO) return lerDataUrl(blob);
+      }
+    }
+    throw new Error('grande');
+  }
+
+  function mostrarFotoEscolhida() {
+    const tem = Boolean(fotoEscolhida);
+    $('mural-previa').classList.toggle('oculto', !tem);
+    if (tem) $('mural-previa-img').src = fotoEscolhida;
+    $('mural-foto-botao').textContent = tem ? '📷 Trocar foto' : '📷 Escolher ou tirar foto';
+    $('correio-rotulo').textContent = tem ? 'Legenda (opcional)' : 'Seu recado';
+    $('correio-texto').placeholder = tem ? 'Ex.: O trio mais assustador da noite 🎃' : 'Ex.: Para o vampiro de capa: sua fantasia me deu medo de verdade.';
+    $('correio-enviar').textContent = tem ? 'Mandar foto para o mural 📸' : 'Mandar recado para o mural ✉️';
+  }
 
   function montarCorreio() {
     if ($('form-correio')) return;
     $('correio').innerHTML = `<div id="correio-teste"></div>
       <form id="form-correio" class="cartao">
-        <p class="mudo" style="margin-top:0">Escreva uma carta anônima. Ninguém da festa sabe quem mandou; só o organizador vê, para aprovar antes de ir para o telão.</p>
+        <p class="mudo" style="margin-top:0">Mande um recado ou uma foto da festa. É anônimo: ninguém sabe quem mandou, só o organizador, que aprova antes de ir para o telão.</p>
+        <input type="file" id="mural-arquivo" accept="image/*" class="oculto">
+        <button class="botao secundario largo" type="button" id="mural-foto-botao">📷 Escolher ou tirar foto</button>
+        <div id="mural-previa" class="mural-previa oculto">
+          <img id="mural-previa-img" alt="Foto escolhida">
+          <button class="botao secundario pequeno" type="button" id="mural-tirar">Tirar a foto</button>
+        </div>
         <label for="correio-para">Para (opcional)</label>
         <select id="correio-para"><option value="">Ninguém em especial</option></select>
-        <label for="correio-texto">Sua carta</label>
-        <textarea id="correio-texto" rows="3" maxlength="140" placeholder="Ex.: Para o vampiro de capa: sua fantasia me deu medo de verdade." required></textarea>
+        <label for="correio-texto" id="correio-rotulo">Seu recado</label>
+        <textarea id="correio-texto" rows="3" maxlength="140" placeholder="Ex.: Para o vampiro de capa: sua fantasia me deu medo de verdade."></textarea>
         <p class="fraco correio-conta" id="correio-conta">0/140</p>
-        <button class="botao largo" type="submit" id="correio-enviar">Mandar carta ✉️</button>
+        <button class="botao largo" type="submit" id="correio-enviar">Mandar recado para o mural ✉️</button>
       </form>
-      <h2 class="titulo-secao">Suas cartas</h2><div id="correio-minhas" class="lista"></div>`;
+      <h2 class="titulo-secao">O que você mandou</h2><div id="correio-minhas" class="lista"></div>`;
     $('correio-texto').addEventListener('input', () => { $('correio-conta').textContent = `${$('correio-texto').value.length}/140`; });
+    $('mural-foto-botao').addEventListener('click', () => $('mural-arquivo').click());
+    $('mural-tirar').addEventListener('click', () => { fotoEscolhida = null; $('mural-arquivo').value = ''; mostrarFotoEscolhida(); });
+    $('mural-arquivo').addEventListener('change', async () => {
+      const arquivo = $('mural-arquivo').files[0];
+      if (!arquivo) return;
+      $('mural-foto-botao').disabled = true;
+      $('mural-foto-botao').textContent = 'Preparando a foto…';
+      try {
+        fotoEscolhida = await reduzirFoto(arquivo);
+      } catch (_) {
+        fotoEscolhida = null;
+        PV.avisar('Não consegui abrir essa foto. Tente outra (JPG ou PNG).', 'erro');
+      } finally {
+        $('mural-foto-botao').disabled = false;
+        mostrarFotoEscolhida();
+      }
+    });
     $('form-correio').addEventListener('submit', enviarCarta);
   }
 
@@ -289,32 +360,43 @@
     }
     const acabou = k.enviadas >= k.limite;
     $('correio-enviar').disabled = acabou || mandando;
-    if (acabou) $('correio-enviar').textContent = `Você já mandou ${k.limite} cartas`;
+    if (acabou) $('correio-enviar').textContent = `Você já mandou ${k.limite} vezes`;
     pintar('correio-minhas', k.minhas.length ? k.minhas.map((m) => {
       const [rotulo, selo] = ESTADOS_CARTA[m.estado] || ['', ''];
       return `<div class="item carta"><div class="item-sub">${m.para ? `Para ${esc(m.para)} · ` : ''}${esc(PV.dataCurta(m.em))} <span class="selo ${selo}">${rotulo}</span></div>
-        <p class="carta-texto">${esc(m.texto)}</p></div>`;
-    }).join('') : '<p class="fraco">Nenhuma carta ainda.</p>');
+        ${m.foto ? `<img class="carta-foto" data-foto="/api/correio/foto/${m.id}" alt="Sua foto">` : ''}
+        ${m.texto ? `<p class="carta-texto">${esc(m.texto)}</p>` : ''}</div>`;
+    }).join('') : '<p class="fraco">Nada ainda.</p>');
+    PV.preencherFotos($('correio-minhas'), C().token());
   }
 
   async function enviarCarta(e) {
     e.preventDefault();
     if (mandando) return;
     const texto = $('correio-texto').value.trim();
-    if (texto.length < 3) return PV.avisar('Escreva a sua carta.', 'erro');
+    if (!fotoEscolhida && texto.length < 3) return PV.avisar('Escreva um recado ou escolha uma foto.', 'erro');
     mandando = true;
     $('correio-enviar').disabled = true;
+    const eraFoto = Boolean(fotoEscolhida);
+    if (eraFoto) $('correio-enviar').textContent = 'Enviando a foto…';
     try {
-      const r = await C().api('POST', '/api/correio', { texto, para: $('correio-para').value || null });
+      const r = await C().api('POST', '/api/correio', { texto, para: $('correio-para').value || null, foto: fotoEscolhida || undefined });
       $('correio-texto').value = '';
       $('correio-conta').textContent = '0/140';
-      PV.avisar('Carta enviada! Ela aparece no telão depois que o organizador aprovar. ✉️', 'ok');
+      fotoEscolhida = null;
+      $('mural-arquivo').value = '';
+      PV.avisar(`${eraFoto ? 'Foto enviada' : 'Recado enviado'}! Aparece no telão depois que o organizador aprovar.`, 'ok');
       C().atualizarParte('correio', r.correio);
     } catch (erro) {
-      if (erro.status !== 401) PV.avisar(erro.message, 'erro');
+      if (erro.status !== 401) PV.avisar(erro.status === 413 ? 'A foto ficou grande demais. Tente outra.' : erro.message, 'erro');
     } finally {
       mandando = false;
-      if (correio) $('correio-enviar').disabled = correio.enviadas >= correio.limite;
+      mostrarFotoEscolhida();
+      if (correio) {
+        const acabou = correio.enviadas >= correio.limite;
+        $('correio-enviar').disabled = acabou;
+        if (acabou) $('correio-enviar').textContent = `Você já mandou ${correio.limite} vezes`;
+      }
     }
     return null;
   }

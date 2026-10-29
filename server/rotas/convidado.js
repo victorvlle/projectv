@@ -309,14 +309,22 @@ router.put('/concurso/voto', soConvidado, freiarJogos, assincrono(async (req, re
 
 router.get('/correio', soConvidado, assincrono(async (req, res) => {
   const k = await seLiberado('correio', req, () => correio.paraConvidado(req.convidado.id));
-  if (!k) return proibido(res, 'O Correio');
+  if (!k) return proibido(res, 'O Mural');
   return res.json({ ok: true, correio: k });
 }));
 router.post('/correio', soConvidado, freiarJogos, assincrono(async (req, res) => {
-  const { texto, para } = req.body || {};
-  await correio.enviar(req.convidado, { texto, para });
+  const { texto, para, foto } = req.body || {};
+  await correio.enviar(req.convidado, { texto, para, foto });
   avisar.admin('atualizar', { oque: 'correio' });
   res.json({ ok: true, correio: await seLiberado('correio', req, () => correio.paraConvidado(req.convidado.id)) });
+}));
+
+// A própria foto (para a pessoa ver o que mandou). Foto dos outros: 404.
+router.get('/correio/foto/:id', soConvidado, assincrono(async (req, res) => {
+  const buf = await correio.foto(req.params.id, { autorId: req.convidado.id });
+  if (!buf) return res.status(404).json({ ok: false, erro: 'Foto não encontrada.' });
+  res.set({ 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, max-age=86400' });
+  return res.send(buf);
 }));
 
 // Maldição em cena que é minha (para o celular mostrar o aviso depois de reconectar).

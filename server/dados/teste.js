@@ -29,6 +29,7 @@ async function apagarDadosDeTeste(agora = Date.now()) {
     { sql: 'UPDATE quiz_perguntas SET lancada_em = NULL, revelada_em = NULL, teste = 0 WHERE teste = 1', args: [] },
     { sql: 'DELETE FROM concurso_votos WHERE teste = 1', args: [] },
     { sql: 'DELETE FROM concurso_inscritos WHERE teste = 1', args: [] },
+    { sql: 'DELETE FROM correio_fotos WHERE carta_id IN (SELECT id FROM correio WHERE teste = 1)', args: [] },
     { sql: 'DELETE FROM correio WHERE teste = 1', args: [] },
     { sql: 'DELETE FROM maldicoes WHERE teste = 1', args: [] },
     { sql: 'DELETE FROM previsoes_palpites WHERE teste = 1', args: [] },

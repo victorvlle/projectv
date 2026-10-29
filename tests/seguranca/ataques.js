@@ -425,6 +425,21 @@ async function main() {
     barrado(GJ, 'Encher o telão de cartas do Correio', cartasAceitas === 1 && noTelao === 0, `${cartasAceitas} de 5 aceitas (1 por minuto) e nenhuma vai ao telão sem aprovação`);
     const aprovarConv = await req('POST', '/api/admin/correio/1/aprovar', { token: tT });
     barrado(GJ, 'Convidado aprovar a própria carta', aprovarConv.status === 401, `HTTP ${aprovarConv.status}`);
+    const html = Buffer.from('<html><script>alert(1)</script></html>'.padEnd(2000, ' ')).toString('base64');
+    const fotoHtml = await req('POST', '/api/correio', { token: tT, corpo: { foto: html } });
+    const fotoGigante = await req('POST', '/api/correio', { token: tT, corpo: { foto: 'A'.repeat(3 * 1024 * 1024) } });
+    barrado(GJ, 'Mandar HTML/script disfarçado de foto ou um arquivo gigante no Mural', fotoHtml.status === 400 && fotoGigante.status === 413,
+      `HTTP ${fotoHtml.status} (só JPEG de verdade), ${fotoGigante.status} (limite de tamanho)`);
+    const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(2000, 1)]).toString('base64');
+    await req('POST', '/api/correio', { token: tV, corpo: { foto: jpeg } });
+    const idFoto = ((await req('GET', '/api/admin/jogos', { token: admin })).json.correio.cartas.find((c) => c.foto) || {}).id;
+    const fotoAlheia = await req('GET', `/api/correio/foto/${idFoto}`, { token: tA });
+    const fotoAdminConv = await req('GET', `/api/admin/correio/foto/${idFoto}`, { token: tA });
+    const fotoSemLogin = await req('GET', `/api/correio/foto/${idFoto}`);
+    barrado(GJ, 'Ver foto do Mural de outra pessoa (antes da aprovação)', Boolean(idFoto) && fotoAlheia.status === 404 && fotoAdminConv.status === 401 && fotoSemLogin.status === 401,
+      `HTTP ${fotoAlheia.status}, ${fotoAdminConv.status}, ${fotoSemLogin.status} (foto ${idFoto ? 'existe' : 'NÃO criada'})`);
+    const apagarFotosConv = await req('POST', '/api/admin/correio-fotos/apagar', { token: tA });
+    barrado(GJ, 'Convidado apagar as fotos do Mural', apagarFotosConv.status === 401, `HTTP ${apagarFotosConv.status}`);
     const apagarConv = await req('POST', '/api/admin/teste/apagar', { token: tA });
     barrado(GJ, 'Convidado apagar dados de teste', apagarConv.status === 401, `HTTP ${apagarConv.status}`);
 

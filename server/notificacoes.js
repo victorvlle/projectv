@@ -470,7 +470,7 @@ const TEXTOS_LIBERADA = {
   pos: ['Project V: votação do pós aberta', 'Vote no lugar para onde o grupo vai depois da meia-noite.'],
   quiz: ['Project V: Quiz Relâmpago', 'As perguntas aparecem no telão. Responda pelo celular: cada acerto vale até 500 pontos.'],
   concurso: ['Project V: Concurso de Fantasia', 'A votação da melhor fantasia está aberta no site da festa.'],
-  correio: ['Project V: Correio das Trevas', 'Mande uma carta anônima para alguém da festa. As aprovadas aparecem no telão.'],
+  correio: ['Project V: Mural das Trevas', 'Mande um recado ou uma foto da festa. Os aprovados aparecem no telão.'],
 };
 const URL_LIBERADA = { pos: '/#pos', previsoes: '/#previsoes', quiz: '/#quiz', concurso: '/#concurso', correio: '/#correio' };
 // Liberada de madrugada (ex.: Previsões às 00:00 de sexta): o aviso espera até as 8h.

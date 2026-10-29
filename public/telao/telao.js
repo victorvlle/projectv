@@ -9,7 +9,7 @@
   let cenaAtual = null;
 
   const emojiDe = (id) => (avatares.find((a) => a.id === id) || {}).emoji || '❔';
-  window.PVTelao = { emojiDe };
+  window.PVTelao = { emojiDe, token: () => token };
 
   function pedirLogin() {
     PV.guardado.apagar('pv.admin');

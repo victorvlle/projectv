@@ -395,7 +395,7 @@
 
   // Ponte para extras.js (playlist, caronas, como chegar, pós).
   window.PVConvidado = {
-    api, emojiDe,
+    api, emojiDe, token: () => token,
     atualizarParte: (parte, valor) => { if (estado) { estado[parte] = valor; desenhar(); } },
     // Aviso que precisa chegar mesmo com a página sumindo da tela (keepalive).
     sinal: (url) => {

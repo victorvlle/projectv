@@ -433,6 +433,10 @@ body.sem-rolagem { overflow: hidden; }
 .carta { padding: 12px; border-radius: 12px; background: var(--cartao); border: 1px solid var(--borda); margin-bottom: 8px; }
 .carta .item-sub { font-size: .8rem; color: var(--texto-3); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .carta-texto { margin: 6px 0 0; overflow-wrap: anywhere; }
+.carta-foto { display: block; margin-top: 8px; max-width: 100%; max-height: 320px; border-radius: 10px; background: var(--cartao-2); min-height: 80px; }
+.mural-previa { margin: 10px 0 4px; display: grid; gap: 8px; justify-items: start; }
+.mural-previa img { max-width: 100%; max-height: 300px; border-radius: 12px; border: 1px solid var(--borda); }
+#mural-foto-botao { margin-bottom: 6px; }
 .carta .selo { font-size: .72rem; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--borda); }
 .carta .selo.ok { border-color: var(--lima); color: var(--lima); }
 .carta .selo.off { border-color: var(--sangue); color: #ff8b9b; }

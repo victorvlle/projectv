@@ -323,6 +323,20 @@ router.post('/concurso/:estado', assincrono(async (req, res) => {
 }));
 
 // --------------------------------------------------------------- correio
+// Foto do Mural para moderar no painel e para o telão (que usa a sessão do organizador).
+router.get('/correio/foto/:id', assincrono(async (req, res) => {
+  const buf = await correio.foto(req.params.id);
+  if (!buf) return res.status(404).json({ ok: false, erro: 'Foto não encontrada.' });
+  res.set({ 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, max-age=86400' });
+  return res.send(buf);
+}));
+router.post('/correio-fotos/apagar', assincrono(async (req, res) => {
+  const r = await correio.apagarFotos();
+  avisar.admin('atualizar', { oque: 'correio' });
+  avisar.telao('atualizar', { oque: 'correio' });
+  avisar.atualizar('correio');
+  return res.json({ ok: true, ...r });
+}));
 router.post('/correio/:id/:estado', assincrono(async (req, res) => {
   const estado = { aprovar: 'aprovada', recusar: 'recusada' }[req.params.estado];
   if (!estado) return res.status(404).json({ ok: false, erro: 'Ação desconhecida.' });

@@ -203,17 +203,21 @@
     const cartas = k.cartas.slice(0, 60).map((x) => `<div class="item carta-admin">
       <div class="item-sub">De <b>${esc(x.autor)}</b>${x.para ? ` para <b>${esc(x.para)}</b>` : ''} · ${esc(PV.dataCurta(x.em))}
         <span class="selo ${sel[x.estado]}">${x.estado}</span>${x.teste ? ' <span class="selo teste">teste</span>' : ''}</div>
-      <p>${esc(x.texto)}</p>
+      ${x.foto ? `<img class="foto-admin" data-foto="/api/admin/correio/foto/${x.id}" alt="Foto enviada">` : ''}
+      ${x.texto ? `<p>${esc(x.texto)}</p>` : ''}
       <div class="item-acoes" style="margin-top:8px">
         ${x.estado !== 'aprovada' ? `<button class="botao pequeno" type="button" data-acao="cor-aprovar" data-id="${x.id}">Aprovar (vai ao telão)</button>` : ''}
         ${x.estado !== 'recusada' ? `<button class="botao secundario pequeno" type="button" data-acao="cor-recusar" data-id="${x.id}">${x.estado === 'aprovada' ? 'Tirar do telão' : 'Recusar'}</button>` : ''}
       </div></div>`).join('');
     pintar('j-correio', `
-      ${k.liberada ? '' : '<p class="aviso-inline">O Correio está bloqueado: libere (ou coloque "Em teste") em Atividades.</p>'}
-      ${k.emTeste ? '<p class="selo teste" style="display:inline-block">🧪 Em teste: só os testadores mandam cartas</p>' : ''}
-      <p><b>${k.pendentes}</b> ${k.pendentes === 1 ? 'carta esperando' : 'cartas esperando'} aprovação. Só as aprovadas aparecem no telão; quem mandou é anônimo para todos, menos para você.</p>
-      <div class="item-acoes"><button class="botao secundario pequeno" type="button" data-acao="tel-modo" data-modo="correio">Mostrar correio no telão</button></div>
-      <div class="lista" style="margin-top:10px">${cartas || '<p class="fraco">Nenhuma carta ainda.</p>'}</div>`);
+      ${k.liberada ? '' : '<p class="aviso-inline">O Mural está bloqueado: libere (ou coloque "Em teste") em Atividades.</p>'}
+      ${k.emTeste ? '<p class="selo teste" style="display:inline-block">🧪 Em teste: só os testadores mandam</p>' : ''}
+      <p><b>${k.pendentes}</b> ${k.pendentes === 1 ? 'envio esperando' : 'envios esperando'} aprovação. Só os aprovados aparecem no telão; quem mandou é anônimo para todos, menos para você.</p>
+      <p class="fraco">${k.fotos} ${k.fotos === 1 ? 'foto guardada' : 'fotos guardadas'} (${String(k.fotosMb).replace('.', ',')} MB). As fotos não entram no backup.</p>
+      <div class="item-acoes"><button class="botao secundario pequeno" type="button" data-acao="tel-modo" data-modo="correio">Mostrar mural no telão</button>
+        ${k.fotos ? '<button class="botao secundario pequeno" type="button" data-acao="cor-apagar-fotos">Apagar todas as fotos</button>' : ''}</div>
+      <div class="lista" style="margin-top:10px">${cartas || '<p class="fraco">Nada enviado ainda.</p>'}</div>`);
+    PV.preencherFotos($('j-correio'), A().token());
   }
 
   // ----------------------------------------------------- bebida e ranking
@@ -290,8 +294,9 @@
     if (oque === 'conc-encerrar') { if (confirmarToque(b)) await fazer(() => api('POST', '/concurso/encerrar'), 'Votação encerrada.'); }
     if (oque === 'conc-publicar') { if (confirmarToque(b, 'Toque de novo: publicar e dar os pontos')) await fazer(() => api('POST', '/concurso/publicar'), 'Resultado no telão. Pontos dados.'); }
     if (oque === 'conc-despublicar') { if (confirmarToque(b)) await fazer(() => api('POST', '/concurso/despublicar'), 'Resultado despublicado.'); }
-    if (oque === 'cor-aprovar') await fazer(() => api('POST', `/correio/${id}/aprovar`), 'Carta aprovada: vai para o telão.');
-    if (oque === 'cor-recusar') await fazer(() => api('POST', `/correio/${id}/recusar`), 'Carta fora do telão.');
+    if (oque === 'cor-aprovar') await fazer(() => api('POST', `/correio/${id}/aprovar`), 'Aprovado: vai para o telão.');
+    if (oque === 'cor-recusar') await fazer(() => api('POST', `/correio/${id}/recusar`), 'Fora do telão.');
+    if (oque === 'cor-apagar-fotos') { if (confirmarToque(b, 'Toque de novo: apagar TODAS as fotos')) await fazer(() => api('POST', '/correio-fotos/apagar'), 'Fotos apagadas.'); }
     if (oque === 'beb-desfazer') await fazer(() => api('PUT', `/colaboracao/bebida/${encodeURIComponent(id)}`, { levou: false }), 'Desfeito.');
   });
 

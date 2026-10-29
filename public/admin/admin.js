@@ -582,7 +582,7 @@
   }
 
   // Ponte para jogos.js (aba Jogos).
-  window.PVAdmin = { api, acao, emojiDe, recarregar: () => carregar().catch(() => {}), msParaLocal, localParaIso };
+  window.PVAdmin = { token: () => token, api, acao, emojiDe, recarregar: () => carregar().catch(() => {}), msParaLocal, localParaIso };
 
   async function iniciarPainel() {
     $('tela-login').classList.add('oculto');

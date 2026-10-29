@@ -22,10 +22,10 @@ const ATIVIDADES = [
   },
   {
     id: 'correio',
-    nome: 'Correio das Trevas',
+    nome: 'Mural das Trevas',
     enigma: 'Cartas do Além',
-    icone: '✉️',
-    descricao: 'Mande mensagens anônimas que aparecem no telão.',
+    icone: '📸',
+    descricao: 'Mande um recado ou uma foto. Os aprovados aparecem no telão.',
     padrao: { estado: 'bloqueada' },
   },
   {

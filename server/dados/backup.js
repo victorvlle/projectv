@@ -13,7 +13,9 @@ const { ErroValidacao } = require('./convidados');
 const ORDEM = ['config', 'convidados', 'atividades', 'bebidas_itens', 'bebidas_compromissos', 'pontos_log',
   'playlist_musicas', 'playlist_votos', 'caronas', 'caronas_reservas', 'pos_opcoes', 'pos_votos',
   'push_inscricoes', 'push_enviados', 'push_fila', 'push_log', 'previsoes_perguntas', 'previsoes_palpites', 'maldicoes', 'enigmas', 'enigma_tentativas',
-  'quiz_perguntas', 'quiz_respostas', 'concurso_votos', 'correio', 'previsoes_envios', 'quiz_sala', 'concurso_inscritos'];
+  'quiz_perguntas', 'quiz_respostas', 'concurso_votos', 'correio', 'previsoes_envios', 'quiz_sala', 'concurso_inscritos', 'correio_fotos'];
+// Fotos do Mural não vão para o arquivo de backup (pesadas e são imagens das pessoas).
+const FORA_DO_BACKUP = new Set(['correio_fotos']);
 
 async function tabelas() {
   const rs = await banco.tudo(
@@ -37,7 +39,7 @@ function desserializar(valor) {
 
 async function exportar() {
   const saida = { app: 'projectv', versao: banco.versaoAtual(), geradoEm: new Date().toISOString(), tabelas: {} };
-  for (const t of await tabelas()) {
+  for (const t of (await tabelas()).filter((x) => !FORA_DO_BACKUP.has(x))) {
     const linhas = await banco.tudo(`SELECT * FROM "${t}"`);
     saida.tabelas[t] = linhas.map((l) => {
       const o = {};

@@ -269,6 +269,51 @@ test('correio: anônimo, com freio, só aprovadas vão ao telão (sem o autor)',
   assert.equal((await festa(victor)).correio.minhas[0].estado, 'aprovada');
 });
 
+test('mural: foto (JPEG de verdade), só o dono e o organizador veem, telão mostra, apagar fotos', async () => {
+  const destravar = () => banco.rodar('UPDATE correio SET criado_em = criado_em - 120000');
+  await destravar();
+  const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(3000, 7)]);
+  const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47]), Buffer.alloc(3000, 7)]);
+  const mandar = (c, corpo) => s.req('POST', '/api/correio', { token: c.token, corpo });
+  assert.equal((await mandar(victor, { foto: png.toString('base64') })).status, 400, 'só JPEG');
+  assert.equal((await mandar(victor, { foto: 'não é base64!' })).status, 400);
+  assert.equal((await mandar(victor, { foto: Buffer.alloc(1000 * 1024, 0xff).toString('base64') })).status, 413, 'grande demais');
+  assert.equal((await mandar(victor, { texto: '', foto: `data:image/jpeg;base64,${jpeg.toString('base64')}` })).status, 200, 'foto sem legenda vale');
+  const minha = (await festa(victor)).correio.minhas[0];
+  assert.equal(minha.foto, true);
+  assert.equal(minha.texto, '');
+
+  const r = await s.req('GET', `/api/correio/foto/${minha.id}`, { token: victor.token, cru: true });
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get('content-type'), 'image/jpeg');
+  assert.ok(Buffer.from(await r.arrayBuffer()).equals(jpeg), 'a mesma foto volta');
+  assert.equal((await s.req('GET', `/api/correio/foto/${minha.id}`, { token: lucas.token })).status, 404, 'foto dos outros não');
+  assert.equal((await s.req('GET', `/api/correio/foto/${minha.id}`)).status, 401);
+  assert.equal((await s.req('GET', `/api/admin/correio/foto/${minha.id}`, { token: admin, cru: true })).status, 200);
+  assert.equal((await s.req('GET', `/api/admin/correio/foto/${minha.id}`, { token: victor.token })).status, 401, 'convidado não usa a rota do organizador');
+
+  const adm = (await adminJogos()).correio;
+  assert.equal(adm.fotos, 1);
+  assert.ok(adm.cartas.find((x) => x.id === minha.id).foto);
+  await s.req('POST', `/api/admin/correio/${minha.id}/aprovar`, { token: admin });
+  const t = (await telao()).correio.cartas;
+  assert.ok(t.find((x) => x.id === minha.id && x.foto), 'foto aprovada vai ao telão');
+
+  const backup = (await s.req('GET', '/api/admin/backup', { token: admin })).json;
+  assert.ok(!('correio_fotos' in backup.tabelas), 'foto não vai para o backup');
+
+  const ap = await s.req('POST', '/api/admin/correio-fotos/apagar', { token: admin });
+  assert.equal(ap.status, 200);
+  assert.equal(ap.json.fotos, 1);
+  assert.equal((await adminJogos()).correio.fotos, 0);
+  assert.ok(!(await telao()).correio.cartas.some((x) => x.id === minha.id));
+  assert.equal((await adminJogos()).correio.cartas.length, 2, 'recados de texto ficam');
+
+  // Uma foto de teste fica para o "Apagar dados de teste" levar junto.
+  await destravar();
+  assert.equal((await mandar(lucas, { texto: 'legenda', foto: jpeg.toString('base64') })).status, 200);
+});
+
 test('previsões em teste: só testador palpita; +1000 por acerto marcado como teste', async () => {
   await h.liberar('previsoes', 'teste');
   const resp = (c, id, escolha) => s.req('PUT', `/api/previsoes/${id}`, { token: c.token, corpo: { escolha } });
@@ -308,6 +353,7 @@ test('apagar dados de teste: some tudo que foi teste, nada real muda, atividades
   assert.equal(j.concurso.estado, 'fechado');
   assert.equal(j.concurso.eleitores, 0);
   assert.equal(j.correio.cartas.length, 0);
+  assert.equal(j.correio.fotos, 0, 'fotos de teste somem junto');
   assert.equal(j.maldicao.historico.length, 0);
   assert.equal(j.maldicao.config.ligada, false);
   assert.equal(j.previsoes.estado, 'aguardando');
