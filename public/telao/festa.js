@@ -125,40 +125,93 @@
   }
 
   // --------------------------------------------------------- mural das trevas
-  // Um por vez: foto inteira na tela (com a legenda embaixo) ou o recado em papel.
+  // Um por vez: foto inteira na tela (com a legenda embaixo) ou o recado.
   // Foto fica 12 s, recado 9 s. O que acabou de ser aprovado entra na frente.
+  // Visual "cinematográfico": cada item entra num quadro novo (fade + zoom 98%→100%) enquanto o
+  // anterior sai em fade; a foto só entra depois de carregada, e a mesma foto, desfocada, vira a
+  // luz difusa do fundo.
   let cartas = [];
   let indice = 0;
   let rodando = null;
   let assinatura = '';
+  let vez = 0; // descarta trocas atrasadas (foto que terminou de baixar depois de outra troca)
+  const TRANSICAO_MS = 700;
   const tokenTelao = () => (window.PVTelao ? window.PVTelao.token() : null);
   const urlFoto = (c) => `/api/admin/correio/foto/${c.id}`;
-  const para = (c) => (c.para ? `<p class="carta-para">Para: ${c.paraAvatar ? `<span class="avatar mini">${emoji(c.paraAvatar)}</span>` : ''}${esc(c.para)}</p>` : '');
+  const para = (c) => (c.para ? `<p class="mural-para"><span class="mural-para-rotulo">Para</span>
+    ${c.paraAvatar ? `<span class="avatar mini">${emoji(c.paraAvatar)}</span>` : ''}<b>${esc(c.para)}</b></p>` : '');
+
+  // Luz difusa: uma miniatura da foto (24 px) esticada na tela já fica suave, sem filtro de desfoque
+  // (blur numa camada do tamanho da tela pesa e travava a transição).
+  function miniatura(img) {
+    try {
+      const c = document.createElement('canvas');
+      const k = 24 / Math.max(img.naturalWidth, img.naturalHeight);
+      c.width = Math.max(1, Math.round(img.naturalWidth * k));
+      c.height = Math.max(1, Math.round(img.naturalHeight * k));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      return c.toDataURL('image/png');
+    } catch (_) { return null; }
+  }
+  function luzDeFundo(img) {
+    const fundo = $('mural-fundo');
+    const nova = document.createElement('div');
+    nova.className = 'mural-luz';
+    const mini = img ? miniatura(img) : null;
+    if (mini) nova.style.backgroundImage = `url("${mini}")`;
+    fundo.appendChild(nova);
+    requestAnimationFrame(() => nova.classList.add('visivel'));
+    [...fundo.querySelectorAll('.mural-luz')].slice(0, -1).forEach((v) => {
+      v.classList.remove('visivel');
+      setTimeout(() => v.remove(), TRANSICAO_MS + 100);
+    });
+  }
+  // Troca o quadro: o novo entra, o anterior sai (os dois ficam na mesma célula da grade).
+  function trocarQuadro(html, src, img) {
+    const palco = $('carta-telao');
+    const novo = document.createElement('div');
+    novo.className = 'mural-slide';
+    novo.innerHTML = html;
+    if (src) novo.querySelector('img').src = src;
+    palco.querySelectorAll('.prev-dica').forEach((x) => x.remove());
+    palco.querySelectorAll('.mural-slide:not(.saindo)').forEach((v) => {
+      v.classList.add('saindo');
+      setTimeout(() => v.remove(), TRANSICAO_MS + 100);
+    });
+    palco.appendChild(novo);
+    requestAnimationFrame(() => requestAnimationFrame(() => novo.classList.add('visivel')));
+    luzDeFundo(img || null);
+  }
+
   function mostrarCarta() {
     clearTimeout(rodando);
+    const minhaVez = ++vez;
     if (!cartas.length) {
-      document.querySelector('[data-cena="correio"]').classList.remove('com-foto');
       $('carta-telao').innerHTML = '<p class="prev-dica">Nada no mural ainda. Mande um recado ou uma foto pelo celular! 📸</p>';
+      luzDeFundo(null);
       return;
     }
     const c = cartas[indice % cartas.length];
-    // Com foto, o título sai para a foto ocupar a tela.
-    document.querySelector('[data-cena="correio"]').classList.toggle('com-foto', Boolean(c.foto));
+    const agendar = () => { rodando = setTimeout(() => { indice += 1; mostrarCarta(); }, c.foto ? 12000 : 9000); };
     if (c.foto) {
-      $('carta-telao').innerHTML = `<figure class="mural-foto">${para(c)}<img alt="Foto do mural" data-id="${c.id}">
-        ${c.texto ? `<figcaption>“${esc(c.texto)}”</figcaption>` : ''}</figure>`;
-      const img = $('carta-telao').querySelector('img');
-      PV.foto(urlFoto(c), tokenTelao()).then((src) => { if (img.isConnected) img.src = src; })
-        .catch(() => { clearTimeout(rodando); indice += 1; rodando = setTimeout(mostrarCarta, 3000); });
+      PV.foto(urlFoto(c), tokenTelao())
+        .then((src) => new Promise((ok) => { const im = new Image(); im.onload = () => ok([src, im]); im.onerror = () => ok([src, null]); im.src = src; }))
+        .then(([src, im]) => {
+          if (minhaVez !== vez) return;
+          trocarQuadro(`<figure class="mural-foto ${c.para ? 'tem-para' : ''} ${c.texto ? 'tem-legenda' : ''}">${para(c)}
+            <div class="mural-moldura"><img alt="Foto do mural"></div>
+            ${c.texto ? `<figcaption>${esc(c.texto)}</figcaption>` : ''}</figure>`, src, im);
+          agendar();
+        })
+        .catch(() => { if (minhaVez !== vez) return; indice += 1; rodando = setTimeout(mostrarCarta, 3000); });
     } else {
-      $('carta-telao').innerHTML = `<div class="carta-papel">
-          ${c.para ? para(c) : '<p class="carta-para">Para: alguém nesta festa…</p>'}
-          <p class="carta-corpo">“${esc(c.texto)}”</p><p class="carta-assinatura">— Anônimo 💀</p></div>`;
+      trocarQuadro(`<div class="mural-recado">${para(c)}
+          <p class="mural-recado-corpo">“${esc(c.texto)}”</p><p class="mural-recado-assinatura">— Anônimo</p></div>`, null);
+      agendar();
     }
     // Já deixa a próxima foto baixada.
     const prox = cartas[(indice + 1) % cartas.length];
     if (prox && prox.foto) PV.foto(urlFoto(prox), tokenTelao()).catch(() => {});
-    rodando = setTimeout(() => { indice += 1; mostrarCarta(); }, c.foto ? 12000 : 9000);
   }
   function desenharCorreio(k) {
     const nova = k ? k.cartas : [];

@@ -141,20 +141,85 @@ body { overflow: hidden; cursor: default; }
 .quiz-acertaram { font-size: 3vh; max-width: 90vw; display: flex; flex-wrap: wrap; justify-content: center; gap: 1vh 2vw; }
 .quiz-acertaram > span { white-space: nowrap; }
 .carta-telao { width: min(80vw, 140vh); display: grid; place-items: center; }
-.mural-foto { margin: 0; display: grid; justify-items: center; gap: 1.4vh; animation: aparecer .6s ease-out; }
-.mural-foto img { display: block; max-width: 92vw; max-height: 70vh; min-height: 20vh; min-width: 20vw; object-fit: contain; border-radius: 1.4vh;
-  border: .3vh solid var(--laranja); box-shadow: 0 2vh 6vh rgba(0, 0, 0, .6); background: #000; }
-.mural-foto figcaption { font-size: 3.6vh; max-width: 80vw; text-align: center; overflow-wrap: anywhere; }
-.mural-foto .carta-para { margin: 0; }
-[data-cena="correio"].com-foto .titulo-cena { display: none; }
-[data-cena="correio"].com-foto .rodape-cena { margin-top: 1vh; }
-@keyframes aparecer { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
+
+/* ------------------------------------------- Mural das Trevas: cinematic */
+[data-cena="correio"] {
+  --m-preto: #100C16; --m-roxo: #1A1022; --m-laranja: #FF7629; --m-laranja-2: #E96B21; --m-branco: #F5F0F7; --m-cinza: #A99AAF;
+  --m-ms: 700ms;
+}
+/* Cabeçalho discreto enquanto o mural está no ar (o botão de som não muda). */
+.cabecalho { transition: opacity .6s ease; }
+body[data-cena="correio"] .cabecalho { opacity: .5; }
+body[data-cena="correio"] .cabecalho .marca { font-size: 3.6vh; text-shadow: none; }
+body[data-cena="correio"] .cabecalho .subtitulo { font-size: 1.7vh; letter-spacing: .22em; color: #A99AAF; }
+[data-cena="correio"] .titulo-cena { display: none; }
+[data-cena="correio"] .carta-telao { width: 100%; height: 100%; display: grid; place-items: center; }
+[data-cena="correio"] { padding-bottom: 1vh; }
+
+/* Fundo: roxo e laranja difusos, a própria foto desfocada como luz e vinheta nas bordas. */
+.mural-fundo { position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: 0; transition: opacity .8s ease;
+  background:
+    radial-gradient(ellipse 55% 45% at 50% 52%, rgba(255, 118, 41, .10), transparent 70%),
+    radial-gradient(ellipse 70% 60% at 12% 10%, rgba(74, 36, 110, .45), transparent 65%),
+    radial-gradient(ellipse 70% 60% at 90% 95%, rgba(74, 36, 110, .40), transparent 65%),
+    linear-gradient(180deg, #1A1022, #100C16); }
+body[data-cena="correio"] .mural-fundo { opacity: 1; }
+body[data-cena="correio"] .ambiente { opacity: 0; }
+.mural-fundo::after { content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse 75% 70% at 50% 50%, transparent 45%, rgba(8, 5, 12, .85) 100%); }
+.mural-luz { position: absolute; inset: -15%; background-size: cover; background-position: center;
+  opacity: 0; transition: opacity 900ms ease; will-change: opacity; }
+.mural-luz.visivel { opacity: .3; }
+
+/* Quadro: o item novo e o que sai ocupam a mesma célula (crossfade). */
+.mural-slide { grid-area: 1 / 1; display: grid; place-items: center; width: 100%; height: 100%;
+  opacity: 0; transform: scale(.98); transition: opacity var(--m-ms) ease, transform var(--m-ms) cubic-bezier(.2, .7, .2, 1); }
+.mural-slide.visivel { opacity: 1; transform: none; }
+.mural-slide.saindo { opacity: 0; transform: none; transition-duration: 550ms; }
+
+/* Foto: protagonista. Altura disponível descontando o "Para" e a legenda. */
+.mural-foto { margin: 0; display: flex; flex-direction: column; align-items: center; --reserva: 0vh; }
+.mural-foto.tem-para { --reserva: 7.5vh; }
+.mural-foto.tem-legenda { --reserva: 8.5vh; }
+.mural-foto.tem-para.tem-legenda { --reserva: 16vh; }
+.mural-moldura { border-radius: 1.2vh; padding: 0; line-height: 0;
+  box-shadow: 0 0 0 1px rgba(255, 118, 41, .75), 0 3vh 9vh rgba(0, 0, 0, .6), 0 0 6vh rgba(255, 118, 41, .14); }
+.mural-moldura img { display: block; max-width: 90vw; max-height: calc(100vh - 13vh - var(--reserva)); width: auto; height: auto;
+  object-fit: contain; border-radius: 1.2vh; background: #000; }
+
+/* "Para" acima da foto */
+.mural-para { display: flex; align-items: center; gap: 1.1vw; margin: 0 0 2.4vh; font-size: 3.4vh; color: var(--m-branco); }
+.mural-para-rotulo { font-size: 1.8vh; font-weight: 700; letter-spacing: .32em; text-transform: uppercase; color: var(--m-cinza); }
+.mural-para .avatar.mini { margin: 0; width: 5vh; height: 5vh; font-size: 3vh; }
+.mural-para b { font-weight: 800; color: var(--m-laranja); letter-spacing: .01em; }
+
+/* Legenda abaixo da foto */
+.mural-foto figcaption { margin-top: 3vh; max-width: 70vw; text-align: center; overflow-wrap: anywhere;
+  font-family: 'Playfair Display', Georgia, serif; font-style: italic; font-weight: 500; font-size: 3.8vh; line-height: 1.25; color: var(--m-branco); }
+
+/* Recado (sem foto): mesma linguagem, sem caixa pesada. */
+.mural-recado { display: flex; flex-direction: column; align-items: center; text-align: center; max-width: min(78vw, 150vh);
+  padding: 6vh 6vw; border-radius: 1.6vh; background: rgba(26, 16, 34, .55);
+  box-shadow: 0 0 0 1px rgba(255, 118, 41, .45), 0 3vh 9vh rgba(0, 0, 0, .5); }
+.mural-recado .mural-para { margin-bottom: 3.5vh; }
+.mural-recado-corpo { margin: 0; font-family: 'Playfair Display', Georgia, serif; font-style: italic; font-weight: 500;
+  font-size: 6vh; line-height: 1.22; color: var(--m-branco); overflow-wrap: anywhere; }
+.mural-recado-assinatura { margin: 3.5vh 0 0; font-size: 2vh; letter-spacing: .3em; text-transform: uppercase; color: var(--m-cinza); }
+
+@media (max-aspect-ratio: 4/3) {
+  .mural-moldura img { max-width: 92vw; }
+  .mural-recado-corpo { font-size: 4.6vh; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mural-slide, .mural-slide.saindo { transform: none; transition: opacity 300ms linear; }
+  .mural-luz { transition: none; }
+}
 .carta-papel { padding: 5vh 5vw; border-radius: 2vh; background: linear-gradient(160deg, #2b2138, #1b1424); border: .3vh solid var(--laranja);
   box-shadow: 0 2vh 6vh rgba(0, 0, 0, .5); animation: entrar .6s ease both; }
 .carta-para { font-size: 3.4vh; color: var(--laranja-claro); margin: 0 0 2vh; font-weight: 700; }
 .carta-corpo { font-size: 5.4vh; line-height: 1.25; margin: 0; overflow-wrap: anywhere; }
 .carta-assinatura { text-align: right; font-size: 3vh; color: var(--texto-2); margin: 3vh 0 0; }
-@media (prefers-reduced-motion: reduce) { .quiz-cronometro.acabando, .carta-papel, .mural-foto { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .quiz-cronometro.acabando, .carta-papel { animation: none; } }
 
 /* Sala do quiz: monstros flutuando com as iniciais */
 .quiz-na-sala { position: fixed; top: 12vh; right: 3vw; font-size: 3.4vh; padding: 1vh 2vw; border-radius: 99px; background: rgba(34, 26, 45, .9);

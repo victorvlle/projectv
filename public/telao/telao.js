@@ -48,6 +48,7 @@
   function trocarCena(cena) {
     if (cena === cenaAtual) return;
     cenaAtual = cena;
+    document.body.dataset.cena = cena; // gancho visual (ex.: o Mural deixa o cabeçalho discreto)
     if (cena === 'ranking') { vezRanking += 1; if (estado) desenharRanking(estado.ranking || []); }
     document.querySelectorAll('.cena').forEach((s) => {
       const visivel = s.dataset.cena === cena;
