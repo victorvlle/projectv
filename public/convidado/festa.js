@@ -253,7 +253,7 @@
   });
 
   // ======================================================= MURAL DAS TREVAS
-  // Recado OU foto (com legenda opcional). A foto é reduzida aqui no celular (lado maior até
+  // Recado OU foto (com legenda opcional). A foto é tirada na hora (o botão abre a câmera, sem galeria). A foto é reduzida aqui no celular (lado maior até
   // 1600 px, JPEG) antes de subir: fica leve e perde os dados escondidos da câmera (como local).
   let correio = null;
   let mandando = false;
@@ -299,7 +299,7 @@
     const tem = Boolean(fotoEscolhida);
     $('mural-previa').classList.toggle('oculto', !tem);
     if (tem) $('mural-previa-img').src = fotoEscolhida;
-    $('mural-foto-botao').textContent = tem ? '📷 Trocar foto' : '📷 Escolher ou tirar foto';
+    $('mural-foto-botao').textContent = tem ? '📷 Tirar outra' : '📷 Tirar foto';
     $('correio-rotulo').textContent = tem ? 'Legenda (opcional)' : 'Seu recado';
     $('correio-texto').placeholder = tem ? 'Ex.: O trio mais assustador da noite 🎃' : 'Ex.: Para o vampiro de capa: sua fantasia me deu medo de verdade.';
     $('correio-enviar').textContent = tem ? 'Mandar foto para o mural 📸' : 'Mandar recado para o mural ✉️';
@@ -311,11 +311,12 @@
       <form id="form-correio" class="cartao">
         <p class="mudo" style="margin-top:0" id="mural-intro"></p>
         <p class="mural-aviso">⚠️ Nada ofensivo ou constrangedor, e nada que exponha alguém sem querer. O organizador apaga o que passar do ponto.</p>
-        <input type="file" id="mural-arquivo" accept="image/*" class="oculto">
-        <button class="botao secundario largo" type="button" id="mural-foto-botao">📷 Escolher ou tirar foto</button>
+        <!-- capture: abre direto a câmera traseira (sem galeria) no iPhone e no Android; o computador ignora. -->
+        <input type="file" id="mural-arquivo" accept="image/*" capture="environment" class="oculto">
+        <button class="botao secundario largo" type="button" id="mural-foto-botao">📷 Tirar foto</button>
         <div id="mural-previa" class="mural-previa oculto">
           <img id="mural-previa-img" alt="Foto escolhida">
-          <button class="botao secundario pequeno" type="button" id="mural-tirar">Tirar a foto</button>
+          <button class="botao secundario pequeno" type="button" id="mural-tirar">Descartar</button>
         </div>
         <label for="correio-para">Para (opcional)</label>
         <select id="correio-para"><option value="">Ninguém em especial</option></select>
@@ -337,7 +338,7 @@
         fotoEscolhida = await reduzirFoto(arquivo);
       } catch (_) {
         fotoEscolhida = null;
-        PV.avisar('Não consegui abrir essa foto. Tente outra (JPG ou PNG).', 'erro');
+        PV.avisar('Não consegui usar essa foto. Tente tirar de novo.', 'erro');
       } finally {
         $('mural-foto-botao').disabled = false;
         mostrarFotoEscolhida();
