@@ -93,8 +93,31 @@
   $('botao-eu').addEventListener('click', () => abrirPerfil(true));
 
   // ------------------------------------------------------------- principal
+  // Saiu versão nova do site (deploy): atualiza sozinho quando for seguro; senão, oferece um botão.
+  let versaoCarregada = null;
+  function conferirVersao(v) {
+    if (!v) return;
+    if (!versaoCarregada) { versaoCarregada = v; return; }
+    if (v === versaoCarregada) return;
+    const foco = document.activeElement;
+    const digitando = foco && /^(INPUT|TEXTAREA|SELECT)$/.test(foco.tagName) && foco.value;
+    const ocupado = (window.PVJogos && window.PVJogos.ocupado && window.PVJogos.ocupado()) || digitando;
+    if (!ocupado) { location.reload(); return; }
+    let faixa = $('faixa-versao');
+    if (!faixa) {
+      faixa = document.createElement('button');
+      faixa.id = 'faixa-versao';
+      faixa.type = 'button';
+      faixa.className = 'faixa-versao';
+      faixa.textContent = '✨ O site foi atualizado. Toque aqui para carregar a versão nova.';
+      faixa.addEventListener('click', () => location.reload());
+      document.body.appendChild(faixa);
+    }
+  }
+
   async function carregarFesta() {
     const r = await api('GET', '/api/festa');
+    conferirVersao(r.versao);
     PV.relogio.sincronizar(r.agora);
     estado = r;
     desenhar();

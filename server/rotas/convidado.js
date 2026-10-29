@@ -22,6 +22,9 @@ const { avisar } = require('../tempo-real');
 const { assincrono, soConvidado } = require('./util');
 
 const router = express.Router();
+// Versão no ar: muda a cada deploy (o Render informa o commit; sem ele, a hora em que o servidor subiu).
+// A página compara e se atualiza sozinha quando sai uma versão nova.
+const VERSAO = (process.env.RENDER_GIT_COMMIT || `inicio-${Date.now()}`).slice(0, 40);
 
 // 20 tentativas de código por minuto por IP: suficiente para uma festa inteira no
 // mesmo Wi-Fi, inútil para quem quer chutar códigos.
@@ -145,7 +148,7 @@ router.get('/festa', soConvidado, assincrono(async (req, res) => {
   // O id interno dos outros convidados não sai: só nome, monstro e "sou eu".
   const confirmados = lista.map((c) => ({ nome: c.nome, avatar: c.avatar, souEu: c.id === req.convidado.id }));
   res.json({
-    ok: true, agora: Date.now(), festa: info, atividades: ativs, confirmados, bebidas: beb,
+    ok: true, versao: VERSAO, agora: Date.now(), festa: info, atividades: ativs, confirmados, bebidas: beb,
     playlist: musicas, caronas: carros, pos: noite, previsoes: prev, enigmas: enig, ranking: rank, ...jogos,
   });
 }));

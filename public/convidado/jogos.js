@@ -447,5 +447,6 @@
     desenharRanking(estado.ranking);
   }
 
-  window.PVJogos = { cards, desenhar };
+  // Enigma revelado e sendo respondido: recarregar a página agora encerraria o enigma.
+  window.PVJogos = { cards, desenhar, ocupado: () => emAndamento().length > 0 };
 })();
