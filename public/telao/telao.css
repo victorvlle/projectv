@@ -195,15 +195,15 @@ body[data-cena="correio"] .ambiente { opacity: 0; }
 
 /* Legenda abaixo da foto */
 .mural-foto figcaption { margin-top: 3vh; max-width: 70vw; text-align: center; overflow-wrap: anywhere;
-  font-family: 'Playfair Display', Georgia, serif; font-style: italic; font-weight: 500; font-size: 3.8vh; line-height: 1.25; color: var(--m-branco); }
+  font-weight: 600; font-size: 3.8vh; line-height: 1.3; color: var(--m-branco); }
 
 /* Recado (sem foto): mesma linguagem, sem caixa pesada. */
 .mural-recado { display: flex; flex-direction: column; align-items: center; text-align: center; max-width: min(78vw, 150vh);
   padding: 6vh 6vw; border-radius: 1.6vh; background: rgba(26, 16, 34, .55);
   box-shadow: 0 0 0 1px rgba(255, 118, 41, .45), 0 3vh 9vh rgba(0, 0, 0, .5); }
 .mural-recado .mural-para { margin-bottom: 3.5vh; }
-.mural-recado-corpo { margin: 0; font-family: 'Playfair Display', Georgia, serif; font-style: italic; font-weight: 500;
-  font-size: 6vh; line-height: 1.22; color: var(--m-branco); overflow-wrap: anywhere; }
+.mural-recado-corpo { margin: 0; font-weight: 700; letter-spacing: -.01em;
+  font-size: 6vh; line-height: 1.25; color: var(--m-branco); overflow-wrap: anywhere; }
 .mural-recado-assinatura { margin: 3.5vh 0 0; font-size: 2vh; letter-spacing: .3em; text-transform: uppercase; color: var(--m-cinza); }
 
 @media (max-aspect-ratio: 4/3) {
