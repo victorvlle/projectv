@@ -9,7 +9,7 @@ async function maldicaoSorteada(m) {
   avisar.telao('maldicao', payload);
   avisar.admin('atualizar', { oque: 'maldicao' });
   for (const id of [m.convidadoId, m.parceiro && m.parceiro.id].filter(Boolean)) {
-    avisar.convidado(id, 'maldicao:voce', { id: m.id, castigo: m.castigo, sorteadaEm: m.sorteadaEm, fases: payload.fases });
+    avisar.convidado(id, 'maldicao:voce', { id: m.id, castigo: m.castigo, sorteadaEm: m.sorteadaEm, fases: payload.fases, foto: m.foto && id === m.convidadoId });
   }
   require('../notificacoes').amaldicoado(m).catch((e) => console.error('[push] maldição:', e.message));
   return payload;

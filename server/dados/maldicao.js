@@ -7,6 +7,8 @@
 //
 // FASES NO TELÃO (relativas a `sorteadaEm`, pelo relógio do servidor):
 //   0–4 s alerta · 4–9 s suspense (roleta) · 9 s revelação · 9–69 s contagem para cumprir.
+//   Desafio de foto: 120 s para cumprir; depois de alguns segundos da revelação o telão abre o Mural
+//   esperando a foto da pessoa (a foto que ela mandar fica ligada à maldição em foto_id).
 // Um telão que reconecta no meio pega a fase certa sem tocar o som de novo.
 //
 // PONTOS: só quando o admin confirma que cumpriu (+500; no castigo duplo, os dois).
@@ -23,7 +25,10 @@ const { ErroValidacao } = require('./convidados');
 const { CASTIGOS, INTENSIDADES, PONTOS_MALDICAO } = require('../jogos/conteudo');
 
 const FASES = { alerta: 4000, suspense: 5000, cumprir: 60000 };
-const DURACAO_TOTAL = FASES.alerta + FASES.suspense + FASES.cumprir;
+// Desafio de foto: 2 minutos para tirar, mandar no Mural e beber.
+const FASES_FOTO = { ...FASES, cumprir: 120000 };
+const fasesDe = (m) => (m && m.foto ? FASES_FOTO : FASES);
+const DURACAO_TOTAL = FASES_FOTO.alerta + FASES_FOTO.suspense + FASES_FOTO.cumprir; // a mais longa
 const MINUTO = 60 * 1000;
 
 async function config() {
@@ -62,11 +67,11 @@ async function configurar({ ligada, intensidade, minMin, maxMin }, agora = Date.
 }
 
 async function elegiveis(soTestadores = false) {
-  return banco.tudo(`SELECT id, nome, avatar FROM convidados WHERE ativo = 1 AND fora = 0 AND avatar IS NOT NULL${soTestadores ? ' AND testador = 1' : ''}`);
+  return banco.tudo(`SELECT id, nome, avatar, testador FROM convidados WHERE ativo = 1 AND fora = 0 AND avatar IS NOT NULL${soTestadores ? ' AND testador = 1' : ''}`);
 }
 
-function escolherCastigo(temParceiro) {
-  const opcoes = CASTIGOS.filter((c) => !c.duplo || temParceiro);
+function escolherCastigo(temParceiro, podeFoto) {
+  const opcoes = CASTIGOS.filter((c) => (!c.duplo || temParceiro) && (!c.foto || podeFoto));
   return opcoes[crypto.randomInt(0, opcoes.length)];
 }
 
@@ -82,13 +87,15 @@ async function sortear({ origem, chave, agora = Date.now() }) {
   const candidatos = pessoas.length > 1 && ultimo ? pessoas.filter((p) => p.id !== ultimo.convidado_id) : pessoas;
   const alvo = candidatos[crypto.randomInt(0, candidatos.length)];
   const outros = pessoas.filter((p) => p.id !== alvo.id);
-  const castigo = escolherCastigo(outros.length > 0);
+  // Desafio de foto só se o Mural estiver aberto para essa pessoa.
+  const podeFoto = (await atividades.acesso('correio', alvo, agora)).liberada;
+  const castigo = escolherCastigo(outros.length > 0, podeFoto);
   const parceiro = castigo.duplo ? outros[crypto.randomInt(0, outros.length)] : null;
   const texto = castigo.texto.replace('{a}', alvo.nome).replace('{b}', parceiro ? parceiro.nome : '');
   const r = await banco.rodar(
-    `INSERT OR IGNORE INTO maldicoes (convidado_id, parceiro_id, castigo, estado, origem, chave, sorteada_em, teste)
-     VALUES (?, ?, ?, 'sorteada', ?, ?, ?, ?)`,
-    [alvo.id, parceiro ? parceiro.id : null, texto, origem, chave, agora, teste ? 1 : 0]);
+    `INSERT OR IGNORE INTO maldicoes (convidado_id, parceiro_id, castigo, estado, origem, chave, sorteada_em, teste, foto)
+     VALUES (?, ?, ?, 'sorteada', ?, ?, ?, ?, ?)`,
+    [alvo.id, parceiro ? parceiro.id : null, texto, origem, chave, agora, teste ? 1 : 0, castigo.foto ? 1 : 0]);
   const linha = await banco.um('SELECT id FROM maldicoes WHERE chave = ?', [chave]);
   return { repetido: !r.rowsAffected, maldicao: await buscar(Number(linha.id)) };
 }
@@ -104,6 +111,7 @@ async function buscar(id) {
     parceiro: l.parceiro_id ? { id: l.parceiro_id, nome: l.parceiro_nome, avatar: l.parceiro_avatar } : null,
     castigo: l.castigo, estado: l.estado, origem: l.origem, sorteadaEm: Number(l.sorteada_em),
     resolvidaEm: l.resolvida_em != null ? Number(l.resolvida_em) : null, teste: Boolean(Number(l.teste)),
+    foto: Boolean(Number(l.foto)), fotoId: l.foto_id != null ? Number(l.foto_id) : null,
   };
 }
 
@@ -113,7 +121,7 @@ async function paraTelao(m) {
   const roleta = pessoas.map((p) => p.avatar);
   for (let i = roleta.length - 1; i > 0; i--) { const j = crypto.randomInt(0, i + 1); [roleta[i], roleta[j]] = [roleta[j], roleta[i]]; }
   return {
-    id: m.id, sorteadaEm: m.sorteadaEm, fases: FASES, nome: m.nome, avatar: m.avatar, castigo: m.castigo,
+    id: m.id, sorteadaEm: m.sorteadaEm, fases: fasesDe(m), foto: m.foto, fotoId: m.fotoId, nome: m.nome, avatar: m.avatar, castigo: m.castigo,
     parceiro: m.parceiro ? { nome: m.parceiro.nome, avatar: m.parceiro.avatar } : null,
     estado: m.estado, roleta: roleta.slice(0, 18), pontos: PONTOS_MALDICAO,
   };
@@ -177,4 +185,4 @@ async function tic(agora = Date.now()) {
   return resultado && !resultado.repetido ? resultado.maldicao : null;
 }
 
-module.exports = { FASES, config, configurar, sortear, buscar, paraTelao, atual, resolver, historico, paraAdmin, tic, elegiveis };
+module.exports = { FASES, FASES_FOTO, fasesDe, DURACAO_TOTAL, config, configurar, sortear, buscar, paraTelao, atual, resolver, historico, paraAdmin, tic, elegiveis };

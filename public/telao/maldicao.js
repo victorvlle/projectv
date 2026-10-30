@@ -130,11 +130,51 @@
     palco.dataset.fase = f;
   }
 
+  // Desafio de foto: depois de alguns segundos da revelação, o telão abre o Mural esperando a foto.
+  const REVELA_FOTO_MS = 7000;
+  const FOTO_NA_TELA_MS = 15000;
   function faseDe(m, agora) {
     const t = agora - m.sorteadaEm;
     if (t < m.fases.alerta) return 'alerta';
     if (t < m.fases.alerta + m.fases.suspense) return 'suspense';
+    if (m.foto && t >= m.fases.alerta + m.fases.suspense + REVELA_FOTO_MS) return 'mural';
     return 'revela';
+  }
+
+  // ------------------------------------------------- mural esperando a foto
+  let fotoMostrada = null; // id da foto já na tela
+  let fimFoto = null;
+  let resolvidaPendente = null;
+  function esperandoFoto() {
+    $('mm-quadro').innerHTML = `<div class="mm-espera"><div class="mm-camera" aria-hidden="true">📸</div>
+      <p>Aguardando a foto…</p></div>`;
+    $('mm-quadro').classList.remove('com-foto');
+    $('mm-castigo').classList.remove('oculto');
+    $('mm-canto').classList.remove('oculto');
+  }
+  function mostrarFotoDaMaldicao(m) {
+    if (!m.fotoId || fotoMostrada === m.fotoId) return;
+    fotoMostrada = m.fotoId;
+    const token = window.PVTelao ? window.PVTelao.token() : null;
+    PV.foto(`/api/admin/correio/foto/${m.fotoId}`, token).then((src) => {
+      if (!atual || atual.id !== m.id) return;
+      $('mm-quadro').innerHTML = '<div class="mural-moldura"><img alt="Foto do desafio"></div>';
+      $('mm-quadro').querySelector('img').src = src;
+      $('mm-quadro').classList.add('com-foto');
+      $('mm-castigo').classList.add('oculto');
+      $('mm-canto').classList.add('oculto');
+      sino(0.35);
+      clearTimeout(fimFoto);
+      fimFoto = setTimeout(() => {
+        fimFoto = null;
+        if (resolvidaPendente) { const r = resolvidaPendente; resolvidaPendente = null; resolvida(r); } else esconder();
+      }, FOTO_NA_TELA_MS);
+    }).catch(() => { fotoMostrada = null; });
+  }
+  function foto({ id, fotoId }) {
+    if (!atual || atual.id !== id) return;
+    atual = { ...atual, fotoId };
+    if (palco.dataset.fase === 'mural') mostrarFotoDaMaldicao(atual);
   }
 
   function quadro() {
@@ -146,8 +186,10 @@
     if (fase !== ultimaFase) {
       if (fase === 'alerta' && aoVivo) risada();
       if (fase === 'revela' && ultimaFase === 'suspense') sino();
+      if (fase === 'mural') { esperandoFoto(); ultimoSeg = null; }
       ultimaFase = fase;
       mostrarFase(fase);
+      if (fase === 'mural' && m.fotoId) mostrarFotoDaMaldicao(m);
     }
     if (fase === 'suspense') {
       // Roleta: começa rápida e vai freando até a revelação.
@@ -160,6 +202,19 @@
         proximaTroca = agora + passo;
         if (resta < 1500) tique(false);
       }
+    }
+    if (fase === 'mural') {
+      if (palco.dataset.fase === 'mural' && m.fotoId) mostrarFotoDaMaldicao(m);
+      const fim = m.sorteadaEm + m.fases.alerta + m.fases.suspense + m.fases.cumprir;
+      const seg = Math.max(0, Math.ceil((fim - agora) / 1000));
+      if (!fotoMostrada && seg !== ultimoSeg) {
+        ultimoSeg = seg;
+        $('mm-seg').textContent = seg;
+        $('mm-rotulo').textContent = seg ? (seg === 1 ? 'segundo' : 'segundos') : 'Tempo!';
+        palco.classList.toggle('acabando', seg > 0 && seg <= 10);
+        if (seg > 0 && seg <= 5) tique(true);
+      }
+      if (!fotoMostrada && agora > fim + 2 * 60 * 1000) esconder();
     }
     if (fase === 'revela') {
       const fim = m.sorteadaEm + m.fases.alerta + m.fases.suspense + m.fases.cumprir;
@@ -186,6 +241,10 @@
     $('revela-parceiro').classList.toggle('oculto', !m.parceiro);
     if (m.parceiro) $('revela-parceiro').textContent = emojiDe(m.parceiro.avatar);
     $('revela-castigo').textContent = m.castigo;
+    $('mm-avatar').textContent = emojiDe(m.avatar);
+    $('mm-nome').textContent = m.nome;
+    $('mm-castigo').textContent = m.castigo;
+    fotoMostrada = null; resolvidaPendente = null; clearTimeout(fimFoto); fimFoto = null;
     $('roleta-atual').textContent = emojiDe(m.roleta[0] || m.avatar);
     palco.classList.remove('oculto', 'acabando');
     clearInterval(timer);
@@ -195,6 +254,7 @@
 
   function esconder() {
     clearInterval(timer); timer = null;
+    clearTimeout(fimFoto); fimFoto = null; fotoMostrada = null; resolvidaPendente = null;
     atual = null;
     palco.classList.add('oculto');
     palco.classList.remove('acabando');
@@ -202,6 +262,8 @@
 
   function resolvida({ id, estado }) {
     if (!atual || atual.id !== id) return;
+    // A foto do desafio está na tela: deixa terminar e só depois mostra "cumprida".
+    if (fimFoto) { resolvidaPendente = { id, estado }; return; }
     clearInterval(timer); timer = null;
     if (estado === 'cumprida') {
       mostrarFase('cumprida');
@@ -214,5 +276,5 @@
     }
   }
 
-  window.PVMaldicao = { iniciar, resolvida, mostrarBotaoSom, esconder, risada };
+  window.PVMaldicao = { iniciar, resolvida, foto, mostrarBotaoSom, esconder, risada };
 })();

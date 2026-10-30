@@ -152,3 +152,44 @@ test('aviso geral: quem não foi sorteado recebe "a Maldição despertou" (sem n
   assert.equal(de(a).length, 1, 'o testador recebe o aviso pessoal');
   await s.req('PATCH', `/api/admin/convidados/${a.id}`, { token: admin, corpo: { testador: false } });
 });
+
+test('desafio de foto: só sai com o Mural aberto; a foto da pessoa liga à maldição e avisa o telão na hora', async () => {
+  const { CASTIGOS } = require('../server/jogos/conteudo');
+  const textosFoto = CASTIGOS.filter((c) => c.foto).map((c) => c.texto);
+  assert.equal(textosFoto.length, 2);
+  await h.liberar('maldicao');
+  await h.liberar('correio', 'bloqueada');
+  for (let i = 0; i < 25; i++) {
+    const r = await s.req('POST', '/api/admin/maldicao/sortear', { token: admin, corpo: { id: h.idClique() } });
+    assert.ok(!textosFoto.includes(r.json.maldicao.castigo), 'sem Mural, sem desafio de foto');
+    await s.req('POST', `/api/admin/maldicao/${r.json.maldicao.id}/resolver`, { token: admin, corpo: { estado: 'cancelada' } });
+  }
+  // Maldição de foto em cena para a "Fotógrafa"; o Mural está aberto e TRAVADO.
+  await h.liberar('correio');
+  await s.req('PUT', '/api/admin/correio-auto', { token: admin, corpo: { auto: false } });
+  await banco.rodar("UPDATE maldicoes SET estado = 'cancelada' WHERE estado = 'sorteada'");
+  const f = await h.convidado('Fotógrafa');
+  const ins = await banco.rodar("INSERT INTO maldicoes (convidado_id, castigo, estado, origem, chave, sorteada_em, foto) VALUES (?, ?, 'sorteada', 'manual', ?, ?, 1)",
+    [f.id, textosFoto[0], `teste-foto-${Date.now()}`, Date.now() - 20000]);
+  const mid = Number(ins.lastInsertRowid);
+  const antes = (await s.req('GET', '/api/admin/telao', { token: admin })).json.maldicao;
+  assert.equal(antes.id, mid);
+  assert.equal(antes.foto, true);
+  assert.equal(antes.fases.cumprir, 120000, '2 minutos para o desafio de foto');
+  assert.equal(antes.fotoId, null);
+  const minha = (await s.req('GET', '/api/maldicao/minha', { token: f.token })).json.maldicao;
+  assert.equal(minha.foto, true, 'o celular mostra o botão de foto');
+
+  const telao = await s.conectar({ tipo: 'telao', token: admin });
+  const ev = proximoEvento(telao, 'maldicao:foto');
+  const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(2000, 3)]).toString('base64');
+  assert.equal((await s.req('POST', '/api/correio', { token: f.token, corpo: { foto: jpeg } })).status, 200);
+  const e = await ev;
+  assert.equal(e.id, mid);
+  const depois = (await s.req('GET', '/api/admin/telao', { token: admin })).json;
+  assert.equal(depois.maldicao.fotoId, e.fotoId);
+  assert.ok(depois.correio.cartas.some((c) => c.id === e.fotoId), 'foto do desafio vai ao telão mesmo com o Mural travado');
+  assert.equal((await s.req('GET', `/api/admin/correio/foto/${e.fotoId}`, { token: admin })).status, 200);
+  telao.close();
+  await s.req('PUT', '/api/admin/correio-auto', { token: admin, corpo: { auto: true } });
+});

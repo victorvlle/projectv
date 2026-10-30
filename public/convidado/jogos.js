@@ -400,7 +400,11 @@
       el.setAttribute('role', 'alertdialog');
       el.setAttribute('aria-live', 'assertive');
       document.body.appendChild(el);
-      el.addEventListener('click', (e) => { if (e.target.closest('[data-fechar-maldicao]')) el.classList.add('oculto'); });
+      el.addEventListener('click', (e) => {
+        if (e.target.closest('[data-fechar-maldicao]')) el.classList.add('oculto');
+        // Desafio de foto: vai direto para o Mural (o botão de foto abre a câmera).
+        if (e.target.closest('[data-maldicao-foto]')) { el.classList.add('oculto'); location.hash = '#correio'; }
+      });
     }
     const revela = d.sorteadaEm + d.fases.alerta + d.fases.suspense;
     const fim = revela + d.fases.cumprir;
@@ -416,7 +420,8 @@
       <h2>Você foi amaldiçoado!</h2>
       <p class="maldicao-castigo">${esc(d.castigo)}</p>
       <p class="maldicao-tempo"></p>
-      <button class="botao largo" type="button" data-fechar-maldicao>Entendi</button></div>`;
+      ${d.foto ? '<button class="botao largo" type="button" data-maldicao-foto>📸 Tirar a foto agora</button><p class="fraco">A sua foto aparece no telão na hora.</p>' : ''}
+      <button class="botao ${d.foto ? 'secundario ' : ''}largo" type="button" data-fechar-maldicao>${d.foto ? 'Fechar' : 'Entendi'}</button></div>`;
     el.classList.remove('oculto');
     if (navigator.vibrate) { try { navigator.vibrate([200, 100, 200]); } catch (_) { /* opcional */ } }
     clearInterval(timerMaldicao);
@@ -432,6 +437,7 @@
       const m = r.maldicao;
       pintar('maldicao-minha', m
         ? `<section class="cartao maldicao-cartao"><b>💀 A maldição está sobre você</b><p>${esc(m.castigo)}</p>
+            ${m.foto ? '<a class="botao largo" href="#correio">📸 Tirar a foto agora</a>' : ''}
             <p class="fraco">Cumpra no telão. O organizador confirma e você ganha +500 pontos.</p></section>`
         : `<section class="cartao"><b>Nenhuma maldição sobre você agora.</b>
             <p class="mudo">Durante a festa, de tempos em tempos alguém é sorteado no telão para um castigo de bebida. Se for você, o celular avisa.</p></section>`);

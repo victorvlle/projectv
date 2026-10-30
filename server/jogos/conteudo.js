@@ -34,7 +34,9 @@ const CASTIGOS = [
   { id: 'vire', texto: 'Vire o que estiver no seu copo.' },
   { id: 'shot-duplo', texto: 'Tome um shot e escolha alguém para tomar outro com você.' },
   { id: 'dois-shots', texto: 'Tome 2 shots.' },
-  { id: 'bruxa', texto: 'Dê sua risada de bruxa mais alta no meio da festa e tome um shot.' },
+  // foto: true = desafio de foto. O telão abre o Mural e espera a foto da pessoa (mais tempo para cumprir).
+  { id: 'foto', foto: true, texto: 'Tire uma selfie assustadora, mande no Mural das Trevas e tome um shot.' },
+  { id: 'foto-juri', foto: true, texto: 'Tire uma foto imitando o seu monstro e mande no Mural: quando aparecer no telão, se a galera não aprovar, tome um shot.' },
   { id: 'medo', texto: 'Conte para a roda o seu maior medo ou tome 2 shots.' },
   { id: 'fantasia', texto: 'Escolha a fantasia mais assustadora da festa: você e essa pessoa viram o copo juntos.' },
   { id: 'direita', texto: 'A pessoa à sua direita decide: você vira o copo ou toma um shot.' },

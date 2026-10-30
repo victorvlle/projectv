@@ -170,6 +170,7 @@
         atualizar: recarregar,
         maldicao: (m) => window.PVMaldicao && window.PVMaldicao.iniciar(m),
         'maldicao:resolvida': (d) => window.PVMaldicao && window.PVMaldicao.resolvida(d),
+        'maldicao:foto': (d) => window.PVMaldicao && window.PVMaldicao.foto(d),
         'quiz:resposta': recarregar,
         'quiz:sala': recarregar,
       },

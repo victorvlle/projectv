@@ -82,15 +82,25 @@ async function enviar(eu, { texto, para, foto }, agora = Date.now()) {
     throw new ErroValidacao('Espere uns segundos antes de mandar de novo.', 429);
   }
   const { auto } = await config();
+  // Foto de quem está cumprindo um desafio de foto da Maldição: liga à maldição e vai ao telão
+  // na hora (mesmo com o Mural travado).
+  const { DURACAO_TOTAL } = require('./maldicao');
+  const desafio = imagem ? await banco.um(
+    `SELECT id FROM maldicoes WHERE convidado_id = ? AND foto = 1 AND foto_id IS NULL AND estado = 'sorteada' AND sorteada_em > ?
+      ORDER BY id DESC LIMIT 1`, [eu.id, agora - DURACAO_TOTAL - 2 * 60 * 1000]) : null;
+  const aprovada = auto || Boolean(desafio);
+  let cartaId = null;
   await banco.transacao(async (tx) => {
     const ins = await tx.execute({ sql: 'INSERT INTO correio (autor_id, para_id, texto, criado_em, teste, estado, moderado_em) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      args: [eu.id, paraId, t, agora, teste ? 1 : 0, auto ? 'aprovada' : 'pendente', auto ? agora : null] });
+      args: [eu.id, paraId, t, agora, teste ? 1 : 0, aprovada ? 'aprovada' : 'pendente', aprovada ? agora : null] });
+    cartaId = Number(ins.lastInsertRowid);
     if (imagem) {
       await tx.execute({ sql: 'INSERT INTO correio_fotos (carta_id, dados, bytes) VALUES (?, ?, ?)',
-        args: [Number(ins.lastInsertRowid), imagem.toString('base64'), imagem.length] });
+        args: [cartaId, imagem.toString('base64'), imagem.length] });
     }
+    if (desafio) await tx.execute({ sql: 'UPDATE maldicoes SET foto_id = ? WHERE id = ? AND foto_id IS NULL', args: [cartaId, Number(desafio.id)] });
   });
-  return { noTelao: auto };
+  return { noTelao: aprovada, maldicao: desafio ? { id: Number(desafio.id), fotoId: cartaId } : null };
 }
 
 // A foto em si (Buffer). Convidado: as próprias e, com as Fotos da festa abertas, as aprovadas.

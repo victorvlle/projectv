@@ -318,6 +318,7 @@ router.post('/correio', soConvidado, freiarJogos, assincrono(async (req, res) =>
   const r = await correio.enviar(req.convidado, { texto, para, foto });
   avisar.admin('atualizar', { oque: 'correio' });
   if (r.noTelao) avisar.telao('atualizar', { oque: 'correio' });
+  if (r.maldicao) { avisar.telao('maldicao:foto', r.maldicao); avisar.admin('atualizar', { oque: 'maldicao' }); }
   res.json({ ok: true, correio: await seLiberado('correio', req, () => correio.paraConvidado(req.convidado.id)) });
 }));
 
@@ -350,7 +351,7 @@ router.get('/maldicao/minha', soConvidado, assincrono(async (req, res) => {
   if (!a) return res.json({ ok: true, maldicao: null });
   const m = await maldicao.buscar(a.id);
   const minha = m.convidadoId === req.convidado.id || (m.parceiro && m.parceiro.id === req.convidado.id);
-  return res.json({ ok: true, maldicao: minha ? { id: m.id, castigo: m.castigo, sorteadaEm: m.sorteadaEm, fases: maldicao.FASES } : null });
+  return res.json({ ok: true, maldicao: minha ? { id: m.id, castigo: m.castigo, sorteadaEm: m.sorteadaEm, fases: maldicao.fasesDe(m), foto: m.foto && !m.fotoId && m.convidadoId === req.convidado.id } : null });
 }));
 
 module.exports = router;

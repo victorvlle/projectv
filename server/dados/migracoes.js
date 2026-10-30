@@ -565,4 +565,13 @@ module.exports = [
       UPDATE correio SET estado = 'aprovada', moderado_em = criado_em WHERE estado = 'pendente'
     `,
   },
+  {
+    nome: 'Maldição de foto: o telão espera a foto da pessoa no Mural',
+    sql: 'SELECT 1',
+    async depois(c) {
+      const cols = (await c.execute("SELECT name FROM pragma_table_info('maldicoes')")).rows.map((r) => r.name);
+      if (!cols.includes('foto')) await c.execute('ALTER TABLE maldicoes ADD COLUMN foto INTEGER NOT NULL DEFAULT 0');
+      if (!cols.includes('foto_id')) await c.execute('ALTER TABLE maldicoes ADD COLUMN foto_id INTEGER');
+    },
+  },
 ];

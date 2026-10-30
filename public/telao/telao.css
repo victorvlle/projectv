@@ -112,11 +112,37 @@ body { overflow: hidden; cursor: default; }
 .revela-contagem b { display: block; font-size: 16vh; line-height: 1; color: var(--laranja-claro); font-variant-numeric: tabular-nums; }
 .revela-contagem small { font-size: 3vh; color: var(--texto-2); text-transform: uppercase; letter-spacing: .2em; }
 .maldicao-palco.acabando .revela-contagem b { color: #FF3355; animation: pulsar 1s ease-in-out infinite; }
+/* Desafio de foto: o Mural esperando a foto (mesma linguagem visual do Mural das Trevas) */
+.maldicao-palco[data-fase="mural"] { background:
+    radial-gradient(ellipse 55% 45% at 50% 52%, rgba(255, 118, 41, .10), transparent 70%),
+    radial-gradient(ellipse 70% 60% at 12% 10%, rgba(74, 36, 110, .45), transparent 65%),
+    radial-gradient(ellipse 70% 60% at 90% 95%, rgba(74, 36, 110, .40), transparent 65%),
+    linear-gradient(180deg, #1A1022, #100C16); }
+.maldicao-palco[data-fase="mural"]::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 75% 70% at 50% 50%, transparent 45%, rgba(8, 5, 12, .85) 100%); }
+.fase-mural { position: relative; z-index: 1; width: 100vw; height: 100vh; justify-content: center; padding: 4vh 4vw; box-sizing: border-box; }
+.fase-mural .mural-para { display: flex; align-items: center; gap: 1.1vw; margin: 0 0 2.4vh; font-size: 3.4vh; color: #F5F0F7; }
+.fase-mural .mural-para-rotulo { font-size: 1.8vh; font-weight: 700; letter-spacing: .32em; text-transform: uppercase; color: #A99AAF; }
+.fase-mural .mural-para b { font-weight: 800; color: #FF7629; }
+.mm-quadro { display: grid; place-items: center; }
+.mm-espera { width: min(64vw, 100vh); height: 60vh; border-radius: 1.2vh; display: grid; place-content: center; gap: 2vh; text-align: center;
+  background: rgba(26, 16, 34, .55); box-shadow: 0 0 0 1px rgba(255, 118, 41, .75), 0 3vh 9vh rgba(0, 0, 0, .6), 0 0 6vh rgba(255, 118, 41, .14); }
+.mm-espera p { margin: 0; font-size: 4vh; font-weight: 700; color: #F5F0F7; }
+.mm-camera { font-size: 14vh; line-height: 1; animation: mm-pulsar 1.6s ease-in-out infinite; }
+@keyframes mm-pulsar { 50% { transform: scale(1.08); opacity: .75; } }
+.mm-quadro .mural-moldura img { max-height: 74vh; max-width: 90vw; }
+.mm-quadro.com-foto { animation: entrar .7s ease both; }
+.mm-castigo { margin: 3vh 0 0; max-width: 58vw; font-size: 3.4vh; font-weight: 600; color: #F5F0F7; }
+.mm-canto { position: absolute; right: 4vw; bottom: 4vh; text-align: center; padding: 1.6vh 1.6vw; border-radius: 1.4vh;
+  background: rgba(16, 12, 22, .75); box-shadow: 0 0 0 1px rgba(255, 118, 41, .45); }
+.mm-canto b { display: block; font-size: 7vh; line-height: 1; color: var(--laranja-claro); font-variant-numeric: tabular-nums; }
+.mm-canto small { font-size: 1.8vh; color: var(--texto-2); text-transform: uppercase; letter-spacing: .2em; }
+.maldicao-palco.acabando .mm-canto b { color: #FF3355; animation: pulsar 1s ease-in-out infinite; }
 .cumprida-texto { font-size: 13vh; color: var(--lima); text-shadow: 0 0 6vh rgba(123, 199, 77, .7); margin: 0; }
 .cumprida-pontos { font-size: 7vh; font-weight: 800; color: var(--laranja-claro); }
 .botao-som { position: fixed; right: 16px; top: 16px; z-index: 120; }
 @media (prefers-reduced-motion: reduce) {
-  .maldicao-palco[data-fase="alerta"], .bruxa .anel, .bruxa .anel2, .bruxa .voo, .revela-topo .avatar, .roleta-janela .avatar.pula { animation: none; }
+  .maldicao-palco[data-fase="alerta"], .bruxa .anel, .bruxa .anel2, .bruxa .voo, .revela-topo .avatar, .roleta-janela .avatar.pula, .mm-camera { animation: none; }
 }
 
 /* ------------------------------------------------ quiz, concurso, correio */
