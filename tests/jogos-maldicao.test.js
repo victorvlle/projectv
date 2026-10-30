@@ -156,7 +156,7 @@ test('aviso geral: quem não foi sorteado recebe "a Maldição despertou" (sem n
 test('desafio de foto: só sai com o Mural aberto; a foto da pessoa liga à maldição e avisa o telão na hora', async () => {
   const { CASTIGOS } = require('../server/jogos/conteudo');
   const textosFoto = CASTIGOS.filter((c) => c.foto).map((c) => c.texto);
-  assert.equal(textosFoto.length, 2);
+  assert.equal(textosFoto.length, 4);
   await h.liberar('maldicao');
   await h.liberar('correio', 'bloqueada');
   for (let i = 0; i < 25; i++) {

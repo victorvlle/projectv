@@ -37,6 +37,8 @@ const CASTIGOS = [
   // foto: true = desafio de foto. O telão abre o Mural e espera a foto da pessoa (mais tempo para cumprir).
   { id: 'foto', foto: true, texto: 'Tire uma selfie assustadora, mande no Mural das Trevas e tome um shot.' },
   { id: 'foto-juri', foto: true, texto: 'Tire uma foto imitando o seu monstro e mande no Mural: quando aparecer no telão, se a galera não aprovar, tome um shot.' },
+  { id: 'foto-filme', foto: true, texto: 'Recrie em foto a cena mais famosa de um filme de terror e mande no Mural: se ninguém adivinhar qual é, tome um shot.' },
+  { id: 'foto-grupo', foto: true, texto: 'Tire uma foto em grupo com todo mundo fazendo a cara mais assustadora e mande no Mural: o pior "monstro" da foto bebe com você.' },
   { id: 'medo', texto: 'Conte para a roda o seu maior medo ou tome 2 shots.' },
   { id: 'fantasia', texto: 'Escolha a fantasia mais assustadora da festa: você e essa pessoa viram o copo juntos.' },
   { id: 'direita', texto: 'A pessoa à sua direita decide: você vira o copo ou toma um shot.' },
