@@ -485,3 +485,6 @@ body.sem-rolar { overflow: hidden; }
 .naipe-carta small { font-size: .9rem; font-weight: 800; }
 .naipe-botao.vermelho .naipe-carta, .naipe-texto.vermelho { color: #D3122E; }
 .naipe-texto.vermelho { color: #ff5a73; }
+.corrida-relogio-cel { font-size: 1.1rem; margin: 6px 0 0; }
+.corrida-relogio-cel b { font-size: 1.6rem; font-variant-numeric: tabular-nums; color: var(--laranja-claro); }
+.corrida-relogio-cel b.acabando { color: #ff5a73; }

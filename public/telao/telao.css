@@ -462,3 +462,27 @@ body[data-cena="correio"] .ambiente { opacity: 0; }
 .bp-avanca b { font-size: 8vh; line-height: 1.1; }
 .bp-avanca em { font-style: normal; font-size: 4.6vh; color: var(--laranja-claro); font-weight: 800; }
 @media (prefers-reduced-motion: reduce) { .bp-membro.caiu, .bp-avanca, .bp-trofeu { animation: none; } }
+
+/* Corrida: carta que voa (sorteio no meio da tela e lateral que desvira) */
+.carta-voadora { position: fixed; z-index: 60; pointer-events: none; perspective: 1400px;
+  transition: left .6s cubic-bezier(.3, .8, .3, 1), top .6s cubic-bezier(.3, .8, .3, 1), width .6s cubic-bezier(.3, .8, .3, 1), height .6s cubic-bezier(.3, .8, .3, 1), font-size .6s; }
+.carta-voadora.sem-transicao { transition: none; }
+.carta-voadora.sem-transicao .voa-dentro { transition: none; }
+.voa-dentro { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .55s ease; }
+.carta-voadora.mostrando .voa-dentro { transform: rotateY(180deg); }
+.voa-face { position: absolute; inset: 0; border-radius: .9em; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  box-shadow: 0 1.5em 4em rgba(0, 0, 0, .6), 0 0 3em rgba(255, 118, 41, .35); }
+.voa-verso { background: repeating-linear-gradient(45deg, #3B1F5C 0 .8em, #2A1645 .8em 1.6em); border: .25em solid rgba(255, 118, 41, .6); }
+.voa-frente { transform: rotateY(180deg); background: #F5F0F7; color: #15101C; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; }
+.voa-frente span { font-size: 2.2em; font-weight: 800; }
+.voa-frente b { font-size: 4.6em; }
+.voa-frente.vermelha { color: #D3122E; }
+.carta-jogo.vazia { background: transparent; border: .25vh dashed rgba(255, 255, 255, .15); box-shadow: none; }
+.slot-saiu { width: 8vh; height: 11.4vh; display: grid; place-items: center; }
+.slot-saiu .carta-jogo { width: 8vh; height: 11.4vh; }
+.lateral-virada { box-shadow: 0 0 0 .3vh #FF3355; }
+.apostas-relogio { display: flex; flex-direction: column; align-items: center; margin: 1vh 0 2vh; }
+.apostas-relogio small { font-size: 2.2vh; letter-spacing: .25em; text-transform: uppercase; color: var(--texto-2); }
+.apostas-relogio b { font-size: 12vh; line-height: 1; color: var(--laranja-claro); font-variant-numeric: tabular-nums; }
+.apostas-relogio b.acabando { color: #FF3355; animation: pulsar .5s ease-in-out infinite alternate; }
+@media (prefers-reduced-motion: reduce) { .carta-voadora, .voa-dentro { transition-duration: .01s; } }

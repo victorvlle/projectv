@@ -52,6 +52,7 @@ async function apagarDadosDeTeste(agora = Date.now()) {
     comandos.push({ sql: 'UPDATE atividades SET estado = ?, abre_em = ?, atualizado_em = ? WHERE id = ?',
       args: [volta, volta === 'agendada' ? Number(a.abre_em) : null, agora, a.id] });
   }
+  comandos.push({ sql: "DELETE FROM config WHERE chave = 'pausa'", args: [] });
   await banco.lote(comandos);
   if ((prev && prev.teste) || ids.has('previsoes')) await festa.gravar('previsoes', { ...(prev || {}), fechaEm: null, publicadas: false, teste: false });
   if ((conc && conc.teste) || ids.has('concurso')) {

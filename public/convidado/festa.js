@@ -57,6 +57,10 @@
         <div class="quiz-contagem" data-quiz-seg>${resta(q.fimEm)}</div><p>A primeira pergunta já vai aparecer no telão e aqui.</p>
         ${q.naSala ? '' : entrar}</section>`;
     }
+    if (q.pausado && q.fase !== 'fim') {
+      return `<section class="cartao quiz-cartao registrada"><p class="quiz-veredito">⏸️ Quiz pausado</p>
+        <p>A Maldição despertou! Olhe o telão. O quiz continua de onde parou assim que ela terminar${q.restaMs ? `, com ${Math.ceil(q.restaMs / 1000)} s para esta fase` : ''}.</p></section>`;
+    }
     if (q.fase === 'fim') {
       return `<section class="cartao quiz-cartao acertou"><p class="quiz-veredito">🏁 Fim do quiz!</p>
         <p>Você acertou <b>${q.acertos || 0} de ${q.total}</b> · +${pts(q.pontosQuiz || 0)} pontos</p>
@@ -98,6 +102,8 @@
     const chave = q.atual ? `${q.fase}:${q.atual.id}` : q.fase;
     if (chave !== desenharQuiz.ultima) { escolhaQuiz = null; desenharQuiz.ultima = chave; }
     pintar('quiz', `${seloTeste(q)}${telaQuiz(q)}`);
+    // Pausado pela Maldição: sem contagem; confere de tempos em tempos se já voltou.
+    if (q.pausado && q.fase !== 'fim') { proximaBusca = setTimeout(buscarQuiz, 3000); avisarPerguntaNova(); return; }
     // Troca de fase: busca de novo um pouco depois do fim da fase atual.
     if (q.fimEm) proximaBusca = setTimeout(buscarQuiz, Math.max(300, q.fimEm - PV.relogio.agora() + 400));
     // Na sala, a contagem de gente vai atualizando enquanto a tela está aberta.
@@ -121,7 +127,7 @@
   function avisarPerguntaNova() {
     const q = quiz;
     let faixa = $('faixa-quiz');
-    const valendo = q && q.fase === 'pergunta' && q.atual && q.atual.minha === null && resta(q.fimEm) > 0;
+    const valendo = q && !q.pausado && q.fase === 'pergunta' && q.atual && q.atual.minha === null && resta(q.fimEm) > 0;
     const comecando = q && q.fase === 'preparar';
     const precisa = (valendo || comecando) && !telaAberta('tela-quiz');
     if (!precisa) { if (faixa) faixa.classList.add('oculto'); return; }
@@ -456,17 +462,44 @@
   const nomeNaipe = (n) => (NAIPES.find((x) => x[0] === n) || [n, '', n])[2];
   const simbNaipe = (n) => (NAIPES.find((x) => x[0] === n) || [n, '?'])[1];
   let apostando = false;
+  let corridaUltima = null;
   let corridaTimerCel = null;
+  let corridaRelogioCel = null;
+  let naipeEscolhido = null; // escolhido na tela, ainda não salvo
+  function relogioApostas(c) {
+    clearInterval(corridaRelogioCel);
+    const tique = () => {
+      const ms = Math.max(0, (c.fechaEm || 0) - PV.relogio.agora());
+      const seg = Math.ceil(ms / 1000);
+      const el = $('corrida-seg');
+      if (el) { el.textContent = `${Math.floor(seg / 60)}:${String(seg % 60).padStart(2, '0')}`; el.classList.toggle('acabando', seg <= 10); }
+      if (ms <= 0) { clearInterval(corridaRelogioCel); setTimeout(() => C().recarregar(), 1200); }
+    };
+    tique();
+    corridaRelogioCel = setInterval(tique, 250);
+  }
   function desenharCorrida(c) {
     clearTimeout(corridaTimerCel);
+    clearInterval(corridaRelogioCel);
     if (!c) return;
     const premios = `1º lugar +${pts(c.premios[0])} · 2º +${pts(c.premios[1])} · quem apostar no último toma um shot`;
     let html;
     if (c.estado === 'apostas') {
-      html = `<section class="cartao prev-aviso aberta"><b>🎟️ Apostas abertas!</b><p class="mudo">Escolha seu cavalo. Dá para trocar até a largada. ${premios}.</p></section>
-        <div class="naipes-grade">${NAIPES.map(([n, s, nome]) => `<button type="button" class="naipe-botao ${n === 'copas' || n === 'ouros' ? 'vermelho' : ''} ${c.minha === n ? 'meu' : ''}" data-naipe="${n}">
-          <span class="naipe-carta"><small>A</small>${s}</span><b>${nome}</b><span class="fraco">${c.contagem[n]} ${c.contagem[n] === 1 ? 'aposta' : 'apostas'}</span>
-          ${c.minha === n ? '<span class="selo ok">seu cavalo ✓</span>' : ''}</button>`).join('')}</div>`;
+      if (c.minha) {
+        naipeEscolhido = null;
+        html = `<section class="cartao prev-aviso aberta"><b>✅ Você está confirmado!</b>
+          <p>Seu cavalo: <b class="naipe-texto ${c.minha === 'copas' || c.minha === 'ouros' ? 'vermelho' : ''}">${simbNaipe(c.minha)} ${nomeNaipe(c.minha)}</b></p>
+          <p class="mudo">A corrida larga quando o tempo acabar. Olhe o telão!</p>
+          <p class="corrida-relogio-cel">⏱️ <b id="corrida-seg">1:00</b></p></section>`;
+      } else {
+        html = `<section class="cartao prev-aviso aberta"><b>🎟️ Escolha seu cavalo e salve</b><p class="mudo">${premios}.</p>
+          <p class="corrida-relogio-cel">⏱️ Fecha em <b id="corrida-seg">1:00</b></p></section>
+          <div class="naipes-grade">${NAIPES.map(([n, sb, nome]) => `<button type="button" class="naipe-botao ${n === 'copas' || n === 'ouros' ? 'vermelho' : ''} ${naipeEscolhido === n ? 'meu' : ''}" data-naipe="${n}">
+            <span class="naipe-carta"><small>A</small>${sb}</span><b>${nome}</b><span class="fraco">${c.contagem[n]} ${c.contagem[n] === 1 ? 'confirmado' : 'confirmados'}</span></button>`).join('')}</div>
+          <button class="botao largo" type="button" data-salvar-naipe ${naipeEscolhido ? '' : 'disabled'} style="margin-top:12px">
+            ${naipeEscolhido ? `Salvar: ${simbNaipe(naipeEscolhido)} ${nomeNaipe(naipeEscolhido)}` : 'Toque num cavalo'}</button>
+          <p class="fraco">Depois de salvar, não dá para trocar.</p>`;
+      }
     } else if (c.estado === 'correndo') {
       html = `<section class="cartao prev-aviso aberta"><b>🏁 Largaram! Olhe o telão.</b>
         <p>${c.minha ? `Seu cavalo: <b class="naipe-texto ${c.minha === 'copas' || c.minha === 'ouros' ? 'vermelho' : ''}">${simbNaipe(c.minha)} ${nomeNaipe(c.minha)}</b>` : 'Você não apostou nesta corrida.'}</p></section>`;
@@ -482,19 +515,27 @@
           <span class="podio-nome">${nomeNaipe(n)}</span><b>${i < c.premios.length ? `+${pts(c.premios[i])}` : r.ultimos.includes(n) ? '🥃' : ''}</b></div>`).join('')}</div>
         <p class="quiz-veredito" style="margin-top:10px">${meu}</p><p class="fraco">A próxima corrida abre quando o organizador chamar.</p></section>`;
     } else {
-      html = `<section class="cartao"><b>🏇 Corrida de Cavalos</b><p class="mudo">Quando as apostas abrirem, escolha um naipe (♠ ♥ ♦ ♣). Os Ases correm no telão e o baralho decide. ${premios}.</p></section>`;
+      html = `<section class="cartao"><b>🏇 Corrida de Cavalos</b><p class="mudo">Quando as apostas abrirem, você tem 1 minuto para escolher um naipe (♠ ♥ ♦ ♣) e salvar.
+        Os Ases correm no telão e o baralho decide. ${premios}.</p></section>`;
     }
     pintar('corrida', `${seloTeste(c)}${html}`);
+    if (c.estado === 'apostas') relogioApostas(c);
   }
   $('corrida').addEventListener('click', async (e) => {
     const b = e.target.closest('[data-naipe]');
-    if (!b || apostando) return;
+    if (b) { naipeEscolhido = b.dataset.naipe; desenharCorrida(corridaUltima); return; }
+    const salvar = e.target.closest('[data-salvar-naipe]');
+    if (!salvar || !naipeEscolhido || apostando) return;
     apostando = true;
+    salvar.disabled = true;
     try {
-      const r = await C().api('PUT', '/api/corrida/aposta', { naipe: b.dataset.naipe });
+      const r = await C().api('PUT', '/api/corrida/aposta', { naipe: naipeEscolhido });
+      PV.avisar(`Confirmado: ${simbNaipe(naipeEscolhido)} ${nomeNaipe(naipeEscolhido)}! 🏇`, 'ok');
+      naipeEscolhido = null;
+      corridaUltima = r.corrida;
       C().atualizarParte('corrida', r.corrida);
-      PV.avisar(`Aposta em ${nomeNaipe(b.dataset.naipe)} ${simbNaipe(b.dataset.naipe)}!`, 'ok');
     } catch (erro) {
+      salvar.disabled = false;
       if (erro.status !== 401) PV.avisar(erro.message, 'erro');
       if (erro.status === 409) C().recarregar();
     } finally { apostando = false; }
@@ -709,6 +750,7 @@
     desenharCorreio(estado.correio);
     desenharFotos(estado.fotos);
     desenharMonstro(estado.monstro);
+    corridaUltima = estado.corrida;
     desenharCorrida(estado.corrida);
     desenharBeerpong(estado.beerpong);
   }

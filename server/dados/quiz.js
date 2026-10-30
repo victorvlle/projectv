@@ -56,8 +56,12 @@ function momento(sessao, agora) {
   return { ...base, fase: 'revelacao', indice: i, inicioEm: ini, fimEm: ini + bloco };
 }
 
+// Relógio do quiz: para enquanto a Maldição pausa os jogos (ver pausa.js).
+const relogioJogo = (agora) => require('./pausa').relogio(agora);
+
 // Dá os pontos das perguntas cujo tempo já acabou. Devolve quantas foram reveladas agora.
-async function sincronizar(agora = Date.now()) {
+async function sincronizar(agoraReal = Date.now()) {
+  const agora = await relogioJogo(agoraReal);
   const cfg = await config();
   const s = cfg.sessao;
   if (!s) return 0;
@@ -122,8 +126,10 @@ async function placarDaSessao(s) {
 }
 
 // ------------------------------------------------------------- convidado
-async function paraConvidado(euId, agora = Date.now()) {
-  await sincronizar(agora);
+async function paraConvidado(euId, agoraReal = Date.now()) {
+  await sincronizar(agoraReal);
+  const agora = await relogioJogo(agoraReal);
+  const pausado = agora !== agoraReal;
   const [cfg, lista, pessoas, minhasLinhas] = await Promise.all([
     config(), todas(), sala(),
     banco.tudo('SELECT pergunta_id, escolha, respondida_em FROM quiz_respostas WHERE convidado_id = ?', [euId]),
@@ -135,7 +141,8 @@ async function paraConvidado(euId, agora = Date.now()) {
   const total = s ? s.ids.length : lista.length;
   const saida = {
     fase: m.fase, fimEm: m.fimEm || null, total, pontos: PONTOS_QUIZ, tempoS: s ? s.tempoS : cfg.tempoS,
-    naSala: pessoas.some((p) => p.id === euId), naSalaTotal: pessoas.length,
+    naSala: pessoas.some((p) => p.id === euId), naSalaTotal: pessoas.length, pausado,
+    ...(pausado && m.fimEm ? { restaMs: Math.max(0, m.fimEm - agora) } : {}),
   };
   if (s) {
     const porId = new Map(lista.map((q) => [q.id, q]));
@@ -173,6 +180,7 @@ async function entrar(eu, agora = Date.now()) {
 async function responder(eu, perguntaId, escolha, agora = Date.now()) {
   const { liberada, teste } = await atividades.acesso('quiz', eu, agora);
   if (!liberada) throw new ErroValidacao('O Quiz ainda não está aberto.', 403);
+  if ((await relogioJogo(agora)) !== agora) throw new ErroValidacao('⏸️ Jogo pausado: a Maldição despertou. Já, já continua!', 409);
   const cfg = await config();
   const m = momento(cfg.sessao, agora);
   if (m.fase !== 'pergunta' || cfg.sessao.ids[m.indice] !== String(perguntaId)) {
@@ -190,8 +198,9 @@ async function responder(eu, perguntaId, escolha, agora = Date.now()) {
 }
 
 // ------------------------------------------------------------------ admin
-async function paraAdmin(agora = Date.now()) {
-  await sincronizar(agora);
+async function paraAdmin(agoraReal = Date.now()) {
+  await sincronizar(agoraReal);
+  const agora = await relogioJogo(agoraReal);
   const [cfg, lista, uso, pessoas] = await Promise.all([config(), todas(), atividades.emUso('quiz', agora), sala()]);
   const m = momento(cfg.sessao, agora);
   const contagens = await banco.tudo('SELECT pergunta_id, escolha, COUNT(*) AS n FROM quiz_respostas GROUP BY pergunta_id, escolha');
@@ -267,13 +276,14 @@ async function definirTempo(segundos) {
 }
 
 // ------------------------------------------------------------------ telão
-async function paraTelao(agora = Date.now()) {
-  await sincronizar(agora);
+async function paraTelao(agoraReal = Date.now()) {
+  await sincronizar(agoraReal);
+  const agora = await relogioJogo(agoraReal);
   const [cfg, lista, pessoas] = await Promise.all([config(), todas(), sala()]);
   const s = cfg.sessao;
   const m = momento(s, agora);
   const saida = {
-    fase: m.fase, fimEm: m.fimEm || null, total: s ? s.ids.length : lista.length,
+    fase: m.fase, fimEm: m.fimEm || null, total: s ? s.ids.length : lista.length, pausado: agora !== agoraReal,
     sala: pessoas.map((p) => ({ avatar: p.avatar, iniciais: iniciais(p.nome) })),
   };
   if (m.fase === 'pergunta' || m.fase === 'revelacao') {

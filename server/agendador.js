@@ -16,6 +16,8 @@ async function verificar(agora = Date.now()) {
   const abertas = await abrirAgendadas(agora);
   const m = await require('./dados/maldicao').tic(agora);
   if (m) await require('./jogos/anunciar').maldicaoSorteada(m);
+  // Pausa da Maldição: retoma os jogos quando ela termina.
+  await require('./dados/pausa').verificar(agora);
   // Quiz: pontos das perguntas cujo tempo acabou (mesmo se ninguém estiver olhando).
   if (await require('./dados/quiz').sincronizar(agora)) avisar.atualizar('ranking');
   // Corrida: fecha e dá os pontos quando a animação termina.

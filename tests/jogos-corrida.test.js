@@ -44,7 +44,7 @@ const apostar = (c, naipe) => s.req('PUT', '/api/corrida/aposta', { token: c.tok
 const adm = (url) => s.req('POST', `/api/admin/corrida/${url}`, { token: admin });
 const telao = async () => (await s.req('GET', '/api/admin/telao', { token: admin })).json;
 
-test('apostas: só com a corrida aberta; troca de cavalo; depois da largada, não', async () => {
+test('apostas: só com a corrida aberta; salvou, não troca; depois da largada, não', async () => {
   assert.equal((await apostar(gente[0], 'copas')).status, 403);
   await h.liberar('corrida');
   assert.equal((await apostar(gente[0], 'copas')).status, 409, 'apostas ainda não abertas');
@@ -52,8 +52,11 @@ test('apostas: só com a corrida aberta; troca de cavalo; depois da largada, nã
   assert.equal((await adm('apostas')).status, 200);
   assert.equal((await telao()).telao.modo, 'corrida', 'telão troca sozinho');
   assert.equal((await apostar(gente[0], 'coringa')).status, 400);
-  assert.equal((await apostar(gente[0], 'paus')).status, 200);
-  assert.equal((await apostar(gente[0], 'copas')).status, 200, 'pode trocar');
+  assert.equal((await apostar(gente[0], 'copas')).status, 200, 'salvou a escolha');
+  assert.equal((await apostar(gente[0], 'paus')).status, 409, 'confirmado: não troca mais');
+  const ag = (await s.req('GET', '/api/festa', { token: gente[0].token })).json.corrida;
+  assert.equal(ag.minha, 'copas');
+  assert.ok(ag.fechaEm - Date.now() > 55000 && ag.fechaEm - Date.now() <= 60000, '1 minuto para escolher');
   for (const [i, n] of ['espadas', 'ouros', 'paus'].entries()) await apostar(gente[i + 1], n);
   const t = await telao();
   assert.equal(t.corrida.total, 4);
@@ -65,6 +68,33 @@ test('apostas: só com a corrida aberta; troca de cavalo; depois da largada, nã
   assert.equal(c.estado, 'correndo');
   assert.ok(c.eventos.length >= corrida.CHEGADA);
   assert.equal(c.laterais.length, corrida.CASAS);
+  assert.equal(corrida.CASAS, 10, '10 casas');
+  assert.ok(c.eventos.every((e, i) => i === 0 || e.t > c.eventos[i - 1].t), 'cada carta tem o seu tempo');
+});
+
+test('fim do minuto: larga sozinho (uma vez só); sem ninguém confirmado, fecha', async () => {
+  // (rodada anterior já foi largada; abre outra só para este teste depois do fim da anterior)
+  const festa = require('../server/dados/festa');
+  const ant = await corrida.config();
+  await festa.gravar('corrida', { ...ant, estado: 'fim' });
+  assert.equal((await adm('apostas')).status, 200);
+  await apostar(gente[1], 'ouros');
+  const c = await festa.ler('corrida');
+  await festa.gravar('corrida', { ...c, fechaEm: Date.now() - 10 });
+  await Promise.all([corrida.sincronizar(), corrida.sincronizar(), corrida.sincronizar()]);
+  const d = await corrida.config();
+  assert.equal(d.estado, 'correndo', 'largou sozinho');
+  assert.ok(Math.abs(d.inicioEm - Date.now()) < 2000, 'largada no fim do minuto');
+  assert.equal((await apostar(gente[2], 'copas')).status, 409, 'depois do minuto não aposta');
+  // Sem apostas: fecha
+  await festa.gravar('corrida', { ...d, estado: 'fim' });
+  await adm('apostas');
+  const e = await festa.ler('corrida');
+  await festa.gravar('corrida', { ...e, fechaEm: Date.now() - 10 });
+  await corrida.sincronizar();
+  assert.equal((await corrida.config()).estado, 'fechada');
+  // devolve o estado esperado pelo próximo teste: a primeira corrida terminada
+  await festa.gravar('corrida', ant);
 });
 
 test('fim: pontos para 1º (+500) e 2º (+200); quem apostou no último toma um shot', async () => {

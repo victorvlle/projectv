@@ -6,6 +6,13 @@ const maldicao = require('../dados/maldicao');
 
 async function maldicaoSorteada(m) {
   const payload = await maldicao.paraTelao(m);
+  // Regra geral: jogo com relógio (Quiz, Corrida) pausa enquanto a Maldição acontece.
+  try {
+    if (await require('../dados/pausa').comecar({ id: m.id, sorteadaEm: m.sorteadaEm, fases: payload.fases })) {
+      avisar.atualizar('quiz');
+      avisar.atualizar('corrida');
+    }
+  } catch (e) { console.error('[pausa]', e.message); }
   avisar.telao('maldicao', payload);
   avisar.admin('atualizar', { oque: 'maldicao' });
   for (const id of [m.convidadoId, m.parceiro && m.parceiro.id].filter(Boolean)) {
@@ -16,6 +23,7 @@ async function maldicaoSorteada(m) {
 }
 
 function maldicaoResolvida(m) {
+  require('../dados/pausa').maldicaoTerminou(m.id).catch((e) => console.error('[pausa]', e.message));
   avisar.telao('maldicao:resolvida', { id: m.id, estado: m.estado });
   avisar.admin('atualizar', { oque: 'maldicao' });
   avisar.atualizar('ranking');

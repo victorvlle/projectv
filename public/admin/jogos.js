@@ -269,25 +269,44 @@
 
   // ---------------------------------------------------------------- corrida
   const NOME_NAIPE = { espadas: 'Espadas', copas: 'Copas', ouros: 'Ouros', paus: 'Paus' };
+  let corridaRelogioAdm = null;
+  let corridaFimAdm = null;
   function desenharCorridaAdmin(c) {
+    clearInterval(corridaRelogioAdm);
+    clearTimeout(corridaFimAdm);
     const apostas = c.apostas.map((a) => `<div class="item"><div class="item-nome">${a.simbolo} ${NOME_NAIPE[a.naipe]} <span class="selo">${a.pessoas.length}</span></div>
       <div class="item-sub">${a.pessoas.length ? esc(a.pessoas.join(', ')) : 'ninguém'}</div></div>`).join('');
     let acoes = '';
-    if (c.estado === 'fechada' || c.estado === 'fim') acoes = `<button class="botao" type="button" data-acao="cor-apostas">🎟️ Abrir apostas (corrida ${c.rodada + 1})</button>`;
-    if (c.estado === 'apostas') acoes = `<button class="botao" type="button" data-acao="cor-largar" ${c.total ? '' : 'disabled'}>🏁 Largar! (${c.total} ${c.total === 1 ? 'aposta' : 'apostas'})</button>
+    if (c.estado === 'fechada' || c.estado === 'fim') acoes = `<button class="botao" type="button" data-acao="cor-apostas">🎟️ Abrir apostas: 1 minuto (corrida ${c.rodada + 1})</button>`;
+    if (c.estado === 'apostas') acoes = `<p style="margin:0 0 6px">⏱️ Larga sozinha em <b id="cor-adm-seg">1:00</b> · ${c.total} ${c.total === 1 ? 'confirmado' : 'confirmados'}</p>
+      <button class="botao" type="button" data-acao="cor-largar" ${c.total ? '' : 'disabled'}>🏁 Largar agora</button>
       <button class="botao secundario pequeno" type="button" data-acao="cor-cancelar">Cancelar</button>`;
-    if (c.estado === 'correndo') acoes = '<p class="fraco">🏇 Correndo no telão… os pontos saem sozinhos no fim.</p><button class="botao secundario pequeno" type="button" data-acao="cor-cancelar">Cancelar (sem pontos)</button>';
+    if (c.estado === 'correndo') acoes = '<p class="fraco">🏇 Correndo no telão (~2 a 3 min)… os pontos saem sozinhos no fim.</p><button class="botao secundario pequeno" type="button" data-acao="cor-cancelar">Cancelar (sem pontos)</button>';
     const resultado = c.estado === 'fim' && c.ordem ? `<p><b>Corrida ${c.rodada}:</b> 1º ${NOME_NAIPE[c.ordem[0]]} (+${c.premios[0]}), 2º ${NOME_NAIPE[c.ordem[1]]} (+${c.premios[1]}),
       último ${c.ultimos.map((n) => NOME_NAIPE[n]).join(' e ')} (shot).</p>` : '';
+    const vazia = c.semApostas && c.estado === 'fechada' ? '<p class="aviso-inline">O minuto acabou sem ninguém confirmado: a corrida não largou. Abra as apostas de novo quando quiser.</p>' : '';
     pintar('j-corrida', `
       ${c.liberada ? '' : '<p class="aviso-inline">A Corrida está bloqueada: libere (ou coloque "Em teste") em Atividades.</p>'}
       ${c.emTeste ? '<p class="selo teste" style="display:inline-block">🧪 Em teste: só os testadores apostam</p>' : ''}
       <p><span class="selo ${c.estado === 'apostas' || c.estado === 'correndo' ? 'ok' : 'fora'}">${{ fechada: 'Fechada', apostas: 'Apostas abertas', correndo: 'Correndo', fim: 'Terminou' }[c.estado]}</span> · corrida ${c.rodada}</p>
-      ${resultado}
+      ${resultado}${vazia}
       <div class="item-acoes" style="margin:8px 0">${acoes}
         <button class="botao secundario pequeno" type="button" data-acao="tel-modo" data-modo="corrida">Mostrar no telão</button></div>
       ${c.rodada && c.estado !== 'fechada' ? `<div class="lista">${apostas}</div>` : ''}
-      <p class="fraco" style="margin-top:8px">Abrir apostas → todos escolhem um naipe no celular → Largar (dura ~45 s no telão). Prêmios: 1º +${c.premios[0]}, 2º +${c.premios[1]}; quem apostou no último toma um shot.</p>`);
+      <p class="fraco" style="margin-top:8px">Abrir apostas → cada um escolhe um naipe no celular e salva (1 minuto) → a corrida larga sozinha no fim do minuto
+        (ou toque "Largar agora"). 10 casas, ~2 a 3 min no telão. Prêmios: 1º +${c.premios[0]}, 2º +${c.premios[1]}; quem apostou no último toma um shot.</p>`);
+    if (c.estado === 'apostas' && c.fechaEm) {
+      const tique = () => {
+        const ms = Math.max(0, c.fechaEm - PV.relogio.agora());
+        const seg = Math.ceil(ms / 1000);
+        const el = document.getElementById('cor-adm-seg');
+        if (el) el.textContent = `${Math.floor(seg / 60)}:${String(seg % 60).padStart(2, '0')}`;
+        if (ms <= 0) { clearInterval(corridaRelogioAdm); corridaFimAdm = setTimeout(() => A().recarregar(), 1500); }
+      };
+      tique();
+      corridaRelogioAdm = setInterval(tique, 500);
+    }
+    if (c.estado === 'correndo' && c.fimEm) corridaFimAdm = setTimeout(() => A().recarregar(), Math.max(1000, c.fimEm - PV.relogio.agora() + 1500));
   }
 
   // ---------------------------------------------------------------- monstro

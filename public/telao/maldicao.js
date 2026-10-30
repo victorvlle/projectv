@@ -178,6 +178,9 @@
     quadro(); // troca para o Mural (se ainda estava na revelação) e mostra a foto
   }
 
+  // Com Quiz ou Corrida no telão, o jogo estava pausado: a Maldição sai logo para ele continuar.
+  const esperaSaida = () => (['quiz', 'corrida'].includes(document.body.dataset.cena) ? 5000 : 2 * 60 * 1000);
+
   function quadro() {
     if (!atual) return;
     const agora = PV.relogio.agora();
@@ -215,7 +218,7 @@
         palco.classList.toggle('acabando', seg > 0 && seg <= 10);
         if (seg > 0 && seg <= 5) tique(true);
       }
-      if (!fotoMostrada && agora > fim + 2 * 60 * 1000) esconder();
+      if (!fotoMostrada && agora > fim + esperaSaida()) esconder();
     }
     if (fase === 'revela') {
       const fim = m.sorteadaEm + m.fases.alerta + m.fases.suspense + m.fases.cumprir;
@@ -227,8 +230,8 @@
         palco.classList.toggle('acabando', seg > 0 && seg <= 10);
         if (seg > 0 && seg <= 5) tique(true);
       }
-      // Ninguém confirmou: sai de cena 2 min depois do fim.
-      if (agora > fim + 2 * 60 * 1000) esconder();
+      // Ninguém confirmou: sai de cena 2 min depois do fim (ou logo, se um jogo pausado está esperando).
+      if (agora > fim + esperaSaida()) esconder();
     }
   }
 

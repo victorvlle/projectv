@@ -352,13 +352,18 @@
   const carta = (n, valor, extra = '') => `<div class="carta-jogo ${vermelho(n) ? 'vermelha' : ''} ${extra}"><span>${esc(valor)}</span><b>${SIMB[n]}</b></div>`;
   let corridaAtual = null;
   let corridaTimer = null;
-  let corridaPasso = -2;
   let corridaChave = '';
   let corridaFim = null;
+  let corridaFase = '';
+  // Coreografia de cada carta (ms dentro do tempo da carta; o servidor dá 3000 para "anda" e 3600 para "volta").
+  const FASES_ANDA = [[0, 'surge'], [150, 'mostra'], [700, 'segura'], [1500, 'canto'], [2100, 'move']];
+  const FASES_VOLTA = [[0, 'sobe'], [700, 'desvira'], [1400, 'segura'], [2200, 'volta'], [2800, 'move']];
+  const faseDe = (e, dt) => (e.tipo === 'anda' ? FASES_ANDA : FASES_VOLTA).filter(([t]) => dt >= t).pop()[1];
+
   function montarPista(c) {
     const casas = Array.from({ length: c.casas }, (_, i) => `<div class="pista-lateral" data-casa="${i + 1}"><div class="carta-jogo verso"></div></div>`).join('');
     $('corrida-telao').innerHTML = `<div class="corrida-topo"><h1 class="terror corrida-titulo">Corrida de Cavalos 🏇</h1>
-        <div class="corrida-saiu" id="corrida-saiu"></div></div>
+        <div class="corrida-saiu"><small>Última</small><div class="slot-saiu" id="corrida-saiu"><div class="carta-jogo vazia"></div></div></div></div>
       <div class="pista" style="--casas:${c.casas + 2}">
         <div class="pista-linha pista-laterais"><div></div>${casas}<div class="pista-chegada-rotulo">🏁</div></div>
         ${NAIPES.map((n) => `<div class="pista-linha raia" data-naipe="${n}">
@@ -367,87 +372,161 @@
         </div>`).join('')}
       </div>
       <p class="corrida-aviso" id="corrida-aviso"></p>`;
+    // Carta que voa (sorteio no meio da tela; lateral que sobe e desvira)
+    let voa = $('carta-voadora');
+    if (!voa) { voa = document.createElement('div'); voa.id = 'carta-voadora'; voa.className = 'carta-voadora oculto'; document.body.appendChild(voa); }
   }
-  function estadoNoPasso(c, k) {
+  // Posição de um elemento da tela (para a carta voar até ele)
+  const caixa = (el) => { const r = el.getBoundingClientRect(); return { left: r.left, top: r.top, width: r.width, height: r.height }; };
+  function centroGrande() {
+    const h = Math.min(window.innerHeight * 0.55, window.innerWidth * 0.5);
+    const w = h * 0.7;
+    return { left: (window.innerWidth - w) / 2, top: (window.innerHeight - h) / 2, width: w, height: h };
+  }
+  function voar(r, { instantaneo = false, frente = true } = {}) {
+    const voa = $('carta-voadora');
+    if (!voa) return;
+    voa.classList.toggle('sem-transicao', instantaneo);
+    voa.classList.toggle('mostrando', frente);
+    Object.assign(voa.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, fontSize: `${r.height / 9.4}px` });
+    if (instantaneo) { void voa.offsetWidth; voa.classList.remove('sem-transicao'); }
+  }
+  function cartaVoadora(n, valor) {
+    const voa = $('carta-voadora');
+    voa.innerHTML = `<div class="voa-dentro"><div class="voa-face voa-verso"></div>
+      <div class="voa-face voa-frente ${vermelho(n) ? 'vermelha' : ''}"><span>${esc(valor)}</span><b>${SIMB[n]}</b></div></div>`;
+    voa.classList.remove('oculto');
+  }
+  const esconderVoadora = () => { const v = $('carta-voadora'); if (v) v.classList.add('oculto'); };
+
+  // Estado da pista depois das cartas [0, k) (+ a carta atual, se já chegou na hora de mover)
+  function estadoAte(c, k, incluirAtual) {
     const pos = { espadas: 0, copas: 0, ouros: 0, paus: 0 };
     const viradas = new Set();
-    let ultimo = null;
-    for (const e of c.eventos.slice(0, k)) {
-      if (e.tipo === 'anda') pos[e.naipe] += 1;
-      else { viradas.add(e.casa); if (pos[e.naipe] > 0) pos[e.naipe] -= 1; }
-      ultimo = e;
+    let ultimaAnda = null;
+    const ate = incluirAtual ? k + 1 : k;
+    for (const e of c.eventos.slice(0, Math.max(0, ate))) {
+      if (e.tipo === 'anda') { pos[e.naipe] += 1; ultimaAnda = e; } else { viradas.add(e.casa); if (pos[e.naipe] > 0) pos[e.naipe] -= 1; }
     }
-    return { pos, viradas, ultimo };
+    return { pos, viradas, ultimaAnda };
   }
+  function pintarPista(c, est, escondida) {
+    for (const n of NAIPES) { const el = $(`cavalo-${n}`); if (el) el.style.setProperty('--pos', est.pos[n]); }
+    document.querySelectorAll('.pista-lateral').forEach((el) => {
+      const i = Number(el.dataset.casa);
+      const html = i === escondida ? '<div class="carta-jogo vazia"></div>'
+        : est.viradas.has(i) ? carta(c.laterais[i - 1], c.lateraisValor[i - 1], 'lateral-virada') : '<div class="carta-jogo verso"></div>';
+      if (el.dataset.html !== html) { el.dataset.html = html; el.innerHTML = html; }
+    });
+    const saiu = $('corrida-saiu');
+    const u = est.ultimaAnda;
+    const html = u ? carta(u.naipe, u.valor, 'saiu-carta') : '<div class="carta-jogo vazia"></div>';
+    if (saiu && saiu.dataset.html !== html) { saiu.dataset.html = html; saiu.innerHTML = html; }
+  }
+
   function quadroCorrida() {
     const c = corridaAtual;
     if (!c || !c.eventos) return;
-    const agora = PV.relogio.agora();
-    const t = agora - c.inicioEm - c.preparoMs;
-    const k = t < 0 ? -1 : Math.min(c.eventos.length, Math.floor(t / c.passoMs) + 1);
-    if (k === corridaPasso) {
-      if (t < 0) $('corrida-aviso').textContent = `Largada em ${Math.ceil(-t / 1000)}…`;
+    // Pausada pela Maldição: o relógio da corrida fica parado.
+    const agora = c.pausadaEm ? Math.min(PV.relogio.agora(), c.pausadaEm) : PV.relogio.agora();
+    const T = agora - c.inicioEm - c.preparoMs;
+    if (T < 0) {
+      const chave = `pre:${Math.ceil(-T / 1000)}`;
+      if (chave !== corridaFase) { corridaFase = chave; esconderVoadora(); pintarPista(c, estadoAte(c, 0, false)); $('corrida-aviso').textContent = `Largada em ${Math.ceil(-T / 1000)}…`; }
       return;
     }
-    corridaPasso = k;
-    const { pos, viradas, ultimo } = estadoNoPasso(c, Math.max(0, k));
-    for (const n of NAIPES) {
-      const el = $(`cavalo-${n}`);
-      if (el) el.style.setProperty('--pos', pos[n]);
-    }
-    document.querySelectorAll('.pista-lateral').forEach((el) => {
-      const i = Number(el.dataset.casa);
-      if (viradas.has(i) && !el.classList.contains('virada')) {
-        el.classList.add('virada');
-        el.innerHTML = carta(c.laterais[i - 1], c.lateraisValor[i - 1]);
+    let k = -1;
+    for (let i = 0; i < c.eventos.length; i++) { if (c.eventos[i].t <= T) k = i; else break; }
+    const e = c.eventos[k];
+    const dt = T - e.t;
+    const fimDaCarta = dt >= c.duracao[e.tipo];
+    const fase = fimDaCarta ? 'fim' : faseDe(e, dt);
+    const chave = `${k}:${fase}`;
+    if (chave === corridaFase) return;
+    const anterior = corridaFase;
+    corridaFase = chave;
+    const novaCarta = !anterior.startsWith(`${k}:`);
+    const moveu = fase === 'move' || fase === 'fim';
+    const est = estadoAte(c, k, moveu);
+    const aviso = $('corrida-aviso');
+    if (e.tipo === 'anda') {
+      pintarPista(c, moveu ? est : { ...est, ultimaAnda: estadoAte(c, k, false).ultimaAnda });
+      if (fase === 'surge' || (novaCarta && !moveu)) {
+        cartaVoadora(e.naipe, e.valor);
+        const cg = centroGrande();
+        voar({ left: cg.left + cg.width * 0.35, top: cg.top + cg.height * 0.35, width: cg.width * 0.3, height: cg.height * 0.3 }, { instantaneo: true, frente: false });
       }
-    });
-    if (k < 0) { $('corrida-aviso').textContent = 'Largada em…'; return; }
-    if (ultimo) {
-      $('corrida-saiu').innerHTML = ultimo.tipo === 'anda'
-        ? `<small>Saiu</small>${carta(ultimo.naipe, ultimo.valor, 'saiu-carta')}`
-        : `<small>Casa ${ultimo.casa} virou</small>${carta(ultimo.naipe, ultimo.valor, 'saiu-carta volta')}`;
-      $('corrida-aviso').textContent = ultimo.tipo === 'anda' ? `${NOME_NAIPE[ultimo.naipe]} avança!` : `${NOME_NAIPE[ultimo.naipe]} volta uma casa!`;
-      const el = $(`cavalo-${ultimo.naipe}`);
-      if (el) { el.classList.remove('pulo', 'tombo'); void el.offsetWidth; el.classList.add(ultimo.tipo === 'anda' ? 'pulo' : 'tombo'); }
+      if (fase === 'mostra' || fase === 'segura') voar(centroGrande(), { frente: true });
+      if (fase === 'canto') voar(caixa($('corrida-saiu')), { frente: true });
+      if (moveu) esconderVoadora();
+      aviso.textContent = moveu ? `${NOME_NAIPE[e.naipe]} avança!` : fase === 'surge' ? 'Virando a carta…' : `Saiu ${e.valor} de ${NOME_NAIPE[e.naipe]}!`;
+      if (fase === 'move') { const el = $(`cavalo-${e.naipe}`); if (el) { el.classList.remove('pulo', 'tombo'); void el.offsetWidth; el.classList.add('pulo'); } }
     } else {
-      $('corrida-aviso').textContent = 'Largada!';
+      const slot = document.querySelector(`.pista-lateral[data-casa="${e.casa}"]`);
+      if (!moveu && (fase === 'sobe' || novaCarta)) {
+        cartaVoadora(e.naipe, e.valor);
+        voar(caixa(slot), { instantaneo: true, frente: false });
+      }
+      pintarPista(c, est, moveu ? null : e.casa);
+      if (fase === 'sobe') requestAnimationFrame(() => voar(centroGrande(), { frente: false }));
+      if (fase === 'desvira' || fase === 'segura') voar(centroGrande(), { frente: true });
+      if (fase === 'volta') voar(caixa(slot), { frente: true });
+      if (moveu) esconderVoadora();
+      aviso.textContent = moveu ? `${NOME_NAIPE[e.naipe]} volta uma casa!` : fase === 'sobe' ? `Todos passaram da casa ${e.casa}: a carta vai virar…` : `Casa ${e.casa}: ${e.valor} de ${NOME_NAIPE[e.naipe]}!`;
+      if (fase === 'move') { const el = $(`cavalo-${e.naipe}`); if (el) { el.classList.remove('pulo', 'tombo'); void el.offsetWidth; el.classList.add('tombo'); } }
     }
   }
+  let apostasTimer = null;
   function desenharCorrida(c) {
     if (!c) return;
     clearInterval(corridaTimer);
     corridaAtual = c;
     const el = $('corrida-telao');
+    clearInterval(apostasTimer);
     if (c.estado === 'fechada') {
       corridaChave = '';
+      esconderVoadora();
       el.innerHTML = `<h1 class="terror corrida-titulo">Corrida de Cavalos 🏇</h1><p class="prev-dica">As apostas abrem em breve…</p>`;
       return;
     }
     if (c.estado === 'apostas') {
       corridaChave = '';
+      esconderVoadora();
       el.innerHTML = `<h1 class="terror corrida-titulo">Corrida de Cavalos 🏇</h1>
-        <p class="prev-dica">Escolha seu cavalo no celular · 1º lugar +${pts(c.premios[0])} · 2º +${pts(c.premios[1])} · último: shot!</p>
-        <div class="contador-votos">🎟️ <b>${c.total}</b> ${c.total === 1 ? 'aposta' : 'apostas'}</div>
+        <p class="prev-dica">Escolha seu cavalo no celular e toque em <b>Salvar</b> · 1º lugar +${pts(c.premios[0])} · 2º +${pts(c.premios[1])} · último: shot!</p>
+        <div class="apostas-relogio"><small>Apostas fecham em</small><b id="apostas-seg">1:00</b></div>
+        <div class="contador-votos">✅ <b>${c.total}</b> ${c.total === 1 ? 'confirmado' : 'confirmados'}</div>
         <div class="apostas-grade">${NAIPES.map((n) => `<div class="aposta-coluna">${carta(n, 'A', 'grande')}
           <b class="aposta-nome">${NOME_NAIPE[n]}</b><span class="aposta-conta">${(c.apostas[n] || []).length}</span>
           <div class="aposta-bolhas">${(c.apostas[n] || []).map((p) => `<span class="mini-bolha"><span class="avatar mini">${emoji(p.avatar)}</span>${esc(p.iniciais)}</span>`).join('')}</div>
         </div>`).join('')}</div>`;
+      const relogio = () => {
+        const ms = Math.max(0, (c.fechaEm || 0) - PV.relogio.agora());
+        const seg = Math.ceil(ms / 1000);
+        const b = $('apostas-seg');
+        if (b) { b.textContent = `${Math.floor(seg / 60)}:${String(seg % 60).padStart(2, '0')}`; b.classList.toggle('acabando', seg <= 10); }
+        if (ms <= 0) { clearInterval(apostasTimer); if (window.PVTelaoRecarregar) setTimeout(window.PVTelaoRecarregar, 800); }
+      };
+      clearInterval(apostasTimer);
+      relogio();
+      apostasTimer = setInterval(relogio, 250);
       return;
     }
     // correndo ou fim: monta a pista uma vez por corrida
     const chave = `${c.rodada}:${c.inicioEm}`;
-    if (chave !== corridaChave) { corridaChave = chave; corridaPasso = -2; montarPista(c); }
+    if (chave !== corridaChave) { corridaChave = chave; corridaFase = ''; montarPista(c); }
     if (c.estado === 'correndo') {
+      corridaFase = '';
       quadroCorrida();
-      corridaTimer = setInterval(quadroCorrida, 100);
+      corridaTimer = setInterval(quadroCorrida, 50);
       clearTimeout(corridaFim);
-      if (window.PVTelaoRecarregar) corridaFim = setTimeout(window.PVTelaoRecarregar, Math.max(500, c.fimEm - PV.relogio.agora() + 400));
+      if (window.PVTelaoRecarregar && !c.pausadaEm) corridaFim = setTimeout(window.PVTelaoRecarregar, Math.max(500, c.fimEm - PV.relogio.agora() + 400));
       return;
     }
     // fim: pista no lugar final + resultado
-    corridaPasso = -2;
+    corridaFase = '';
     quadroCorrida();
+    esconderVoadora();
     const ord = c.ordem || [];
     const res = document.createElement('div');
     res.className = 'corrida-resultado';
