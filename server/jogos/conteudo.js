@@ -25,24 +25,25 @@ const PERGUNTAS_REMOVIDAS = ['ganha-concurso', 'mais-amaldicoado', 'mais-fotos',
 const PONTOS_PREVISAO = 1000;
 
 // Castigos da Maldição: todos de bebida (cada um bebe o que estiver bebendo).
-// nivel: 1 = leve, 2 = moderado, 3 = caos. Cada intensidade usa os castigos até o seu nível.
+// Todos os castigos valem em qualquer ritmo (a intensidade só muda o intervalo entre maldições).
 // {a} = sorteado; {b} = parceiro (castigo duplo).
 const CASTIGOS = [
-  { id: 'gole', nivel: 1, texto: 'Dê um gole caprichado na sua bebida.' },
-  { id: 'companhia', nivel: 1, texto: 'Escolha alguém para beber um gole com você.' },
-  { id: 'brinde', nivel: 1, texto: 'Brinde com a próxima pessoa que chegar perto de você e bebam juntos.' },
-  { id: 'mao', nivel: 1, texto: 'Beba com a mão não dominante até a próxima maldição.' },
-  { id: 'olhos', nivel: 1, texto: 'Beba de olhos fechados enquanto todo mundo conta até 5.' },
-  { id: 'monstro', nivel: 1, texto: 'Todo mundo com o mesmo monstro que você bebe um gole junto.' },
-  { id: 'shot', nivel: 2, texto: 'Tome um shot.' },
-  { id: 'duplo', nivel: 2, duplo: true, texto: 'Maldição dupla: {a} e {b} brindam e bebem juntos.' },
-  { id: 'vire', nivel: 3, texto: 'Vire o que estiver no seu copo.' },
-  { id: 'shot-duplo', nivel: 3, texto: 'Tome um shot e escolha alguém para tomar outro com você.' },
+  { id: 'monstro', texto: 'Todo mundo com o mesmo monstro que você toma um shot junto.' },
+  { id: 'shot', texto: 'Tome um shot.' },
+  { id: 'duplo', duplo: true, texto: 'Maldição dupla: {a} e {b} brindam e bebem juntos.' },
+  { id: 'vire', texto: 'Vire o que estiver no seu copo.' },
+  { id: 'shot-duplo', texto: 'Tome um shot e escolha alguém para tomar outro com você.' },
+  { id: 'dois-shots', texto: 'Tome 2 shots.' },
+  { id: 'bruxa', texto: 'Dê sua risada de bruxa mais alta no meio da festa e tome um shot.' },
+  { id: 'medo', texto: 'Conte para a roda o seu maior medo ou tome 2 shots.' },
+  { id: 'fantasia', texto: 'Escolha a fantasia mais assustadora da festa: você e essa pessoa viram o copo juntos.' },
+  { id: 'direita', texto: 'A pessoa à sua direita decide: você vira o copo ou toma um shot.' },
+  { id: 'zumbi', texto: 'Ande como zumbi até o bar, tome um shot e volte do mesmo jeito.' },
 ];
 const INTENSIDADES = {
-  leve: { nome: 'Leve', nivel: 1, minMin: 30, maxMin: 40 },
-  moderado: { nome: 'Moderado', nivel: 2, minMin: 20, maxMin: 30 },
-  caos: { nome: 'Caos', nivel: 3, minMin: 10, maxMin: 15 },
+  leve: { nome: 'Leve', minMin: 30, maxMin: 40 },
+  moderado: { nome: 'Moderado', minMin: 20, maxMin: 30 },
+  caos: { nome: 'Caos', minMin: 10, maxMin: 15 },
 };
 const PONTOS_MALDICAO = 500;
 

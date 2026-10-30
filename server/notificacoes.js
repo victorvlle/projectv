@@ -505,11 +505,19 @@ async function despacharAdiados(agora = relogio()) {
 }
 
 // ------------------------------------------------------------------ maldição
-// Aviso pessoal para quem foi sorteado (e o parceiro, no castigo duplo). Uma vez por sorteio.
+// Aviso pessoal para quem foi sorteado (e o parceiro, no castigo duplo) e um aviso geral para
+// todo o resto ("alguém foi amaldiçoado"), sem nome: quem foi aparece só no telão.
+// Em teste, o aviso geral vai só para os testadores. Uma vez por sorteio (chaves próprias).
 async function amaldicoado(m) {
   const ids = [m.convidadoId, m.parceiro && m.parceiro.id].filter(Boolean);
-  return enviar({ titulo: 'Project V: você foi amaldiçoado', corpo: 'Olhe o telão: o seu castigo de bebida está esperando por você.',
+  const pessoal = await enviar({ titulo: 'Project V: você foi amaldiçoado', corpo: 'Olhe o telão: o seu castigo de bebida está esperando por você.',
     url: '/#maldicao', tag: `maldicao-${m.id}`, para: { ids }, chave: `maldicao:${m.id}` });
+  const para = m.teste
+    ? { ids: (await banco.tudo('SELECT id FROM convidados WHERE testador = 1 AND ativo = 1')).map((x) => x.id) }
+    : 'todos';
+  const geral = await enviar({ titulo: 'Project V: a Maldição despertou', corpo: 'Alguém foi amaldiçoado. Olhe o telão para ver quem e qual é o castigo.',
+    url: '/#maldicao', tag: `maldicao-${m.id}`, para, exceto: ids, chave: `maldicao-todos:${m.id}` });
+  return { pessoal, geral };
 }
 
 // ----------------------------------------------------------------- agendados

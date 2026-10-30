@@ -89,7 +89,7 @@
         <button class="botao ${c.ligada ? 'secundario' : ''}" type="button" data-acao="mal-ligar" data-id="${c.ligada ? '0' : '1'}">${c.ligada ? 'Pausar sorteios' : 'Ligar sorteios automáticos'}</button>
         <button class="botao" type="button" data-acao="mal-sortear">Sortear agora</button>
       </div>
-      <p class="fraco" style="margin:10px 0 6px">Intensidade (intervalo entre maldições e castigos mais pesados):</p>
+      <p class="fraco" style="margin:10px 0 6px">Ritmo (de quanto em quanto tempo sai uma maldição; os desafios são os mesmos em qualquer ritmo):</p>
       <div class="estados intensidades">${ints}</div>
       <div class="linha-teste" style="margin-top:8px"><label class="fraco" for="mal-min">Ou intervalo próprio (min):</label>
         <input id="mal-min" type="number" min="2" max="180" value="${c.minMin}" style="width:80px"> a

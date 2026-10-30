@@ -118,3 +118,37 @@ test('não sorteia a mesma pessoa duas vezes seguidas (com 2 disponíveis)', asy
   }
   for (let i = 1; i < nomes.length; i++) assert.notEqual(nomes[i], nomes[i - 1]);
 });
+
+test('aviso geral: quem não foi sorteado recebe "a Maldição despertou" (sem nome); em teste, só testadores', async () => {
+  await h.liberar('maldicao');
+  const a = await h.convidado('Aviso Um', { push: true });
+  const b = await h.convidado('Aviso Dois', { push: true });
+  const espera = () => esperar(300);
+  const de = (c) => notif.caixa.filter((m) => m.endpoint === c.sub.endpoint);
+  notif.caixa.length = 0;
+  await banco.rodar("UPDATE push_log SET em = 0"); // não bater no teto por hora de testes anteriores
+  const r = await s.req('POST', '/api/admin/maldicao/sortear', { token: admin, corpo: { id: h.idClique() } });
+  assert.equal(r.status, 200);
+  await espera();
+  const nome = r.json.maldicao.nome;
+  for (const c of [a, b]) {
+    const titulos = de(c).map((m) => m.titulo);
+    assert.equal(titulos.length, 1, `${c.nome}: um aviso só`);
+    if (nome === c.nome) assert.equal(titulos[0], 'Project V: você foi amaldiçoado');
+    else assert.equal(titulos[0], 'Project V: a Maldição despertou');
+  }
+  const geral = notif.caixa.find((m) => m.titulo === 'Project V: a Maldição despertou');
+  assert.ok(!geral.corpo.includes(nome), 'sem o nome de quem foi sorteado');
+  assert.equal(notif.problemaNoAviso(geral), null);
+
+  // Em teste: o aviso geral não chega a quem não testa
+  await s.req('PATCH', `/api/admin/convidados/${a.id}`, { token: admin, corpo: { testador: true } });
+  await h.liberar('maldicao', 'teste');
+  notif.caixa.length = 0;
+  await banco.rodar("UPDATE push_log SET em = 0");
+  assert.equal((await s.req('POST', '/api/admin/maldicao/sortear', { token: admin, corpo: { id: h.idClique() } })).status, 200);
+  await espera();
+  assert.equal(de(b).length, 0, 'quem não testa não recebe nada');
+  assert.equal(de(a).length, 1, 'o testador recebe o aviso pessoal');
+  await s.req('PATCH', `/api/admin/convidados/${a.id}`, { token: admin, corpo: { testador: false } });
+});

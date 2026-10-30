@@ -65,8 +65,8 @@ async function elegiveis(soTestadores = false) {
   return banco.tudo(`SELECT id, nome, avatar FROM convidados WHERE ativo = 1 AND fora = 0 AND avatar IS NOT NULL${soTestadores ? ' AND testador = 1' : ''}`);
 }
 
-function escolherCastigo(nivel, temParceiro) {
-  const opcoes = CASTIGOS.filter((c) => c.nivel <= nivel && (!c.duplo || temParceiro));
+function escolherCastigo(temParceiro) {
+  const opcoes = CASTIGOS.filter((c) => !c.duplo || temParceiro);
   return opcoes[crypto.randomInt(0, opcoes.length)];
 }
 
@@ -74,7 +74,6 @@ function escolherCastigo(nivel, temParceiro) {
 async function sortear({ origem, chave, agora = Date.now() }) {
   const existente = await banco.um('SELECT id FROM maldicoes WHERE chave = ?', [chave]);
   if (existente) return { repetido: true, maldicao: await buscar(Number(existente.id)) };
-  const cfg = await config();
   const teste = await atividades.emTeste('maldicao');
   const pessoas = await elegiveis(teste);
   if (!pessoas.length) throw new ErroValidacao(teste ? 'Em teste só os testadores são sorteados, e nenhum está disponível (marque no admin quem testa).' : 'Ninguém disponível para sortear (todos fora ou sem monstro).', 409);
@@ -82,9 +81,8 @@ async function sortear({ origem, chave, agora = Date.now() }) {
   const ultimo = await banco.um("SELECT convidado_id FROM maldicoes WHERE estado != 'cancelada' ORDER BY id DESC LIMIT 1");
   const candidatos = pessoas.length > 1 && ultimo ? pessoas.filter((p) => p.id !== ultimo.convidado_id) : pessoas;
   const alvo = candidatos[crypto.randomInt(0, candidatos.length)];
-  const nivel = (INTENSIDADES[cfg.intensidade] || INTENSIDADES.moderado).nivel;
   const outros = pessoas.filter((p) => p.id !== alvo.id);
-  const castigo = escolherCastigo(nivel, outros.length > 0);
+  const castigo = escolherCastigo(outros.length > 0);
   const parceiro = castigo.duplo ? outros[crypto.randomInt(0, outros.length)] : null;
   const texto = castigo.texto.replace('{a}', alvo.nome).replace('{b}', parceiro ? parceiro.nome : '');
   const r = await banco.rodar(
