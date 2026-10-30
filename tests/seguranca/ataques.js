@@ -79,19 +79,22 @@ async function main() {
 
     // =========================================================== 1. RELÓGIO
     const G1 = 'Relógio e desbloqueio';
+    // As datas reais da festa já podem ter passado (o teste roda em qualquer dia): agenda as
+    // Previsões para daqui a 2 dias, para provar que só o relógio do servidor libera.
+    await req('PUT', '/api/admin/atividades/previsoes', { token: admin, corpo: { estado: 'agendada', abreEm: Date.now() + 2 * 86400000 } });
     let f = await req('GET', '/api/festa', { token: tA });
     const bloqueadas = f.json.atividades.filter((a) => a.estado !== 'liberada');
     const vazou = bloqueadas.filter((a) => a.nome || a.descricao || a.icone);
     barrado(G1, 'Ler o nome/descrição de atividades bloqueadas pela API', vazou.length === 0,
       `${bloqueadas.length} atividades bloqueadas; o servidor manda só o nome enigmático`);
 
-    const relogioFalso = Date.parse('2026-11-01T02:00:00-04:00');
+    const relogioFalso = Date.now() + 30 * 86400000;
     f = await req('GET', '/api/festa', { token: tA, headers: { Date: new Date(relogioFalso).toUTCString(), 'X-Agora': String(relogioFalso) } });
     barrado(G1, 'Adiantar o relógio (cabeçalhos Date/X-Agora falsos)', f.json.atividades.every((a) => a.estado !== 'liberada'),
       'o servidor usa só o próprio relógio; o que o celular diz é ignorado');
 
     const prev = f.json.atividades.find((a) => a.id === 'previsoes');
-    barrado(G1, 'Abrir as Previsões antes de 30/10', prev.estado !== 'liberada',
+    barrado(G1, 'Abrir as Previsões antes da hora', prev.estado !== 'liberada',
       `estado atual "${prev.estado}", abre ${new Date(prev.abreEm).toISOString()} (decidido pelo servidor)`);
 
     const tentativasLib = [
@@ -420,14 +423,13 @@ async function main() {
     barrado(GJ, 'Votar em si mesmo no Concurso (ou votar usando o id interno)', votoProprio.status === 400 && votoIdCru.status === 400,
       `HTTP ${votoProprio.status}, ${votoIdCru.status}`);
     let cartasAceitas = 0;
-    for (let i = 0; i < 5; i++) { if ((await req('POST', '/api/correio', { token: tT, corpo: { texto: `spam no telão ${i}` } })).status === 200) cartasAceitas++; }
-    const noTelao = (await req('GET', '/api/admin/telao', { token: admin })).json.correio.cartas.length;
-    barrado(GJ, 'Encher o telão de recados do Mural', cartasAceitas === 1 && noTelao <= 1, `${cartasAceitas} de 5 aceitas (1 a cada 30 s); ${noTelao} no telão; o organizador pode travar e apagar`);
+    for (let i = 0; i < 45; i++) { if ((await req('POST', '/api/correio', { token: tT, corpo: { texto: `spam no telão ${i}` } })).status === 200) cartasAceitas++; }
+    barrado(GJ, 'Encher o telão de recados do Mural', cartasAceitas <= 40, `${cartasAceitas} de 45 aceitas (freio por minuto e teto de 40 por pessoa); o organizador pode travar e apagar`);
     const aprovarConv = await req('POST', '/api/admin/correio/1/aprovar', { token: tT });
     barrado(GJ, 'Convidado aprovar a própria carta', aprovarConv.status === 401, `HTTP ${aprovarConv.status}`);
     const html = Buffer.from('<html><script>alert(1)</script></html>'.padEnd(2000, ' ')).toString('base64');
-    const fotoHtml = await req('POST', '/api/correio', { token: tT, corpo: { foto: html } });
-    const fotoGigante = await req('POST', '/api/correio', { token: tT, corpo: { foto: 'A'.repeat(3 * 1024 * 1024) } });
+    const fotoHtml = await req('POST', '/api/correio', { token: tV, corpo: { foto: html } });
+    const fotoGigante = await req('POST', '/api/correio', { token: tV, corpo: { foto: 'A'.repeat(3 * 1024 * 1024) } });
     barrado(GJ, 'Mandar HTML/script disfarçado de foto ou um arquivo gigante no Mural', fotoHtml.status === 400 && fotoGigante.status === 413,
       `HTTP ${fotoHtml.status} (só JPEG de verdade), ${fotoGigante.status} (limite de tamanho)`);
     const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(2000, 1)]).toString('base64');

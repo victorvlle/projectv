@@ -154,7 +154,7 @@ test('Previsões nascem agendadas para 30/10 e abrem sozinhas no horário', asyn
   const t = (await entrar(c.codigo)).json.token;
   const f = await s.req('GET', '/api/festa', { token: t });
   assert.equal(f.json.atividades.find((a) => a.id === 'quiz').estado, 'liberada');
-  assert.equal(await agendador.verificar(), 1);
+  assert.ok(await agendador.verificar() >= 1); // depois de 30/10 as Previsões também já abriram
   const l = await banco.um("SELECT estado FROM atividades WHERE id = 'quiz'");
   assert.equal(l.estado, 'liberada');
   await s.req('PUT', '/api/admin/atividades/quiz', { token: admin, corpo: { estado: 'bloqueada' } });

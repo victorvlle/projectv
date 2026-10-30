@@ -45,6 +45,38 @@
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') manterAcesa(); });
 
   let vezRanking = 0; // cada vez que o ranking aparece no telão, o pódio é revelado com suspense
+  // ------------------------------------------------- encaixe automático das cenas
+  // Cada cena ganha um "miolo"; se o conteúdo for mais alto que o espaço da cena, o miolo
+  // encolhe (zoom) até caber. Reage sozinho a qualquer mudança de conteúdo e ao tamanho da tela.
+  const SEM_ENCAIXE = new Set(['correio']); // o Mural já se ajusta ao espaço
+  document.querySelectorAll('.cena').forEach((s) => {
+    const miolo = document.createElement('div');
+    miolo.className = 'cena-miolo';
+    while (s.firstChild) miolo.appendChild(s.firstChild);
+    s.appendChild(miolo);
+  });
+  let encaixePendente = false;
+  function encaixar() {
+    if (encaixePendente) return;
+    encaixePendente = true;
+    requestAnimationFrame(() => {
+      encaixePendente = false;
+      const s = document.querySelector('.cena:not(.oculto)');
+      if (!s || SEM_ENCAIXE.has(s.dataset.cena)) return;
+      const miolo = s.querySelector(':scope > .cena-miolo');
+      const disponivel = s.clientHeight;
+      if (!miolo || !disponivel) return;
+      miolo.style.zoom = '1';
+      const precisa = miolo.scrollHeight;
+      const z = precisa > disponivel ? Math.max(0.45, (disponivel - 4) / precisa) : 1;
+      miolo.style.zoom = z < 1 ? z.toFixed(3) : '';
+    });
+  }
+  new MutationObserver(encaixar).observe($('palco'), { childList: true, subtree: true, characterData: true });
+  window.addEventListener('resize', encaixar);
+  document.addEventListener('fullscreenchange', encaixar);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(encaixar);
+
   function trocarCena(cena) {
     if (cena === cenaAtual) return;
     cenaAtual = cena;
@@ -55,6 +87,7 @@
       s.classList.toggle('oculto', !visivel);
       if (visivel) { s.style.animation = 'none'; void s.offsetWidth; s.style.animation = ''; }
     });
+    encaixar();
   }
 
   function desenhar() {

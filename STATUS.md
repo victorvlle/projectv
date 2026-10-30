@@ -74,6 +74,9 @@ Atualizado em 27/10/2026.
 - [x] O Monstro está entre nós (de volta em 29/10, à noite): "Quero entrar na vila", rodadas comandadas pelo admin, monstros sorteados em segredo (sugestão 1/2/3 pelo tamanho da vila), missão de brindar com 5, pistas manuais ou prontas para o telão, votação, revelação com suspense; +1000 quem acerta, monstro que escapa +1000 e +100 por alma
 - [x] Maldição: 14 desafios num grupo só (4 de foto: o telão abre o Mural esperando a foto); todos recebem notificação (sem nome)
 
+- [x] Mural (30/10): sem espera entre envios (até 40 por pessoa); telão mostra em fila na ordem de envio, sem cortar o que está na tela; troca sem sobrepor textos; ranking à esquerda e programação à direita (horários editáveis em Telão → Programação da noite)
+- [x] Telão: todas as cenas se encaixam sozinhas abaixo do cabeçalho (zoom automático quando o conteúdo não cabe), conferido com 30 convidados em 1920×1080 e 1366×768
+
 ## Pendente (Etapa C, em ordem)
 
 - [ ] Adivinhe a fantasia (deixado para depois)

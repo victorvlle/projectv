@@ -485,7 +485,19 @@
   function desenharTelao() {
     document.querySelectorAll('#modos-telao button').forEach((b) => b.classList.toggle('ativo', b.dataset.modo === estado.telao.modo));
     if (document.activeElement !== $('msg-telao')) $('msg-telao').value = estado.telao.mensagem || '';
+    const prog = $('programacao');
+    if (!prog.contains(document.activeElement)) {
+      const p = estado.telao.programacao || {};
+      prog.innerHTML = estado.atividades.filter((a) => !['previsoes', 'correio', 'fotos'].includes(a.id)).map((a) => `<label class="item linha-prog">
+        <span>${PV.esc(a.icone)} ${PV.esc(a.nome)}</span><input type="time" data-prog="${PV.esc(a.id)}" value="${PV.esc(p[a.id] || "")}"></label>`).join('');
+    }
   }
+  $('salvar-programacao').addEventListener('click', async () => {
+    const programacao = {};
+    document.querySelectorAll('#programacao [data-prog]').forEach((i) => { programacao[i.dataset.prog] = i.value; });
+    await acao(() => api('PUT', '/telao', { programacao }), 'Programação no telão.');
+    carregar();
+  });
   $('modos-telao').addEventListener('click', async (e) => {
     const b = e.target.closest('button[data-modo]');
     if (!b) return;

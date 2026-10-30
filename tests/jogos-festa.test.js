@@ -255,22 +255,22 @@ test('correio travado: anônimo, com freio, só aprovadas vão ao telão (sem o 
   const mandar = (c, texto, p = null) => s.req('POST', '/api/correio', { token: c.token, corpo: { texto, para: p } });
   assert.equal((await mandar(victor, 'oi')).status, 400);
   assert.equal((await mandar(victor, '<img src=x onerror=alert(1)> sua fantasia dá medo', para)).status, 200);
-  assert.equal((await mandar(victor, 'outra carta logo em seguida')).status, 429, '1 por minuto');
+  assert.equal((await mandar(victor, 'outra carta logo em seguida')).status, 200, 'sem espera: entra na fila');
   assert.equal((await mandar(lucas, 'Carta do Lucas: '.padEnd(400, 'x'))).status, 200);
   const minhas = (await festa(lucas)).correio.minhas;
   assert.equal(minhas[0].texto.length, 140, 'corta em 140');
 
   assert.equal((await telao()).correio.cartas.length, 0, 'nada vai ao telão sem aprovação');
   const cartas = (await adminJogos()).correio.cartas;
-  assert.equal(cartas.length, 2);
-  const doVictor = cartas.find((x) => x.autor === 'Victor Teste');
+  assert.equal(cartas.length, 3);
+  const doVictor = cartas.find((x) => x.autor === 'Victor Teste' && x.para);
   assert.equal(doVictor.para, 'Lucas Teste');
   assert.equal((await s.req('POST', `/api/admin/correio/${doVictor.id}/aprovar`, { token: admin })).status, 200);
   const t = (await telao()).correio.cartas;
   assert.equal(t.length, 1);
   assert.equal(t[0].para, 'Lucas Teste');
   assert.ok(!JSON.stringify(t).includes('Victor'), 'o telão não sabe quem mandou');
-  assert.equal((await festa(victor)).correio.minhas[0].estado, 'aprovada');
+  assert.equal((await festa(victor)).correio.minhas.find((x) => x.para).estado, 'aprovada');
 });
 
 test('mural: foto (JPEG de verdade), só o dono e o organizador veem, telão mostra, apagar fotos', async () => {
@@ -311,7 +311,7 @@ test('mural: foto (JPEG de verdade), só o dono e o organizador veem, telão mos
   assert.equal(ap.json.fotos, 1);
   assert.equal((await adminJogos()).correio.fotos, 0);
   assert.ok(!(await telao()).correio.cartas.some((x) => x.id === minha.id));
-  assert.equal((await adminJogos()).correio.cartas.length, 2, 'recados de texto ficam');
+  assert.equal((await adminJogos()).correio.cartas.length, 3, 'recados de texto ficam');
 
   // Uma foto de teste fica para o "Apagar dados de teste" levar junto.
   await destravar();

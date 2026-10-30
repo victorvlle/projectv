@@ -12,7 +12,8 @@
 // JPEG de verdade e o tamanho. A foto fica em correio_fotos (fora das listas, que ficam leves) e
 // NÃO entra no backup. O organizador pode apagar todas as fotos depois da festa.
 //
-// Travas: legenda/recado até 140 caracteres; 1 envio a cada 30 s e no máximo 20 por pessoa.
+// Travas: legenda/recado até 140 caracteres; no máximo 40 por pessoa (sem espera entre um e outro:
+// o telão mostra em fila, na ordem de envio). O freio geral dos jogos segura rajadas absurdas.
 // MODO TESTE: o que for mandado com a atividade "Em teste" fica marcado e some no "Apagar dados de teste".
 
 const crypto = require('crypto');
@@ -23,8 +24,7 @@ const convidados = require('./convidados');
 const { ErroValidacao, limparTexto } = convidados;
 
 const MAX_CARACTERES = 140;
-const MAX_POR_PESSOA = 20;
-const INTERVALO_MS = 30 * 1000;
+const MAX_POR_PESSOA = 40; // sem espera entre envios: o telão mostra em fila, na ordem em que chegaram
 const MAX_FOTO_BYTES = 900 * 1024;
 
 async function config() {
@@ -78,9 +78,6 @@ async function enviar(eu, { texto, para, foto }, agora = Date.now()) {
   }
   const r = await banco.um('SELECT COUNT(*) AS n, MAX(criado_em) AS ultima FROM correio WHERE autor_id = ?', [eu.id]);
   if (Number(r.n) >= MAX_POR_PESSOA) throw new ErroValidacao(`Você já mandou ${MAX_POR_PESSOA} vezes. Chega por hoje. 💀`, 429);
-  if (r.ultima != null && agora - Number(r.ultima) < INTERVALO_MS) {
-    throw new ErroValidacao('Espere uns segundos antes de mandar de novo.', 429);
-  }
   const { auto } = await config();
   // Foto de quem está cumprindo um desafio de foto da Maldição: liga à maldição e vai ao telão
   // na hora (mesmo com o Mural travado).

@@ -102,3 +102,5 @@ h3 { font-size: 1.05rem; margin-bottom: 6px; }
 
 .item.travado { border-color: var(--laranja); }
 .botao-x { appearance: none; border: 0; background: transparent; color: var(--texto-3); margin-left: 4px; cursor: pointer; font-size: .8rem; padding: 0 2px; }
+.linha-prog { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.linha-prog input { width: 120px; }

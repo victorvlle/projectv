@@ -126,13 +126,16 @@
 
   // --------------------------------------------------------- mural das trevas
   // Um por vez: foto inteira na tela (com a legenda embaixo) ou o recado.
-  // Foto fica 12 s, recado 9 s. O que acabou de ser aprovado entra na frente.
+  // Foto fica 12 s, recado 9 s. FILA: o que chega entra na fila e aparece na ordem de envio (o
+  // primeiro que mandou aparece primeiro), sem cortar o que está na tela; sem fila, roda tudo em ordem.
   // Visual "cinematográfico": cada item entra num quadro novo (fade + zoom 98%→100%) enquanto o
   // anterior sai em fade; a foto só entra depois de carregada, e a mesma foto, desfocada, vira a
   // luz difusa do fundo.
-  let cartas = [];
-  let indice = 0;
+  let cartas = []; // em ordem de envio (mais antigo primeiro)
   let rodando = null;
+  let mostrandoId = null;
+  let primeiraCarga = true;
+  const vistosMural = new Set();
   let assinatura = '';
   let vez = 0; // descarta trocas atrasadas (foto que terminou de baixar depois de outra troca)
   const TRANSICAO_MS = 700;
@@ -183,16 +186,52 @@
     luzDeFundo(img || null);
   }
 
+  // Laterais do Mural: ranking (esquerda) e programação das atrações (direita).
+  let assLaterais = '';
+  const horaDe = (ms) => PV.dataHora(ms, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  function desenharLaterais(estado) {
+    const rank = (estado.ranking || []).slice(0, 6);
+    const prog = (estado.telao && estado.telao.programacao) || {};
+    const ativs = (estado.atividades || []).filter((a) => !['previsoes', 'correio', 'fotos'].includes(a.id));
+    const itens = ativs.map((a) => {
+      const hora = prog[a.id] || (a.abreEm ? horaDe(a.abreEm) : '');
+      return { a, hora, aberta: a.estado === 'liberada' };
+    }).sort((x, y) => (x.aberta === y.aberta ? 0 : x.aberta ? -1 : 1) || (x.hora || '99').localeCompare(y.hora || '99'));
+    const html = `<h2 class="lado-titulo">Ranking da noite</h2>
+      <ol class="lado-rank">${rank.map((r) => `<li><span class="lado-pos">${r.posicao}</span><span class="avatar mini">${emoji(r.avatar)}</span>
+        <span class="lado-nome">${esc(r.nome.split(' ')[0])}</span><b>${pts(r.pontos)}</b></li>`).join('') || '<li class="lado-vazio">Ninguém pontuou ainda</li>'}</ol>
+      §<h2 class="lado-titulo">Programação</h2>
+      <ul class="lado-agenda">${itens.map(({ a, hora, aberta }) => `<li class="${aberta ? 'aberta' : ''}">
+        <span class="lado-icone">${aberta ? esc(a.icone) : '🔒'}</span>
+        <span class="lado-nome">${esc(aberta ? a.nome : a.enigma)}</span>
+        <b>${aberta ? 'agora' : esc(hora || 'em breve')}</b></li>`).join('')}</ul>`;
+    if (html === assLaterais) return;
+    assLaterais = html;
+    const [esq, dir] = html.split('§');
+    $('mural-ranking').innerHTML = esq;
+    $('mural-agenda').innerHTML = dir;
+  }
+
+  // Próximo da fila: o mais antigo ainda não exibido; sem fila, o seguinte ao que está na tela.
+  function proxima() {
+    const naFila = cartas.find((c) => !vistosMural.has(c.id));
+    if (naFila) return naFila;
+    const pos = cartas.findIndex((c) => c.id === mostrandoId);
+    return cartas[(pos + 1) % cartas.length];
+  }
   function mostrarCarta() {
     clearTimeout(rodando);
     const minhaVez = ++vez;
     if (!cartas.length) {
+      mostrandoId = null;
       $('carta-telao').innerHTML = '<p class="prev-dica">Nada no mural ainda. Mande um recado ou uma foto pelo celular! 📸</p>';
       luzDeFundo(null);
       return;
     }
-    const c = cartas[indice % cartas.length];
-    const agendar = () => { rodando = setTimeout(() => { indice += 1; mostrarCarta(); }, c.foto ? 12000 : 9000); };
+    const c = proxima();
+    vistosMural.add(c.id);
+    mostrandoId = c.id;
+    const agendar = () => { rodando = setTimeout(mostrarCarta, c.foto ? 12000 : 9000); };
     if (c.foto) {
       PV.foto(urlFoto(c), tokenTelao())
         .then((src) => new Promise((ok) => { const im = new Image(); im.onload = () => ok([src, im]); im.onerror = () => ok([src, null]); im.src = src; }))
@@ -203,32 +242,27 @@
             ${c.texto ? `<figcaption>${esc(c.texto)}</figcaption>` : ''}</figure>`, src, im);
           agendar();
         })
-        .catch(() => { if (minhaVez !== vez) return; indice += 1; rodando = setTimeout(mostrarCarta, 3000); });
+        .catch(() => { if (minhaVez !== vez) return; rodando = setTimeout(mostrarCarta, 3000); });
     } else {
       trocarQuadro(`<div class="mural-recado">${para(c)}
           <p class="mural-recado-corpo">“${esc(c.texto)}”</p><p class="mural-recado-assinatura">— Anônimo</p></div>`, null);
       agendar();
     }
     // Já deixa a próxima foto baixada.
-    const prox = cartas[(indice + 1) % cartas.length];
+    const prox = proxima();
     if (prox && prox.foto) PV.foto(urlFoto(prox), tokenTelao()).catch(() => {});
   }
   function desenharCorreio(k) {
-    const nova = k ? k.cartas : [];
+    const nova = (k ? k.cartas : []).slice().sort((a, b) => (a.em - b.em) || (a.id - b.id));
     const ass = nova.map((c) => c.id).join(',');
     if (ass === assinatura) return;
-    const chegouNova = nova.length && (!cartas.length || nova[0].id !== (cartas[0] || {}).id);
     assinatura = ass;
-    const atual = cartas.length ? cartas[indice % cartas.length] : null;
     cartas = nova;
-    if (chegouNova) indice = 0; // o mais novo aparece primeiro
-    else {
-      // Continua de onde estava (sem reiniciar a foto que está na tela).
-      const pos = atual ? cartas.findIndex((c) => c.id === atual.id) : -1;
-      if (pos >= 0) { indice = pos; return; }
-      indice = 0;
-    }
-    mostrarCarta();
+    // Ao abrir o telão, o que já existia não é "novidade": roda em ordem a partir do mais antigo.
+    if (primeiraCarga) { primeiraCarga = false; nova.forEach((c) => vistosMural.add(c.id)); mostrandoId = null; mostrarCarta(); return; }
+    // Nada na tela (mural vazio) ou o que estava na tela foi apagado: mostra o próximo já.
+    if (!mostrandoId || !cartas.some((c) => c.id === mostrandoId)) mostrarCarta();
+    // Senão, quem chegou espera a vez na fila (não corta o que está na tela).
   }
 
   // ------------------------------------------------------------ o monstro
@@ -300,6 +334,7 @@
       desenharQuiz(estado.quiz);
       desenharConcurso(estado.concurso);
       desenharCorreio(estado.correio);
+      desenharLaterais(estado);
       desenharMonstro(estado.monstro);
     },
   };

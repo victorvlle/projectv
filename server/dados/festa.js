@@ -69,10 +69,27 @@ function paraManaus(ms) {
 }
 
 async function telao() {
-  return { modo: (await ler('telaoModo')) || 'contagem', mensagem: (await ler('telaoMensagem')) || '', previsao: Number((await ler('telaoPrevisao')) || 0) };
+  return { modo: (await ler('telaoModo')) || 'contagem', mensagem: (await ler('telaoMensagem')) || '', previsao: Number((await ler('telaoPrevisao')) || 0),
+    programacao: (await ler('programacao')) || {} };
 }
 
-async function definirTelao({ modo, mensagem, previsao }) {
+// Programação da noite (só para mostrar no telão do Mural): { idDaAtividade: 'HH:MM' }.
+function validarProgramacao(p) {
+  const { IDS } = require('../atividades/catalogo');
+  if (!p || typeof p !== 'object' || Array.isArray(p)) throw new ErroValidacao('Programação inválida.');
+  const saida = {};
+  for (const [id, hora] of Object.entries(p)) {
+    if (!IDS.has(id)) continue;
+    const h = String(hora || '').trim();
+    if (!h) continue;
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(h)) throw new ErroValidacao(`Horário inválido: ${h}`);
+    saida[id] = h;
+  }
+  return saida;
+}
+
+async function definirTelao({ modo, mensagem, previsao, programacao }) {
+  if (programacao !== undefined) await gravar('programacao', validarProgramacao(programacao));
   if (previsao !== undefined) {
     const n = Number(previsao);
     if (!Number.isInteger(n) || n < 0 || n > 50) throw new ErroValidacao('Pergunta inválida.');

@@ -5,7 +5,11 @@ body { overflow: hidden; cursor: default; }
 .cabecalho .marca { font-size: 5vh; }
 .subtitulo { color: var(--texto-2); font-size: 2.4vh; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
 
-.cena { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 0; animation: entrar .6s ease both; }
+.cena { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 0; animation: entrar .6s ease both; overflow: hidden; }
+/* Encaixe automático: o conteúdo de cada cena fica num miolo que encolhe (zoom) quando não cabe
+   entre o cabeçalho e o rodapé da tela. Assim nada sobrepõe o cabeçalho nem é cortado. */
+.cena-miolo { width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; flex: none; }
+.cena[data-cena="correio"] .cena-miolo { flex: 1; min-height: 0; height: 100%; }
 @keyframes entrar { from { opacity: 0; transform: translateY(2vh) scale(.98); } to { opacity: 1; transform: none; } }
 
 .rotulo { font-size: 3vh; text-transform: uppercase; letter-spacing: .35em; color: var(--texto-2); margin: 0 0 3vh; }
@@ -27,7 +31,7 @@ body { overflow: hidden; cursor: default; }
 @keyframes flutuar { 50% { transform: translateY(-1vh); } }
 
 .titulo-cena { font-size: 8vh; color: var(--laranja); margin-bottom: 4vh; text-align: center; }
-.grade-almas { display: flex; flex-wrap: wrap; justify-content: center; gap: 3vh 2vw; width: 100%; max-height: 70vh; overflow: hidden; align-content: flex-start; }
+.grade-almas { display: flex; flex-wrap: wrap; justify-content: center; gap: 3vh 2vw; width: 100%; align-content: flex-start; }
 .alma { width: 19vh; display: flex; flex-direction: column; align-items: center; text-align: center; font-size: 2.4vh; font-weight: 600; color: var(--texto); animation: entrar .5s ease both; min-width: 0; }
 .alma .avatar { width: 11vh; height: 11vh; font-size: 6.5vh; margin-bottom: 1vh; }
 .alma .nome-conf { display: block; width: 100%; line-height: 1.2; overflow-wrap: break-word; }
@@ -199,9 +203,11 @@ body[data-cena="correio"] .ambiente { opacity: 0; }
 
 /* Quadro: o item novo e o que sai ocupam a mesma célula (crossfade). */
 .mural-slide { grid-area: 1 / 1; display: grid; place-items: center; width: 100%; height: 100%;
-  opacity: 0; transform: scale(.98); transition: opacity var(--m-ms) ease, transform var(--m-ms) cubic-bezier(.2, .7, .2, 1); }
+  opacity: 0; transform: scale(.98);
+  /* O que entra espera o anterior sumir (sem textos sobrepostos). */
+  transition: opacity 650ms ease 380ms, transform 750ms cubic-bezier(.2, .7, .2, 1) 380ms; }
 .mural-slide.visivel { opacity: 1; transform: none; }
-.mural-slide.saindo { opacity: 0; transform: none; transition-duration: 550ms; }
+.mural-slide.saindo { opacity: 0; transform: none; transition: opacity 380ms ease; }
 
 /* Foto: protagonista. Altura disponível descontando o "Para" e a legenda. */
 .mural-foto { margin: 0; display: flex; flex-direction: column; align-items: center; --reserva: 0vh; }
@@ -331,3 +337,31 @@ body[data-cena="correio"] .ambiente { opacity: 0; }
 .monstro-revelado.pego em { color: var(--lima); }
 .monstro-revelado.escapou em { color: #FF3355; }
 @media (prefers-reduced-motion: reduce) { .monstro-suspense, .monstro-revelado { animation: none; } }
+
+/* Mural: três colunas (ranking · foto/recado · programação) */
+.mural-layout { width: 100%; height: 100%; min-height: 0; display: grid; grid-template-columns: minmax(0, 19vw) minmax(0, 1fr) minmax(0, 19vw);
+  gap: 2.5vw; align-items: center; }
+[data-cena="correio"] .mural-layout .carta-telao { width: 100%; }
+.mural-layout .mural-moldura img { max-width: 50vw; }
+.mural-layout .mural-recado { max-width: 54vw; padding: 5vh 4vw; }
+.mural-layout .mural-recado-corpo { font-size: 5vh; }
+.mural-layout .mural-foto figcaption { max-width: 52vw; }
+.mural-lado { align-self: center; padding: 2.6vh 1.4vw; border-radius: 1.4vh; background: rgba(16, 12, 22, .55);
+  box-shadow: 0 0 0 1px rgba(255, 118, 41, .22); min-width: 0; }
+.lado-titulo { margin: 0 0 1.8vh; font-size: 1.7vh; letter-spacing: .3em; text-transform: uppercase; color: #A99AAF; font-weight: 700; }
+.lado-rank, .lado-agenda { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.3vh; }
+.lado-rank li, .lado-agenda li { display: grid; align-items: center; gap: .8vw; font-size: 2.3vh; color: #F5F0F7; min-width: 0; }
+.lado-rank li { grid-template-columns: 2.4vh auto minmax(0, 1fr) auto; }
+.lado-agenda li { grid-template-columns: 3vh minmax(0, 1fr) auto; }
+.lado-agenda .lado-nome { white-space: normal; line-height: 1.2; }
+.lado-pos { color: #A99AAF; font-weight: 800; text-align: right; }
+.lado-rank li:first-child .lado-pos { color: #FF7629; }
+.lado-rank .avatar.mini { width: 3.6vh; height: 3.6vh; font-size: 2.2vh; margin: 0; }
+.lado-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.lado-rank b { color: #FF7629; font-variant-numeric: tabular-nums; }
+.lado-agenda li b { font-size: 2vh; color: #A99AAF; font-variant-numeric: tabular-nums; }
+.lado-agenda li.aberta b { color: var(--lima); }
+.lado-agenda li.aberta .lado-nome { color: #F5F0F7; }
+.lado-agenda li:not(.aberta) .lado-nome { color: #A99AAF; }
+.lado-icone { font-size: 2.6vh; text-align: center; }
+.lado-vazio { color: #A99AAF; font-size: 2vh; }
