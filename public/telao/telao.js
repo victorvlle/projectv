@@ -142,9 +142,26 @@
   }
   setInterval(tic, 1000);
 
+  // Saiu versão nova do site: o telão NÃO recarrega sozinho (perderia o "Ativar som" no meio da
+  // festa). Mostra um botão discreto; um clique recarrega.
+  let versaoCarregada = null;
+  function conferirVersao(v) {
+    if (!v) return;
+    if (!versaoCarregada) { versaoCarregada = v; return; }
+    if (v === versaoCarregada || $('faixa-versao')) return;
+    const b = document.createElement('button');
+    b.id = 'faixa-versao';
+    b.type = 'button';
+    b.className = 'botao pequeno faixa-versao-telao';
+    b.textContent = '✨ Versão nova do site: clique para atualizar o telão';
+    b.addEventListener('click', () => location.reload());
+    document.body.appendChild(b);
+  }
+
   async function carregar() {
     try {
       const r = await PV.chamar('GET', '/api/admin/telao', { token });
+      conferirVersao(r.versao);
       PV.relogio.sincronizar(r.agora);
       estado = r;
       desenhar();

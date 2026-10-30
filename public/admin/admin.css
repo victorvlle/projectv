@@ -101,3 +101,4 @@ h3 { font-size: 1.05rem; margin-bottom: 6px; }
 .chip-sala .tirar { appearance: none; border: 0; background: none; color: var(--texto-3); cursor: pointer; padding: 0 2px 0 4px; font-size: .9rem; }
 
 .item.travado { border-color: var(--laranja); }
+.botao-x { appearance: none; border: 0; background: transparent; color: var(--texto-3); margin-left: 4px; cursor: pointer; font-size: .8rem; padding: 0 2px; }

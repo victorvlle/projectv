@@ -17,8 +17,8 @@ async function apagarDadosDeTeste(agora = Date.now()) {
     maldicoes: await contar('SELECT COUNT(*) AS n FROM maldicoes WHERE teste = 1'),
     palpites: await contar('SELECT COUNT(*) AS n FROM previsoes_palpites WHERE teste = 1'),
   };
-  const [prev, conc, quiz, mald, emTeste] = await Promise.all([
-    festa.ler('previsoes'), festa.ler('concurso'), festa.ler('quiz'), festa.ler('maldicao'),
+  const [prev, conc, quiz, mald, mon, emTeste] = await Promise.all([
+    festa.ler('previsoes'), festa.ler('concurso'), festa.ler('quiz'), festa.ler('maldicao'), festa.ler('monstro'),
     banco.tudo("SELECT id, abre_em FROM atividades WHERE estado = 'teste'"),
   ]);
   const ids = new Set(emTeste.map((a) => a.id));
@@ -34,6 +34,11 @@ async function apagarDadosDeTeste(agora = Date.now()) {
     { sql: 'DELETE FROM maldicoes WHERE teste = 1', args: [] },
     { sql: 'DELETE FROM previsoes_palpites WHERE teste = 1', args: [] },
     { sql: 'DELETE FROM previsoes_envios WHERE teste = 1', args: [] },
+    { sql: 'DELETE FROM monstro_vila WHERE teste = 1', args: [] },
+    { sql: 'DELETE FROM monstro_papeis WHERE teste = 1', args: [] },
+    { sql: 'DELETE FROM monstro_brindes WHERE teste = 1', args: [] },
+    { sql: 'DELETE FROM monstro_votos WHERE teste = 1', args: [] },
+    { sql: 'DELETE FROM monstro_pistas WHERE teste = 1', args: [] },
   ];
   // Previsões que foram encerradas/publicadas/respondidas em teste: voltam ao começo.
   if ((prev && prev.teste) || ids.has('previsoes')) {
@@ -52,6 +57,11 @@ async function apagarDadosDeTeste(agora = Date.now()) {
     await festa.gravar('concurso', { estado: 'fechado', teste: false });
   }
   if (quiz && (ids.has('quiz') || (quiz.sessao && quiz.sessao.teste))) await festa.gravar('quiz', { ...quiz, sessao: null });
+  if ((mon && mon.teste) || ids.has('monstro')) {
+    // Rodadas de teste somem; a numeração volta para a última rodada de verdade.
+    const real = await banco.um('SELECT MAX(rodada) AS r FROM monstro_papeis');
+    await festa.gravar('monstro', { rodada: Number((real && real.r) || 0), estado: 'aberta', teste: false });
+  }
   if (ids.has('maldicao') || antes.maldicoes) await festa.gravar('maldicao', { ...(mald || {}), ligada: false, proximaEm: null });
   return { ...antes, atividades: [...ids] };
 }

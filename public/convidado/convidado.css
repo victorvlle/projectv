@@ -469,3 +469,8 @@ body.sem-rolagem { overflow: hidden; }
 .foto-visor-fechar { position: absolute; top: calc(10px + env(safe-area-inset-top)); right: 12px; width: 44px; height: 44px; border-radius: 50%;
   border: 1px solid var(--borda); background: var(--cartao); color: var(--texto); font-size: 1.1rem; }
 body.sem-rolar { overflow: hidden; }
+
+/* O Monstro */
+.monstro-papel { margin-top: 10px; }
+.monstro-papel.sou-monstro { border-color: rgba(179, 18, 46, .8); background: linear-gradient(160deg, rgba(179, 18, 46, .25), var(--cartao)); }
+.monstro-papel .pessoas-lista { margin-top: 10px; }

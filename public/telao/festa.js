@@ -231,11 +231,76 @@
     mostrarCarta();
   }
 
+  // ------------------------------------------------------------ o monstro
+  // Vila (monstrinhos flutuando) → rodada (almas e pistas) → votação (quem já votou) → revelação com suspense.
+  let assMonstro = '';
+  const vistosMonstro = new Set();
+  let revelacaoFeita = null;
+  let timerRevela = null;
+  const bolhas = (lista, prefixo) => lista.map((p, i) => {
+    const chave = `${prefixo}:${p.avatar}:${p.iniciais}:${i}`;
+    const nova = !vistosMonstro.has(chave);
+    vistosMonstro.add(chave);
+    return `<div class="bolha ${nova ? 'chegou' : ''}" style="animation-delay:${nova ? 0 : (i % 7) * 0.35}s, ${(i % 5) * 0.5}s">
+      <span class="avatar">${emoji(p.avatar)}</span><b>${esc(p.iniciais)}</b></div>`;
+  }).join('');
+  function desenharMonstro(m) {
+    if (!m) return;
+    const ass = JSON.stringify(m);
+    if (ass === assMonstro) return;
+    assMonstro = ass;
+    const el = $('monstro-telao');
+    const pistas = (m.pistas || []).length ? `<div class="monstro-pistas">${m.pistas.map((p, i) => `<p class="${i === 0 ? 'nova' : ''}">🔎 ${esc(p.texto)}</p>`).join('')}</div>` : '';
+    if (m.estado === 'aberta') {
+      clearTimeout(timerRevela);
+      el.innerHTML = `<h1 class="terror monstro-titulo">Há um monstro entre nós</h1>
+        <p class="prev-dica">Entre na vila pelo celular: <b>O Monstro → Quero entrar na vila</b></p>
+        <div class="contador-votos">🏘️ <b>${m.vila.length}</b> na vila</div>
+        <div class="sala-bolhas">${bolhas(m.vila, 'vila') || '<p class="prev-dica">A vila está vazia… por enquanto.</p>'}</div>`;
+      return;
+    }
+    if (m.estado === 'jogando') {
+      el.innerHTML = `<p class="rotulo">Rodada ${m.rodada}</p>
+        <h1 class="terror monstro-titulo">${m.qtdMonstros === 1 ? 'Há um monstro' : `Há ${m.qtdMonstros} monstros`} entre vocês</h1>
+        <div class="monstro-almas"><b>${m.almas}</b><small>${m.almas === 1 ? 'alma pega' : 'almas pegas'}</small></div>
+        ${pistas || '<p class="prev-dica">Fique de olho em quem anda brindando demais…</p>'}`;
+      return;
+    }
+    if (m.estado === 'votacao') {
+      const e = m.eleitores || [];
+      el.innerHTML = `<h1 class="terror monstro-titulo">Quem é o monstro?</h1>
+        <p class="prev-dica">Vote pelo celular · a revelação vem aí</p>
+        <div class="contador-votos">🗳️ <b>${e.length}</b> de ${m.vila.length} votaram</div>
+        <div class="sala-bolhas">${bolhas(e, `voto${m.rodada}`) || '<p class="prev-dica">Ninguém votou ainda…</p>'}</div>${pistas}`;
+      return;
+    }
+    if (m.estado === 'revelada' && m.resultado) {
+      const r = m.resultado;
+      const cartoes = r.monstros.map((x, i) => `<div class="monstro-revelado ${x.descoberto ? 'pego' : 'escapou'}" style="animation-delay:${i * 0.6}s">
+        <span class="avatar">${emoji(x.avatar)}</span><b>${esc(x.nome)}</b>
+        <small>${x.almas} ${x.almas === 1 ? 'alma' : 'almas'} · ${x.votos} ${x.votos === 1 ? 'voto' : 'votos'}</small>
+        <em>${x.descoberto ? 'Descoberto!' : 'Escapou!'}</em></div>`).join('');
+      const final = `<h1 class="terror monstro-titulo">${r.monstros.length === 1 ? 'O monstro era…' : 'Os monstros eram…'}</h1>
+        <div class="monstro-revelados">${cartoes}</div>
+        <p class="prev-dica">${r.acertaram ? `🎯 ${r.acertaram} ${r.acertaram === 1 ? 'pessoa acertou' : 'pessoas acertaram'} (+1.000)` : 'Ninguém acertou!'}${r.acertaramNomes.length ? `: ${r.acertaramNomes.map(esc).join(', ')}` : ''}</p>`;
+      // Suspense uma vez por rodada: "O monstro era…" sozinho por 3 s, depois a revelação.
+      if (revelacaoFeita !== m.rodada) {
+        revelacaoFeita = m.rodada;
+        el.innerHTML = `<h1 class="terror monstro-titulo monstro-suspense">${r.monstros.length === 1 ? 'O monstro era…' : 'Os monstros eram…'}</h1>`;
+        clearTimeout(timerRevela);
+        timerRevela = setTimeout(() => { el.innerHTML = final; }, 3200);
+      } else if (!timerRevela || !el.querySelector('.monstro-suspense')) {
+        el.innerHTML = final;
+      }
+    }
+  }
+
   window.PVTelaoFesta = {
     desenhar(estado) {
       desenharQuiz(estado.quiz);
       desenharConcurso(estado.concurso);
       desenharCorreio(estado.correio);
+      desenharMonstro(estado.monstro);
     },
   };
 })();

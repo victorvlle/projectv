@@ -446,6 +446,11 @@ async function main() {
     barrado(GJ, 'Convidado destravar o Mural ou apagar envio de alguém', travarConv.status === 401 && apagarUmConv.status === 401, `HTTP ${travarConv.status}, ${apagarUmConv.status}`);
     const apagarFotosConv = await req('POST', '/api/admin/correio-fotos/apagar', { token: tA });
     barrado(GJ, 'Convidado apagar as fotos do Mural', apagarFotosConv.status === 401, `HTTP ${apagarFotosConv.status}`);
+    const monstroBloq = await req('GET', '/api/monstro', { token: tA });
+    const monstroAdm = await req('POST', '/api/admin/monstro/iniciar', { token: tA, corpo: { quantos: 1 } });
+    const monstroRevelar = await req('POST', '/api/admin/monstro/revelar', { token: tA });
+    barrado(GJ, 'Descobrir o monstro ou comandar as rodadas pelo celular', monstroBloq.status === 403 && monstroAdm.status === 401 && monstroRevelar.status === 401,
+      `HTTP ${monstroBloq.status} (jogo fechado para quem não testa), ${monstroAdm.status}, ${monstroRevelar.status}`);
     const apagarConv = await req('POST', '/api/admin/teste/apagar', { token: tA });
     barrado(GJ, 'Convidado apagar dados de teste', apagarConv.status === 401, `HTTP ${apagarConv.status}`);
 

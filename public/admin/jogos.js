@@ -228,6 +228,55 @@
     PV.preencherFotos($('j-correio'), A().token());
   }
 
+  // ---------------------------------------------------------------- monstro
+  const ESTADO_MONSTRO = { aberta: 'Vila aberta (entre rodadas)', jogando: 'Rodada acontecendo', votacao: 'Votação aberta', revelada: 'Revelada' };
+  function desenharMonstroAdmin(m) {
+    const vila = m.vila.map((p) => `<span class="selo" title="${esc(p.nome)}">${A().emojiDe(p.avatar)} ${esc(p.nome)}
+      ${m.estado === 'aberta' || m.estado === 'revelada' ? `<button class="botao-x" type="button" data-acao="mon-tirar" data-id="${esc(p.id)}" aria-label="Tirar ${esc(p.nome)} da vila">✕</button>` : ''}</span>`).join(' ');
+    const opcoes = Array.from({ length: m.maximo }, (_, i) => i + 1).map((n) => `<option value="${n}" ${n === m.sugestao ? 'selected' : ''}>${n} ${n === 1 ? 'monstro' : 'monstros'}${n === m.sugestao ? ' (sugerido)' : ''}</option>`).join('');
+    let corpo = '';
+    if (m.estado === 'aberta' || m.estado === 'revelada') {
+      corpo = m.vila.length >= m.minVila
+        ? `<div class="linha-teste" style="margin-top:10px"><select id="mon-qtd">${opcoes}</select>
+            <button class="botao" type="button" data-acao="mon-iniciar">▶️ Começar rodada ${m.rodada + 1}</button></div>
+            <p class="fraco">Sorteia os monstros em segredo, avisa quem está na vila e o telão troca sozinho.</p>`
+        : `<p class="fraco">Precisa de pelo menos ${m.minVila} pessoas na vila para começar.</p>`;
+    }
+    if (m.estado === 'jogando' || m.estado === 'votacao') {
+      const monstros = (m.monstros || []).map((x) => `<div class="item"><div class="item-topo"><span class="avatar">${A().emojiDe(x.avatar)}</span><div>
+        <div class="item-nome">${esc(x.nome)} <span class="selo pendente">${x.vitimas.length}/${m.missao} almas</span></div>
+        <div class="item-sub">${x.vitimas.length ? esc(x.vitimas.join(', ')) : 'nenhum brinde ainda'}</div></div></div></div>`).join('');
+      const prontas = (m.prontas || []).map((t, i) => `<button class="botao secundario pequeno" type="button" data-acao="mon-pronta" data-i="${i}">${esc(t)}</button>`).join('');
+      corpo = `<p class="fraco" style="margin:10px 0 6px">🔒 Só você vê quem é monstro:</p><div class="lista">${monstros}</div>
+        <h4 style="margin:14px 0 6px">Pistas para o telão</h4>
+        <div class="item-acoes" style="flex-wrap:wrap">${prontas}</div>
+        <div class="linha-teste" style="margin-top:8px"><input id="mon-pista" maxlength="140" placeholder="Escreva uma pista…" style="flex:1">
+          <button class="botao secundario pequeno" type="button" data-acao="mon-pista">Mandar</button></div>
+        ${(m.pistas || []).length ? `<p class="fraco" style="margin-top:6px">Já no telão: ${m.pistas.map((p) => esc(p.texto)).join(' · ')}</p>` : ''}
+        <div class="item-acoes" style="margin-top:12px">
+          ${m.estado === 'jogando' ? '<button class="botao" type="button" data-acao="mon-votacao">🗳️ Abrir votação</button>'
+            : `<button class="botao" type="button" data-acao="mon-revelar">🎭 Revelar no telão (${m.votaram} ${m.votaram === 1 ? 'voto' : 'votos'})</button>`}
+          <button class="botao secundario pequeno" type="button" data-acao="mon-cancelar">Cancelar rodada</button>
+        </div>
+        ${m.estado === 'votacao' && m.contagem.length ? `<p class="fraco" style="margin-top:8px">Votos até agora: ${m.contagem.map((c) => `${esc(c.nome)} (${c.votos})`).join(', ')}</p>` : ''}`;
+    }
+    if (m.estado === 'revelada' && m.resultado) {
+      corpo = `<p style="margin-top:10px"><b>Rodada ${m.rodada}:</b> ${m.resultado.monstros.map((x) => `${esc(x.nome)} (${x.almas} almas, ${x.votos} votos, ${x.descoberto ? 'descoberto' : 'escapou'})`).join('; ')}.
+        ${m.resultado.acertaram.length} ${m.resultado.acertaram.length === 1 ? 'pessoa acertou' : 'pessoas acertaram'}.</p>${corpo}`;
+    }
+    pintar('j-monstro', `
+      ${m.liberada ? '' : '<p class="aviso-inline">O Monstro está bloqueado: libere (ou coloque "Em teste") em Atividades.</p>'}
+      ${m.emTeste ? '<p class="selo teste" style="display:inline-block">🧪 Em teste: só os testadores entram na vila</p>' : ''}
+      <p><span class="selo ${m.estado === 'jogando' || m.estado === 'votacao' ? 'ok' : 'fora'}">${ESTADO_MONSTRO[m.estado] || m.estado}</span> · rodada ${m.rodada}</p>
+      <p class="fraco">🏘️ <b>${m.vila.length}</b> na vila: ${vila || 'ninguém ainda'}</p>
+      ${corpo}
+      <div class="item-acoes" style="margin-top:8px"><button class="botao secundario pequeno" type="button" data-acao="tel-modo" data-modo="monstro">Mostrar o Monstro no telão</button></div>
+      <p class="fraco" style="margin-top:8px">Ordem: começar rodada → mandar pistas → abrir votação → revelar → começar a próxima. Missão do monstro: brindar com ${m.missao} pessoas.
+        Pontos: +1000 para quem acertar; monstro que escapa (não é o mais votado) +1000 e +100 por alma.</p>`);
+    dadosMonstro = m;
+  }
+  let dadosMonstro = null;
+
   // ----------------------------------------------------- bebida e ranking
   function desenharBebidas(b) {
     const lista = b.pessoas.map((x) => `<div class="item"><div class="item-topo"><span class="avatar">${A().emojiDe(x.avatar)}</span><div>
@@ -257,6 +306,7 @@
     desenharQuiz(j.quiz);
     desenharConcurso(j.concurso);
     desenharCorreio(j.correio);
+    if (j.monstro) desenharMonstroAdmin(j.monstro);
   }
 
   // ------------------------------------------------------------------ ações
@@ -304,6 +354,16 @@
     if (oque === 'conc-despublicar') { if (confirmarToque(b)) await fazer(() => api('POST', '/concurso/despublicar'), 'Resultado despublicado.'); }
     if (oque === 'cor-aprovar') await fazer(() => api('POST', `/correio/${id}/aprovar`), 'Aprovado: vai para o telão.');
     if (oque === 'cor-recusar') await fazer(() => api('POST', `/correio/${id}/recusar`), 'Fora do telão.');
+    if (oque === 'mon-iniciar') { if (confirmarToque(b, 'Toque de novo: sortear os monstros')) await fazer(() => api('POST', '/monstro/iniciar', { quantos: Number($('mon-qtd').value) }), 'Rodada começou! Os monstros já sabem.'); }
+    if (oque === 'mon-votacao') { if (confirmarToque(b, 'Toque de novo: abrir a votação')) await fazer(() => api('POST', '/monstro/votacao'), 'Votação aberta. O telão já mostra.'); }
+    if (oque === 'mon-revelar') { if (confirmarToque(b, 'Toque de novo: revelar e dar os pontos')) await fazer(() => api('POST', '/monstro/revelar'), 'Revelado no telão!'); }
+    if (oque === 'mon-cancelar') { if (confirmarToque(b, 'Toque de novo: cancelar sem pontos')) await fazer(() => api('POST', '/monstro/cancelar'), 'Rodada cancelada.'); }
+    if (oque === 'mon-tirar') await fazer(() => api('DELETE', `/monstro/vila/${encodeURIComponent(id)}`), 'Tirado da vila.');
+    if (oque === 'mon-pronta' && dadosMonstro) await fazer(() => api('POST', '/monstro/pista', { texto: dadosMonstro.prontas[Number(b.dataset.i)] }), 'Pista no telão.');
+    if (oque === 'mon-pista') {
+      const t = $('mon-pista').value.trim();
+      if (t.length >= 3) { await fazer(() => api('POST', '/monstro/pista', { texto: t }), 'Pista no telão.'); $('mon-pista').value = ''; }
+    }
     if (oque === 'cor-auto') await fazer(() => api('PUT', '/correio-auto', { auto: b.dataset.auto === '1' }), b.dataset.auto === '1' ? 'Destravado: entra direto no telão.' : 'Travado: você aprova cada envio.');
     if (oque === 'cor-apagar') { if (confirmarToque(b, 'Toque de novo: apagar')) await fazer(() => api('DELETE', `/correio/${id}`), 'Apagado.'); }
     if (oque === 'cor-apagar-fotos') { if (confirmarToque(b, 'Toque de novo: apagar TODAS (some das Fotos da festa)')) await fazer(() => api('POST', '/correio-fotos/apagar'), 'Fotos apagadas.'); }

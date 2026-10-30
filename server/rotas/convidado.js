@@ -15,6 +15,7 @@ const maldicao = require('../dados/maldicao');
 const quiz = require('../dados/quiz');
 const concurso = require('../dados/concurso');
 const correio = require('../dados/correio');
+const monstro = require('../dados/monstro');
 const notificacoes = require('../notificacoes');
 const seg = require('../seguranca');
 const { AVATARES } = require('../avatares');
@@ -24,7 +25,7 @@ const { assincrono, soConvidado } = require('./util');
 const router = express.Router();
 // Versão no ar: muda a cada deploy (o Render informa o commit; sem ele, a hora em que o servidor subiu).
 // A página compara e se atualiza sozinha quando sai uma versão nova.
-const VERSAO = (process.env.RENDER_GIT_COMMIT || `inicio-${Date.now()}`).slice(0, 40);
+const { VERSAO } = require('./util');
 
 // 20 tentativas de código por minuto por IP: suficiente para uma festa inteira no
 // mesmo Wi-Fi, inútil para quem quer chutar códigos.
@@ -129,13 +130,14 @@ async function seLiberado(id, req, montar) {
 }
 async function jogosDaFesta(req) {
   const eu = req.convidado.id;
-  const [q, c, k, f] = await Promise.all([
+  const [q, c, k, f, mo] = await Promise.all([
     seLiberado('quiz', req, () => quiz.paraConvidado(eu)),
     seLiberado('concurso', req, () => concurso.paraConvidado(eu)),
     seLiberado('correio', req, () => correio.paraConvidado(eu)),
     seLiberado('fotos', req, () => correio.galeria()),
+    seLiberado('monstro', req, () => monstro.paraConvidado(eu)),
   ]);
-  return { quiz: q, concurso: c, correio: k, fotos: f };
+  return { quiz: q, concurso: c, correio: k, fotos: f, monstro: mo };
 }
 
 router.get('/festa', soConvidado, assincrono(async (req, res) => {
@@ -330,6 +332,33 @@ router.get('/correio/foto/:id', soConvidado, assincrono(async (req, res) => {
   if (!buf) return res.status(404).json({ ok: false, erro: 'Foto não encontrada.' });
   res.set({ 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, max-age=86400' });
   return res.send(buf);
+}));
+
+// O Monstro está entre nós.
+const jogoMonstro = async (req) => seLiberado('monstro', req, () => monstro.paraConvidado(req.convidado.id));
+router.get('/monstro', soConvidado, assincrono(async (req, res) => {
+  const m = await jogoMonstro(req);
+  if (!m) return proibido(res, 'O Monstro');
+  return res.json({ ok: true, monstro: m });
+}));
+router.put('/monstro/vila', soConvidado, freiarJogos, assincrono(async (req, res) => {
+  await monstro.entrar(req.convidado, (req.body || {}).quero === true);
+  avisar.telao('atualizar', { oque: 'monstro' });
+  avisar.admin('atualizar', { oque: 'monstro' });
+  res.json({ ok: true, monstro: await jogoMonstro(req) });
+}));
+router.put('/monstro/brinde', soConvidado, freiarJogos, assincrono(async (req, res) => {
+  const { vitima, marcar } = req.body || {};
+  await monstro.brindar(req.convidado, vitima, marcar !== false);
+  avisar.telao('atualizar', { oque: 'monstro' });
+  avisar.admin('atualizar', { oque: 'monstro' });
+  res.json({ ok: true, monstro: await jogoMonstro(req) });
+}));
+router.put('/monstro/voto', soConvidado, freiarJogos, assincrono(async (req, res) => {
+  await monstro.votar(req.convidado, (req.body || {}).suspeito);
+  avisar.telao('atualizar', { oque: 'monstro' });
+  avisar.admin('atualizar', { oque: 'monstro' });
+  res.json({ ok: true, monstro: await jogoMonstro(req) });
 }));
 
 // Fotos da festa: lista e todas num .zip.

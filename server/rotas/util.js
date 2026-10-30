@@ -40,4 +40,7 @@ function tratarErros(erro, req, res, _next) {
   return res.status(500).json({ ok: false, erro: 'Algo deu errado no servidor. Tente de novo.' });
 }
 
-module.exports = { assincrono, tokenDoCabecalho, convidadoDoToken, soConvidado, soAdmin, tratarErros };
+// Versão no ar: muda a cada deploy (o Render informa o commit; sem ele, a hora em que o servidor subiu).
+const VERSAO = (process.env.RENDER_GIT_COMMIT || `inicio-${Date.now()}`).slice(0, 40);
+
+module.exports = { VERSAO, assincrono, tokenDoCabecalho, convidadoDoToken, soConvidado, soAdmin, tratarErros };

@@ -20,6 +20,7 @@ const colaboracao = require('../dados/colaboracao');
 const quiz = require('../dados/quiz');
 const concurso = require('../dados/concurso');
 const correio = require('../dados/correio');
+const monstro = require('../dados/monstro');
 const teste = require('../dados/teste');
 const anunciar = require('../jogos/anunciar');
 const notificacoes = require('../notificacoes');
@@ -149,16 +150,16 @@ router.put('/telao', assincrono(async (req, res) => {
 
 // Dados do telão (mesma sessão do admin; o telão roda no notebook do organizador).
 router.get('/telao', assincrono(async (req, res) => {
-  const [info, ativs, lista, telao, rank, mal, qz, conc, cartas] = await Promise.all([
+  const [info, ativs, lista, telao, rank, mal, qz, conc, cartas, mon] = await Promise.all([
     festa.info(), atividades.paraConvidado(), convidados.confirmados(), festa.telao(), pontos.ranking(), maldicao.atual(),
-    quiz.paraTelao(), concurso.paraTelao(), correio.paraTelao(),
+    quiz.paraTelao(), concurso.paraTelao(), correio.paraTelao(), monstro.paraTelao(),
   ]);
   const confirmados = lista.map((c) => ({ nome: c.nome, avatar: c.avatar }));
   res.json({
-    ok: true, agora: Date.now(), festa: info, atividades: ativs, confirmados, telao, pos: await pos.resultado(),
+    ok: true, versao: require('./util').VERSAO, agora: Date.now(), festa: info, atividades: ativs, confirmados, telao, pos: await pos.resultado(),
     previsao: await previsoes.paraTelao(telao.previsao),
     ranking: rank.slice(0, 10).map((r) => ({ nome: r.nome, avatar: r.avatar, pontos: r.pontos, posicao: r.posicao })),
-    maldicao: mal, quiz: qz, concurso: conc, correio: cartas,
+    maldicao: mal, quiz: qz, concurso: conc, correio: cartas, monstro: mon,
   });
 }));
 
@@ -251,11 +252,11 @@ router.post('/avisos/teste', assincrono(async (req, res) => {
 
 // ----------------------------------------------------------------- jogos
 router.get('/jogos', assincrono(async (_req, res) => {
-  const [prev, mal, enig, rank, beb, qz, conc, cartas] = await Promise.all([
+  const [prev, mal, enig, rank, beb, qz, conc, cartas, mon] = await Promise.all([
     previsoes.paraAdmin(), maldicao.paraAdmin(), enigmas.paraAdmin(), pontos.ranking(), colaboracao.bebidasParaAdmin(),
-    quiz.paraAdmin(), concurso.paraAdmin(), correio.paraAdmin(),
+    quiz.paraAdmin(), concurso.paraAdmin(), correio.paraAdmin(), monstro.paraAdmin(),
   ]);
-  res.json({ ok: true, agora: Date.now(), previsoes: prev, maldicao: mal, enigmas: enig, ranking: rank, bebidas: beb, quiz: qz, concurso: conc, correio: cartas });
+  res.json({ ok: true, agora: Date.now(), previsoes: prev, maldicao: mal, enigmas: enig, ranking: rank, bebidas: beb, quiz: qz, concurso: conc, correio: cartas, monstro: mon });
 }));
 const jogosMudou = (res, oque = 'jogos') => { avisar.atualizar(oque); res.json({ ok: true }); };
 
@@ -321,6 +322,24 @@ router.post('/concurso/:estado', assincrono(async (req, res) => {
   else return res.status(404).json({ ok: false, erro: 'Ação desconhecida.' });
   return jogosMudou(res, 'concurso');
 }));
+
+// --------------------------------------------------------------- monstro
+router.post('/monstro/iniciar', assincrono(async (req, res) => {
+  const r = await monstro.iniciar((req.body || {}).quantos);
+  require('../notificacoes').monstro('rodada', r.vila, r.rodada).catch((e) => console.error('[push] monstro:', e.message));
+  return jogosMudou(res, 'monstro');
+}));
+router.post('/monstro/votacao', assincrono(async (_req, res) => {
+  const r = await monstro.abrirVotacao();
+  const cfg = await monstro.config();
+  require('../notificacoes').monstro('votacao', r.vila, cfg.rodada).catch((e) => console.error('[push] monstro:', e.message));
+  return jogosMudou(res, 'monstro');
+}));
+router.post('/monstro/revelar', assincrono(async (_req, res) => { const r = await monstro.revelar(); avisar.atualizar('ranking'); avisar.atualizar('monstro'); res.json({ ok: true, ...r }); }));
+router.post('/monstro/nova', assincrono(async (_req, res) => { await monstro.novaRodada(); jogosMudou(res, 'monstro'); }));
+router.post('/monstro/cancelar', assincrono(async (_req, res) => { await monstro.cancelarRodada(); jogosMudou(res, 'monstro'); }));
+router.post('/monstro/pista', assincrono(async (req, res) => { await monstro.mandarPista((req.body || {}).texto); jogosMudou(res, 'monstro'); }));
+router.delete('/monstro/vila/:id', assincrono(async (req, res) => { await monstro.tirarDaVila(req.params.id); jogosMudou(res, 'monstro'); }));
 
 // --------------------------------------------------------------- correio
 // Foto do Mural para moderar no painel e para o telão (que usa a sessão do organizador).

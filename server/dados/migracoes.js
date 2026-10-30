@@ -574,4 +574,44 @@ module.exports = [
       if (!cols.includes('foto_id')) await c.execute('ALTER TABLE maldicoes ADD COLUMN foto_id INTEGER');
     },
   },
+  {
+    nome: 'O Monstro está entre nós: vila, papéis, brindes, votos e pistas',
+    sql: `
+      CREATE TABLE IF NOT EXISTS monstro_vila (
+        convidado_id TEXT PRIMARY KEY REFERENCES convidados(id) ON DELETE CASCADE,
+        entrou_em INTEGER NOT NULL,
+        teste INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE TABLE IF NOT EXISTS monstro_papeis (
+        rodada INTEGER NOT NULL,
+        convidado_id TEXT NOT NULL REFERENCES convidados(id) ON DELETE CASCADE,
+        teste INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (rodada, convidado_id)
+      );
+      CREATE TABLE IF NOT EXISTS monstro_brindes (
+        rodada INTEGER NOT NULL,
+        monstro_id TEXT NOT NULL REFERENCES convidados(id) ON DELETE CASCADE,
+        vitima_id TEXT NOT NULL REFERENCES convidados(id) ON DELETE CASCADE,
+        em INTEGER NOT NULL,
+        teste INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (rodada, monstro_id, vitima_id)
+      );
+      CREATE TABLE IF NOT EXISTS monstro_votos (
+        rodada INTEGER NOT NULL,
+        eleitor_id TEXT NOT NULL REFERENCES convidados(id) ON DELETE CASCADE,
+        suspeito_id TEXT NOT NULL REFERENCES convidados(id) ON DELETE CASCADE,
+        em INTEGER NOT NULL,
+        teste INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (rodada, eleitor_id)
+      );
+      CREATE TABLE IF NOT EXISTS monstro_pistas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        rodada INTEGER NOT NULL,
+        texto TEXT NOT NULL,
+        em INTEGER NOT NULL,
+        teste INTEGER NOT NULL DEFAULT 0
+      );
+      INSERT OR IGNORE INTO atividades (id, estado, abre_em, atualizado_em) VALUES ('monstro', 'bloqueada', NULL, 0)
+    `,
+  },
 ];

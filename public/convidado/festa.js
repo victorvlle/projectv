@@ -407,6 +407,108 @@
     return null;
   }
 
+  // ============================================================ O MONSTRO
+  // O papel fica escondido atrás de um botão (todo mundo vê o mesmo botão), para ninguém
+  // descobrir o monstro olhando a tela do celular dele.
+  let monstro = null;
+  let papelVisivel = false;
+  let mexendoMonstro = false;
+  const pistasHtml = (m) => (m.pistas && m.pistas.length ? `<h2 class="titulo-secao">Pistas</h2><div class="lista">${m.pistas.map((p) =>
+    `<div class="item carta"><p class="carta-texto">🔎 ${esc(p.texto)}</p></div>`).join('')}</div>` : '');
+
+  function desenharMonstro(m) {
+    monstro = m;
+    if (!m) return;
+    const premios = `Acertou o monstro: +${pts(m.premios.acerto)}. Monstro que escapa: +${pts(m.premios.escapou)} e +${pts(m.premios.porVitima)} por vítima.`;
+    const conta = `<p class="quiz-sala-conta">🏘️ <b>${m.naVilaTotal}</b> ${m.naVilaTotal === 1 ? 'pessoa' : 'pessoas'} na vila</p>`;
+    const entrar = m.naVila
+      ? `<p class="quiz-veredito" style="margin-top:12px">✓ Você está na vila</p>${m.estado === 'aberta' || m.estado === 'revelada' ? '<button class="botao-discreto" type="button" data-vila="0">Sair da vila</button>' : ''}`
+      : '<button class="botao largo quiz-entrar" type="button" data-vila="1">🏘️ Quero entrar na vila</button>';
+    let html = '';
+    if (m.estado === 'aberta') {
+      html = `<section class="cartao"><b>Há um monstro entre vocês…</b><p class="mudo">Entre na vila para jogar. Quando a rodada começar, alguns de vocês viram
+        <b>monstros</b> em segredo e precisam brindar com ${m.missao} pessoas sem serem descobertos. No fim, todos votam em quem acham que é o monstro.</p>
+        <p class="fraco">${premios}</p>${entrar}${conta}</section>`;
+    } else if (m.estado === 'jogando' || m.estado === 'votacao') {
+      const cab = `<section class="cartao prev-aviso aberta"><b>${m.estado === 'votacao' ? '🗳️ Votação: quem é o monstro?' : `🐺 Rodada ${m.rodada}: ${m.qtdMonstros === 1 ? 'há 1 monstro' : `há ${m.qtdMonstros} monstros`} entre vocês`}</b>
+        <p class="mudo">${m.estado === 'votacao' ? 'Vote em quem você acha que é monstro. Dá para trocar até a revelação.' : 'Fique de olho em quem anda brindando demais…'}</p></section>`;
+      if (!m.jogo) {
+        html = `${cab}<section class="cartao"><p class="mudo">Você não está na vila nesta rodada. Entre agora para jogar a próxima.</p>${entrar}</section>${pistasHtml(m)}`;
+      } else {
+        let papel;
+        if (!papelVisivel) {
+          papel = '<button class="botao largo secundario" type="button" data-papel="1">👁️ Ver meu papel (esconda a tela)</button>';
+        } else if (m.souMonstro) {
+          const feitas = m.vitimas.length;
+          papel = `<section class="cartao monstro-papel sou-monstro"><b>🐺 Você é o Monstro</b>
+            <p>Missão: brinde com <b>${m.missao}</b> pessoas da vila sem ser descoberto. Depois de cada brinde, marque aqui (ninguém é avisado).</p>
+            ${m.comparsas && m.comparsas.length ? `<p class="mudo">Seus comparsas: <b>${m.comparsas.map(esc).join(', ')}</b></p>` : ''}
+            <p class="quiz-sala-conta">🍷 <b>${feitas}</b> de ${m.missao} almas</p>
+            ${m.estado === 'jogando' ? `<div class="pessoas-lista">${m.alvos.map((a) => {
+              const marcado = m.vitimas.some((v) => v.id === a.id);
+              return `<button type="button" class="pessoa-opcao ${marcado ? 'minha' : ''}" data-brinde="${esc(a.id)}" data-marcado="${marcado ? 1 : 0}">
+                <span class="avatar">${emoji(a.avatar)}</span><span>${esc(a.nome)}</span>${marcado ? '<span class="trocar">brindou ✓</span>' : ''}</button>`;
+            }).join('')}</div>` : '<p class="mudo">Brindes encerrados. Agora é torcer para não ser descoberto.</p>'}
+            <button class="botao-discreto" type="button" data-papel="0">Esconder</button></section>`;
+        } else {
+          papel = `<section class="cartao monstro-papel"><b>🧑‍🌾 Você é aldeão</b>
+            <p class="mudo">Você não é monstro. Observe quem anda brindando com todo mundo e use as pistas do telão.</p>
+            <button class="botao-discreto" type="button" data-papel="0">Esconder</button></section>`;
+        }
+        let voto = '';
+        if (m.estado === 'votacao' && m.suspeitos) {
+          const meu = m.suspeitos.find((x) => x.id === m.meuVoto);
+          voto = `<h2 class="titulo-secao">Seu voto</h2>${meu ? `<p>Você votou em <span class="avatar mini">${emoji(meu.avatar)}</span> <b>${esc(meu.nome)}</b></p>` : '<p><b>Você ainda não votou.</b></p>'}
+            <div class="pessoas-lista">${m.suspeitos.map((x) => `<button type="button" class="pessoa-opcao ${m.meuVoto === x.id ? 'minha' : ''}" data-suspeito="${esc(x.id)}">
+              <span class="avatar">${emoji(x.avatar)}</span><span>${esc(x.nome)}</span>${m.meuVoto === x.id ? '<span class="trocar">seu voto ✓</span>' : ''}</button>`).join('')}</div>`;
+        }
+        html = `${cab}${papel}${voto}${pistasHtml(m)}`;
+      }
+    } else if (m.estado === 'revelada' && m.resultado) {
+      const r = m.resultado;
+      const linhas = r.monstros.map((x) => `<div class="podio-linha"><span class="podio-pos">🐺</span><span class="avatar">${emoji(x.avatar)}</span>
+        <span class="podio-nome">${esc(x.nome)}<small>${x.almas} ${x.almas === 1 ? 'alma' : 'almas'} · ${x.votos} ${x.votos === 1 ? 'voto' : 'votos'}</small></span>
+        <b>${x.descoberto ? 'descoberto' : 'escapou'}</b></div>`).join('');
+      const meu = r.eraMonstro
+        ? (r.escapei ? '🐺 Você era monstro e escapou!' : '🐺 Você era monstro… e foi descoberto.')
+        : (r.acertei ? `🎯 Você acertou! +${pts(m.premios.acerto)}` : (r.voteiEm ? `Você votou em ${esc(r.voteiEm)}. Não era.` : 'Você não votou nesta rodada.'));
+      html = `<section class="cartao"><b>Rodada ${m.rodada}: ${r.monstros.length === 1 ? 'o monstro era…' : 'os monstros eram…'}</b><div class="podio-celular">${linhas}</div>
+        <p class="quiz-veredito" style="margin-top:10px">${meu}</p><p class="fraco">${r.acertaram} ${r.acertaram === 1 ? 'pessoa acertou' : 'pessoas acertaram'}.</p></section>
+        <section class="cartao"><p class="mudo">A próxima rodada começa quando o organizador chamar.</p>${entrar}${conta}</section>`;
+    }
+    pintar('monstro', `${seloTeste(m)}${html}`);
+  }
+  window.addEventListener('hashchange', () => { if (papelVisivel && location.hash !== '#monstro') { papelVisivel = false; if (monstro) desenharMonstro(monstro); } });
+  $('monstro').addEventListener('click', async (e) => {
+    const papel = e.target.closest('[data-papel]');
+    if (papel) { papelVisivel = papel.dataset.papel === '1'; desenharMonstro(monstro); return; }
+    const alvo = e.target.closest('[data-vila],[data-brinde],[data-suspeito]');
+    if (!alvo || alvo.disabled || mexendoMonstro) return;
+    mexendoMonstro = true;
+    alvo.disabled = true;
+    try {
+      let r;
+      if (alvo.dataset.vila) {
+        r = await C().api('PUT', '/api/monstro/vila', { quero: alvo.dataset.vila === '1' });
+        PV.avisar(alvo.dataset.vila === '1' ? 'Você entrou na vila. 🏘️' : 'Você saiu da vila.', 'ok');
+      } else if (alvo.dataset.brinde) {
+        const marcar = alvo.dataset.marcado !== '1';
+        r = await C().api('PUT', '/api/monstro/brinde', { vitima: alvo.dataset.brinde, marcar });
+        PV.avisar(marcar ? 'Alma marcada 🍷' : 'Brinde desmarcado.', 'ok');
+      } else {
+        r = await C().api('PUT', '/api/monstro/voto', { suspeito: alvo.dataset.suspeito });
+        PV.avisar('Voto registrado 🗳️', 'ok');
+      }
+      C().atualizarParte('monstro', r.monstro);
+    } catch (erro) {
+      alvo.disabled = false;
+      if (erro.status !== 401) PV.avisar(erro.message, 'erro');
+      if (erro.status === 409) C().recarregar();
+    } finally {
+      mexendoMonstro = false;
+    }
+  });
+
   // ======================================================= FOTOS DA FESTA
   // Abre depois da festa: todas as fotos aprovadas do Mural, para ver e baixar.
   let fotos = [];
@@ -513,6 +615,7 @@
     desenharConcurso(estado.concurso);
     desenharCorreio(estado.correio);
     desenharFotos(estado.fotos);
+    desenharMonstro(estado.monstro);
   }
 
   window.PVFesta = { desenhar };

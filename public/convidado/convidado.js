@@ -4,7 +4,7 @@
   const $ = (id) => document.getElementById(id);
   const telas = ['tela-carregando', 'tela-bloqueio', 'tela-perfil', 'tela-principal', 'tela-contribuicoes',
     'tela-playlist', 'tela-caronas', 'tela-chegar', 'tela-pos', 'tela-avisos', 'tela-previsoes', 'tela-enigma', 'tela-ranking', 'tela-maldicao',
-    'tela-quiz', 'tela-concurso', 'tela-correio', 'tela-fotos'];
+    'tela-quiz', 'tela-concurso', 'tela-correio', 'tela-fotos', 'tela-monstro'];
   let telaAtual = 'tela-carregando';
   function mostrar(qual) {
     telaAtual = qual;
@@ -358,16 +358,16 @@
 
   // ------------------------------------------------------------- navegação
   // #contribuicoes abre a tela de contribuições; o "voltar" do celular funciona.
-  const TELAS_ATIVIDADE = { pos: true, previsoes: true, maldicao: true, quiz: true, concurso: true, correio: true, fotos: true };
+  const TELAS_ATIVIDADE = { pos: true, previsoes: true, maldicao: true, quiz: true, concurso: true, correio: true, fotos: true, monstro: true };
   // Telas extras: hash -> id da tela. #pos só abre quando a atividade foi liberada.
   const TELAS = {
     '#contribuicoes': 'tela-contribuicoes', '#playlist': 'tela-playlist',
     '#caronas': 'tela-caronas', '#chegar': 'tela-chegar', '#pos': 'tela-pos', '#avisos': 'tela-avisos',
     '#previsoes': 'tela-previsoes', '#enigma': 'tela-enigma', '#ranking': 'tela-ranking', '#maldicao': 'tela-maldicao',
-    '#quiz': 'tela-quiz', '#concurso': 'tela-concurso', '#correio': 'tela-correio', '#fotos': 'tela-fotos',
+    '#quiz': 'tela-quiz', '#concurso': 'tela-concurso', '#correio': 'tela-correio', '#fotos': 'tela-fotos', '#monstro': 'tela-monstro',
   };
   // Telas de jogos da festa: só abrem se o servidor mandou os dados (liberado ou em teste para você).
-  const SO_LIBERADO = { '#quiz': 'quiz', '#concurso': 'concurso', '#correio': 'correio', '#fotos': 'fotos' };
+  const SO_LIBERADO = { '#quiz': 'quiz', '#concurso': 'concurso', '#correio': 'correio', '#fotos': 'fotos', '#monstro': 'monstro' };
   function irPara(hash) {
     if (!eu || !eu.perfilCompleto) return;
     let tela = TELAS[hash];

@@ -6,7 +6,7 @@ const banco = require('./banco');
 
 const NOMES_ATIVIDADE = {
   previsoes: 'Previsões', maldicao: 'Maldição', enigma: 'Enigmas (pré-festa)', colaboracao: 'Colaboração',
-  quiz: 'Quiz Relâmpago', concurso: 'Concurso de Fantasia',
+  quiz: 'Quiz Relâmpago', concurso: 'Concurso de Fantasia', monstro: 'O Monstro',
 };
 
 // Retorna true se concedeu agora; false se já existia.

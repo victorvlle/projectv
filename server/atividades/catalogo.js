@@ -45,6 +45,14 @@ const ATIVIDADES = [
     padrao: { estado: 'bloqueada' },
   },
   {
+    id: 'monstro',
+    nome: 'O Monstro está entre nós',
+    enigma: 'Há um monstro entre vocês',
+    icone: '🐺',
+    descricao: 'Entre na vila. Monstros secretos tentam brindar com suas vítimas; descubra quem são antes da revelação.',
+    padrao: { estado: 'bloqueada' },
+  },
+  {
     id: 'pos',
     nome: 'O Pós',
     enigma: 'Depois da meia-noite',

@@ -32,7 +32,7 @@ const { ErroValidacao } = require('./dados/convidados');
 
 const MAX_POR_CONVIDADO = 5;
 // Destinos que um toque na notificação pode abrir. Qualquer outro vira a página inicial.
-const DESTINOS = new Set(['/', '/#contribuicoes', '/#playlist', '/#caronas', '/#chegar', '/#pos', '/#avisos', '/#previsoes', '/#enigma', '/#ranking', '/#maldicao', '/#quiz', '/#concurso', '/#correio', '/#fotos']);
+const DESTINOS = new Set(['/', '/#contribuicoes', '/#playlist', '/#caronas', '/#chegar', '/#pos', '/#avisos', '/#previsoes', '/#enigma', '/#ranking', '/#maldicao', '/#quiz', '/#concurso', '/#correio', '/#fotos', '/#monstro']);
 const destinoSeguro = (u) => (DESTINOS.has(u) ? u : '/');
 const HOSTS_PERMITIDOS = [
   /^fcm\.googleapis\.com$/, /^android\.googleapis\.com$/,
@@ -471,9 +471,10 @@ const TEXTOS_LIBERADA = {
   quiz: ['Project V: Quiz Relâmpago', 'As perguntas aparecem no telão. Responda pelo celular: cada acerto vale até 500 pontos.'],
   concurso: ['Project V: Concurso de Fantasia', 'A votação da melhor fantasia está aberta no site da festa.'],
   correio: ['Project V: Mural das Trevas', 'Mande um recado ou uma foto da festa: aparece no telão na hora.'],
+  monstro: ['Project V: O Monstro está entre nós', 'Entre na vila pelo site: monstros secretos vão atacar. Descubra quem são.'],
   fotos: ['Project V: fotos da festa', 'As fotos do Mural das Trevas estão no site. Veja e baixe as suas favoritas.'],
 };
-const URL_LIBERADA = { pos: '/#pos', previsoes: '/#previsoes', quiz: '/#quiz', concurso: '/#concurso', correio: '/#correio', fotos: '/#fotos' };
+const URL_LIBERADA = { pos: '/#pos', previsoes: '/#previsoes', quiz: '/#quiz', concurso: '/#concurso', correio: '/#correio', fotos: '/#fotos', monstro: '/#monstro' };
 // Liberada de madrugada (ex.: Previsões às 00:00 de sexta): o aviso espera até as 8h.
 async function atividadeLiberada(atividade, agora = relogio()) {
   const [titulo, corpo] = TEXTOS_LIBERADA[atividade.id]
@@ -518,6 +519,16 @@ async function amaldicoado(m) {
   const geral = await enviar({ titulo: 'Project V: a Maldição despertou', corpo: 'Alguém foi amaldiçoado. Olhe o telão para ver quem e qual é o castigo.',
     url: '/#maldicao', tag: `maldicao-${m.id}`, para, exceto: ids, chave: `maldicao-todos:${m.id}` });
   return { pessoal, geral };
+}
+
+// ------------------------------------------------------------------ monstro
+// Só para quem está na vila. Nunca diz quem é monstro (cada um descobre abrindo o site).
+async function monstro(tipo, ids, rodada) {
+  if (!ids || !ids.length) return { para: 0 };
+  const [titulo, corpo] = tipo === 'votacao'
+    ? ['Project V: quem é o monstro?', 'A votação está aberta. Vote pelo site antes da revelação.']
+    : ['Project V: o Monstro acordou', 'Uma rodada começou. Abra o site para saber se você é o monstro.'];
+  return enviar({ titulo, corpo, url: '/#monstro', tag: `monstro-${rodada}`, para: { ids }, chave: `monstro:${tipo}:${rodada}:${Date.now()}` });
 }
 
 // ----------------------------------------------------------------- agendados
@@ -661,7 +672,7 @@ function iniciar() {
 function parar() { clearInterval(timer); timer = null; }
 
 module.exports = {
-  chavePublica, inscrever, desinscrever, removerAparelho, removerDoConvidado, estaInscrito, situacao, listarAparelhos,
+  monstro, chavePublica, inscrever, desinscrever, removerAparelho, removerDoConvidado, estaInscrito, situacao, listarAparelhos,
   resumo, inscritos, enviar, enviarPara, testarAparelho, historico, registro24h, programados, evento, despacharSociais,
   verificarAgendados, atividadeLiberada, tic, tocar, iniciar, parar, enderecoPermitido, nomeDoAparelho,
   marcarTela, sairTela, olhando, caixa, MAX_POR_CONVIDADO, DESTINOS, problemaNoAviso, textoTeste, MAX_POR_HORA, ESPERA_TESTE_MS,

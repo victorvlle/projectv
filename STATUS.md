@@ -68,8 +68,11 @@ Atualizado em 27/10/2026.
 - [x] Mural (29/10, 18h35): entra direto no telão (aviso de nada ofensivo/constrangedor); admin pode travar (aprovar um por um) e apagar qualquer envio; tela **Fotos da festa** abre domingo 01/11 às 9h (editável em Atividades) para todos verem e baixarem as fotos aprovadas, uma a uma (no celular: compartilhar/salvar) ou todas em .zip
 - [x] Mural de Fotos e O Monstro tirados do site (decisão de 29/10); pergunta 6 das Previsões trocada para o Correio
 - [x] Previsões revisadas (sem jogos da festa), lista com todos os cadastrados e botão "Enviar previsões" que trava as escolhas
-- [x] Testes automatizados: 100 passando; 73 ataques barrados; roteiro de testes em PDF para Victor e Lucas
+- [x] Testes automatizados: 108 passando; 74 ataques barrados; roteiro de testes em PDF para Victor e Lucas
 - [x] Deploy no Render + Turso: https://projectv-pec1.onrender.com (`/saude` responde `banco: turso`, verificado em 24/10)
+
+- [x] O Monstro está entre nós (de volta em 29/10, à noite): "Quero entrar na vila", rodadas comandadas pelo admin, monstros sorteados em segredo (sugestão 1/2/3 pelo tamanho da vila), missão de brindar com 5, pistas manuais ou prontas para o telão, votação, revelação com suspense; +1000 quem acerta, monstro que escapa +1000 e +100 por alma
+- [x] Maldição: 14 desafios num grupo só (4 de foto: o telão abre o Mural esperando a foto); todos recebem notificação (sem nome)
 
 ## Pendente (Etapa C, em ordem)
 

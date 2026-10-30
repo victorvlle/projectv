@@ -137,7 +137,8 @@
     const t = agora - m.sorteadaEm;
     if (t < m.fases.alerta) return 'alerta';
     if (t < m.fases.alerta + m.fases.suspense) return 'suspense';
-    if (m.foto && t >= m.fases.alerta + m.fases.suspense + REVELA_FOTO_MS) return 'mural';
+    // A foto já chegou: abre o Mural com ela na hora. Sem foto: abre esperando, depois de alguns segundos.
+    if (m.foto && (m.fotoId || t >= m.fases.alerta + m.fases.suspense + REVELA_FOTO_MS)) return 'mural';
     return 'revela';
   }
 
@@ -173,8 +174,8 @@
   }
   function foto({ id, fotoId }) {
     if (!atual || atual.id !== id) return;
-    atual = { ...atual, fotoId };
-    if (palco.dataset.fase === 'mural') mostrarFotoDaMaldicao(atual);
+    atual = { ...atual, foto: true, fotoId };
+    quadro(); // troca para o Mural (se ainda estava na revelação) e mostra a foto
   }
 
   function quadro() {
@@ -233,7 +234,10 @@
 
   function iniciar(m) {
     if (!m) return;
-    if (atual && atual.id === m.id) return; // mesmo sorteio (reconexão): não reinicia
+    if (atual && atual.id === m.id) { // mesmo sorteio (reconexão): não reinicia, mas pega a foto se chegou
+      if (m.fotoId && !atual.fotoId) foto({ id: m.id, fotoId: m.fotoId });
+      return;
+    }
     atual = m;
     ultimaFase = null; ultimoSeg = null; roletaI = 0; proximaTroca = 0;
     $('revela-avatar').textContent = emojiDe(m.avatar);
