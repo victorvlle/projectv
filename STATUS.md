@@ -68,7 +68,7 @@ Atualizado em 27/10/2026.
 - [x] Mural (29/10, 18h35): entra direto no telão (aviso de nada ofensivo/constrangedor); admin pode travar (aprovar um por um) e apagar qualquer envio; tela **Fotos da festa** abre domingo 01/11 às 9h (editável em Atividades) para todos verem e baixarem as fotos aprovadas, uma a uma (no celular: compartilhar/salvar) ou todas em .zip
 - [x] Mural de Fotos e O Monstro tirados do site (decisão de 29/10); pergunta 6 das Previsões trocada para o Correio
 - [x] Previsões revisadas (sem jogos da festa), lista com todos os cadastrados e botão "Enviar previsões" que trava as escolhas
-- [x] Testes automatizados: 108 passando; 74 ataques barrados; roteiro de testes em PDF para Victor e Lucas
+- [x] Testes automatizados: 107 passando; 76 ataques barrados; roteiro de testes em PDF para Victor e Lucas
 - [x] Deploy no Render + Turso: https://projectv-pec1.onrender.com (`/saude` responde `banco: turso`, verificado em 24/10)
 
 - [x] O Monstro está entre nós (de volta em 29/10, à noite): "Quero entrar na vila", rodadas comandadas pelo admin, monstros sorteados em segredo (sugestão 1/2/3 pelo tamanho da vila), missão de brindar com 5, pistas manuais ou prontas para o telão, votação, revelação com suspense; +1000 quem acerta, monstro que escapa +1000 e +100 por alma
@@ -76,6 +76,10 @@ Atualizado em 27/10/2026.
 
 - [x] Mural (30/10): sem espera entre envios (até 40 por pessoa); telão mostra em fila na ordem de envio, sem cortar o que está na tela; troca sem sobrepor textos; ranking à esquerda e programação à direita (horários editáveis em Telão → Programação da noite)
 - [x] Telão: todas as cenas se encaixam sozinhas abaixo do cabeçalho (zoom automático quando o conteúdo não cabe), conferido com 30 convidados em 1920×1080 e 1366×768
+
+- [x] O Monstro saiu da festa (30/10, à tarde); o código ficou guardado
+- [x] Corrida de Cavalos: apostas por naipe no celular, corrida sorteada no servidor e animada no telão (~45 s), 1º +500, 2º +200, último toma shot; várias corridas na noite
+- [x] Beer Pong: inscrição no celular, sorteio animado dos trios no telão (mínimo 2 por time), mata-mata com bye (menores primeiro), organizador marca quem passou e o telão mostra o time avançando; campeões +1000 cada, vice +500
 
 ## Pendente (Etapa C, em ordem)
 

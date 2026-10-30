@@ -265,6 +265,202 @@
     // Senão, quem chegou espera a vez na fila (não corta o que está na tela).
   }
 
+  // ---------------------------------------------------------------- beer pong
+  // Inscrições → sorteio animado dos trios (nomes caindo nos times) → chave do mata-mata.
+  // Quando o organizador marca quem passou, o telão mostra o time avançando; no fim, os campeões.
+  let bpTimer = null;
+  let bpAvanco = null;
+  let bpVisto = null;
+  const bpTime = (ch, id) => (ch && ch.times.find((t) => t.id === id)) || null;
+  function bpSorteio(b) {
+    const agora = PV.relogio.agora();
+    const k = Math.floor((agora - b.sorteioEm) / b.passoMs) + 1;
+    const mostrados = b.revelacao.slice(0, Math.max(0, k));
+    const ultimo = mostrados[mostrados.length - 1];
+    $('bp-telao').innerHTML = `<h1 class="terror bp-titulo">Sorteio dos times 🍺</h1>
+      <div class="bp-times">${b.chave.times.map((t) => `<div class="bp-time-card ${ultimo && ultimo.time === t.id ? 'recebendo' : ''}">
+        <div class="bp-time-nome">${t.emoji} ${esc(t.nome)}</div>
+        <div class="bp-membros">${mostrados.filter((m) => m.time === t.id).map((m) => `<span class="bp-membro ${m === ultimo ? 'caiu' : ''}">
+          <span class="avatar mini">${emoji(m.avatar)}</span>${esc(m.nome)}</span>`).join('') || '<span class="bp-vazio">…</span>'}</div></div>`).join('')}</div>
+      <p class="prev-dica">${k < b.revelacao.length ? `${Math.max(0, k)} de ${b.revelacao.length} sorteados…` : 'Times formados! Agora a chave…'}</p>`;
+  }
+  function bpPartida(ch, p, proxima) {
+    const linha = (id) => {
+      const t = bpTime(ch, id);
+      if (!t) return `<div class="bp-lado vazio">${p.bye ? 'passa direto' : 'a definir'}</div>`;
+      const cls = p.vencedor ? (p.vencedor === id ? 'venceu' : 'perdeu') : '';
+      return `<div class="bp-lado ${cls}"><b>${t.emoji} ${esc(t.nome)}</b><small>${t.membros.map((m) => esc(m.nome)).join(' · ')}</small></div>`;
+    };
+    return `<div class="bp-partida ${p.id === proxima ? 'agora' : ''} ${p.bye ? 'bye' : ''}">${p.id === proxima ? '<span class="bp-agora">AGORA</span>' : ''}
+      ${linha(p.a)}${p.bye ? '' : linha(p.b)}</div>`;
+  }
+  function bpChave(b) {
+    const ch = b.chave;
+    const colunas = ch.nomesRodadas.map((nome, i) => `<div class="bp-coluna"><h3>${esc(nome)}</h3>
+      <div class="bp-jogos">${ch.partidas.filter((p) => p.rodada === i + 1).map((p) => bpPartida(ch, p, ch.proxima)).join('')}</div></div>`).join('');
+    let topo = '<h1 class="terror bp-titulo">Beer Pong 🍺</h1>';
+    if (b.campeao) {
+      const t = bpTime(ch, b.campeao);
+      topo = `<div class="bp-campeao"><span class="bp-trofeu">🏆</span><div><small>Campeões</small><b>${t.emoji} ${esc(t.nome)}</b>
+        <em>${t.membros.map((m) => esc(m.nome)).join(' · ')} · +${pts(b.premios.campeao)} cada</em></div></div>`;
+    }
+    $('bp-telao').innerHTML = `${topo}<div class="bp-chave" style="--rodadas:${ch.rodadas}">${colunas}</div>`;
+    // Time que acabou de passar: faixa de destaque por alguns segundos (uma vez por resultado).
+    const u = ch.ultimo;
+    if (u && u.em !== bpVisto && PV.relogio.agora() - u.em < 8000) {
+      bpVisto = u.em;
+      const t = bpTime(ch, u.time);
+      const p = ch.partidas.find((x) => x.id === u.partida);
+      const final = p && p.rodada === ch.rodadas;
+      const prox = !final && p ? ch.nomesRodadas[p.rodada] : '';
+      document.querySelectorAll('.bp-avanca').forEach((x) => x.remove());
+      const faixa = document.createElement('div');
+      faixa.className = 'bp-avanca';
+      faixa.innerHTML = `<span>${t ? t.emoji : ''}</span><b>${t ? esc(t.nome) : ''}</b><em>${final ? 'é CAMPEÃO! 🏆' : `avança para ${esc(/^(Quartas|Oitavas)/.test(prox) ? `as ${prox}` : `a ${prox}`)}!`}</em>`;
+      document.body.appendChild(faixa);
+      clearTimeout(bpAvanco);
+      bpAvanco = setTimeout(() => faixa.remove(), 5000);
+    }
+  }
+  function desenharBeerpong(b) {
+    if (!b) return;
+    clearInterval(bpTimer);
+    if (b.estado === 'inscricao') {
+      $('bp-telao').innerHTML = `<h1 class="terror bp-titulo">Beer Pong 🍺</h1>
+        <p class="prev-dica">Inscreva-se pelo celular: <b>Beer Pong → Quero jogar</b> · trios sorteados aqui no telão</p>
+        <div class="contador-votos">🍺 <b>${b.inscritos.length}</b> ${b.inscritos.length === 1 ? 'inscrito' : 'inscritos'}</div>
+        <div class="sala-bolhas">${b.inscritos.map((p, i) => `<div class="bolha" style="animation-delay:${(i % 7) * 0.35}s"><span class="avatar">${emoji(p.avatar)}</span><b>${esc(p.iniciais)}</b></div>`).join('') || '<p class="prev-dica">Ninguém ainda…</p>'}</div>
+        <p class="prev-dica">Campeões +${pts(b.premios.campeao)} cada · vice +${pts(b.premios.vice)} cada</p>`;
+      return;
+    }
+    const fimSorteio = b.sorteioEm + b.revelacao.length * b.passoMs + 2500;
+    if (PV.relogio.agora() < fimSorteio) {
+      bpSorteio(b);
+      bpTimer = setInterval(() => { if (PV.relogio.agora() >= fimSorteio) { clearInterval(bpTimer); bpChave(b); } else bpSorteio(b); }, 200);
+      return;
+    }
+    bpChave(b);
+  }
+
+  // ------------------------------------------------------- corrida de cavalos
+  // Apostas (quem escolheu cada naipe) → largada (3, 2, 1) → corrida no relógio do servidor (o mesmo
+  // roteiro em todo telão) → resultado com quem ganhou e quem toma o shot.
+  const NAIPES = ['espadas', 'copas', 'ouros', 'paus'];
+  const SIMB = { espadas: '♠', copas: '♥', ouros: '♦', paus: '♣' };
+  const NOME_NAIPE = { espadas: 'Espadas', copas: 'Copas', ouros: 'Ouros', paus: 'Paus' };
+  const vermelho = (n) => n === 'copas' || n === 'ouros';
+  const carta = (n, valor, extra = '') => `<div class="carta-jogo ${vermelho(n) ? 'vermelha' : ''} ${extra}"><span>${esc(valor)}</span><b>${SIMB[n]}</b></div>`;
+  let corridaAtual = null;
+  let corridaTimer = null;
+  let corridaPasso = -2;
+  let corridaChave = '';
+  let corridaFim = null;
+  function montarPista(c) {
+    const casas = Array.from({ length: c.casas }, (_, i) => `<div class="pista-lateral" data-casa="${i + 1}"><div class="carta-jogo verso"></div></div>`).join('');
+    $('corrida-telao').innerHTML = `<div class="corrida-topo"><h1 class="terror corrida-titulo">Corrida de Cavalos 🏇</h1>
+        <div class="corrida-saiu" id="corrida-saiu"></div></div>
+      <div class="pista" style="--casas:${c.casas + 2}">
+        <div class="pista-linha pista-laterais"><div></div>${casas}<div class="pista-chegada-rotulo">🏁</div></div>
+        ${NAIPES.map((n) => `<div class="pista-linha raia" data-naipe="${n}">
+          <div class="raia-fundo">${Array.from({ length: c.casas + 2 }, (_, i) => `<div class="raia-casa ${i === c.casas + 1 ? 'chegada' : ''}"></div>`).join('')}</div>
+          <div class="cavalo" id="cavalo-${n}">${carta(n, 'A', 'cavalo-carta')}<small>${(c.apostas[n] || []).length}</small></div>
+        </div>`).join('')}
+      </div>
+      <p class="corrida-aviso" id="corrida-aviso"></p>`;
+  }
+  function estadoNoPasso(c, k) {
+    const pos = { espadas: 0, copas: 0, ouros: 0, paus: 0 };
+    const viradas = new Set();
+    let ultimo = null;
+    for (const e of c.eventos.slice(0, k)) {
+      if (e.tipo === 'anda') pos[e.naipe] += 1;
+      else { viradas.add(e.casa); if (pos[e.naipe] > 0) pos[e.naipe] -= 1; }
+      ultimo = e;
+    }
+    return { pos, viradas, ultimo };
+  }
+  function quadroCorrida() {
+    const c = corridaAtual;
+    if (!c || !c.eventos) return;
+    const agora = PV.relogio.agora();
+    const t = agora - c.inicioEm - c.preparoMs;
+    const k = t < 0 ? -1 : Math.min(c.eventos.length, Math.floor(t / c.passoMs) + 1);
+    if (k === corridaPasso) {
+      if (t < 0) $('corrida-aviso').textContent = `Largada em ${Math.ceil(-t / 1000)}…`;
+      return;
+    }
+    corridaPasso = k;
+    const { pos, viradas, ultimo } = estadoNoPasso(c, Math.max(0, k));
+    for (const n of NAIPES) {
+      const el = $(`cavalo-${n}`);
+      if (el) el.style.setProperty('--pos', pos[n]);
+    }
+    document.querySelectorAll('.pista-lateral').forEach((el) => {
+      const i = Number(el.dataset.casa);
+      if (viradas.has(i) && !el.classList.contains('virada')) {
+        el.classList.add('virada');
+        el.innerHTML = carta(c.laterais[i - 1], c.lateraisValor[i - 1]);
+      }
+    });
+    if (k < 0) { $('corrida-aviso').textContent = 'Largada em…'; return; }
+    if (ultimo) {
+      $('corrida-saiu').innerHTML = ultimo.tipo === 'anda'
+        ? `<small>Saiu</small>${carta(ultimo.naipe, ultimo.valor, 'saiu-carta')}`
+        : `<small>Casa ${ultimo.casa} virou</small>${carta(ultimo.naipe, ultimo.valor, 'saiu-carta volta')}`;
+      $('corrida-aviso').textContent = ultimo.tipo === 'anda' ? `${NOME_NAIPE[ultimo.naipe]} avança!` : `${NOME_NAIPE[ultimo.naipe]} volta uma casa!`;
+      const el = $(`cavalo-${ultimo.naipe}`);
+      if (el) { el.classList.remove('pulo', 'tombo'); void el.offsetWidth; el.classList.add(ultimo.tipo === 'anda' ? 'pulo' : 'tombo'); }
+    } else {
+      $('corrida-aviso').textContent = 'Largada!';
+    }
+  }
+  function desenharCorrida(c) {
+    if (!c) return;
+    clearInterval(corridaTimer);
+    corridaAtual = c;
+    const el = $('corrida-telao');
+    if (c.estado === 'fechada') {
+      corridaChave = '';
+      el.innerHTML = `<h1 class="terror corrida-titulo">Corrida de Cavalos 🏇</h1><p class="prev-dica">As apostas abrem em breve…</p>`;
+      return;
+    }
+    if (c.estado === 'apostas') {
+      corridaChave = '';
+      el.innerHTML = `<h1 class="terror corrida-titulo">Corrida de Cavalos 🏇</h1>
+        <p class="prev-dica">Escolha seu cavalo no celular · 1º lugar +${pts(c.premios[0])} · 2º +${pts(c.premios[1])} · último: shot!</p>
+        <div class="contador-votos">🎟️ <b>${c.total}</b> ${c.total === 1 ? 'aposta' : 'apostas'}</div>
+        <div class="apostas-grade">${NAIPES.map((n) => `<div class="aposta-coluna">${carta(n, 'A', 'grande')}
+          <b class="aposta-nome">${NOME_NAIPE[n]}</b><span class="aposta-conta">${(c.apostas[n] || []).length}</span>
+          <div class="aposta-bolhas">${(c.apostas[n] || []).map((p) => `<span class="mini-bolha"><span class="avatar mini">${emoji(p.avatar)}</span>${esc(p.iniciais)}</span>`).join('')}</div>
+        </div>`).join('')}</div>`;
+      return;
+    }
+    // correndo ou fim: monta a pista uma vez por corrida
+    const chave = `${c.rodada}:${c.inicioEm}`;
+    if (chave !== corridaChave) { corridaChave = chave; corridaPasso = -2; montarPista(c); }
+    if (c.estado === 'correndo') {
+      quadroCorrida();
+      corridaTimer = setInterval(quadroCorrida, 100);
+      clearTimeout(corridaFim);
+      if (window.PVTelaoRecarregar) corridaFim = setTimeout(window.PVTelaoRecarregar, Math.max(500, c.fimEm - PV.relogio.agora() + 400));
+      return;
+    }
+    // fim: pista no lugar final + resultado
+    corridaPasso = -2;
+    quadroCorrida();
+    const ord = c.ordem || [];
+    const res = document.createElement('div');
+    res.className = 'corrida-resultado';
+    res.innerHTML = `<div class="res-linha primeiro">${carta(ord[0], 'A')}<div><b>1º ${NOME_NAIPE[ord[0]]}</b><small>+${pts(c.premios[0])} para: ${c.ganhadores.length ? esc(c.ganhadores.join(', ')) : 'ninguém apostou'}</small></div></div>
+      <div class="res-linha">${carta(ord[1], 'A')}<div><b>2º ${NOME_NAIPE[ord[1]]}</b><small>+${pts(c.premios[1])}</small></div></div>
+      <div class="res-linha shot">${(c.ultimos || []).map((n) => carta(n, 'A')).join('')}<div><b>🥃 Último: ${(c.ultimos || []).map((n) => NOME_NAIPE[n]).join(' e ')}</b>
+        <small>${c.shot.length ? `Shot para: ${esc(c.shot.join(', '))}` : 'Ninguém apostou nele'}</small></div></div>`;
+    const velho = el.querySelector('.corrida-resultado');
+    if (velho) velho.remove();
+    el.appendChild(res);
+    $('corrida-aviso').textContent = '';
+  }
+
   // ------------------------------------------------------------ o monstro
   // Vila (monstrinhos flutuando) → rodada (almas e pistas) → votação (quem já votou) → revelação com suspense.
   let assMonstro = '';
@@ -336,6 +532,8 @@
       desenharCorreio(estado.correio);
       desenharLaterais(estado);
       desenharMonstro(estado.monstro);
+      desenharCorrida(estado.corrida);
+      desenharBeerpong(estado.beerpong);
     },
   };
 })();

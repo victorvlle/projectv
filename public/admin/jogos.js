@@ -228,6 +228,68 @@
     PV.preencherFotos($('j-correio'), A().token());
   }
 
+  // -------------------------------------------------------------- beer pong
+  function desenharBeerpongAdmin(b) {
+    let corpo = '';
+    if (b.estado === 'inscricao') {
+      const lista = b.inscritos.map((p) => `<span class="selo">${A().emojiDe(p.avatar)} ${esc(p.nome)}
+        <button class="botao-x" type="button" data-acao="bp-tirar" data-id="${esc(p.id)}" aria-label="Tirar ${esc(p.nome)}">✕</button></span>`).join(' ');
+      corpo = `<p class="fraco">🍺 <b>${b.inscritos.length}</b> ${b.inscritos.length === 1 ? 'inscrito' : 'inscritos'}: ${lista || 'ninguém ainda'}</p>
+        <div class="item-acoes" style="margin-top:8px"><button class="botao" type="button" data-acao="bp-sortear" ${b.inscritos.length >= b.minimo ? '' : 'disabled'}>🎲 Sortear os times no telão</button></div>
+        ${b.inscritos.length >= b.minimo ? '' : `<p class="fraco">Precisa de pelo menos ${b.minimo} inscritos.</p>`}`;
+    } else if (b.chave) {
+      const ch = b.chave;
+      const nome = (id) => { const t = ch.times.find((x) => x.id === id); return t ? `${t.emoji} ${esc(t.nome)}` : '—'; };
+      const membros = (id) => { const t = ch.times.find((x) => x.id === id); return t ? t.membros.map((m) => esc(m.nome)).join(', ') : ''; };
+      corpo = ch.nomesRodadas.map((rn, i) => `<h4 style="margin:12px 0 6px">${esc(rn)}</h4>` + ch.partidas.filter((p) => p.rodada === i + 1).map((p) => {
+        if (p.bye) return `<div class="item"><div class="item-sub">${nome(p.vencedor)} passa direto (bye)</div></div>`;
+        if (!p.a || !p.b) return `<div class="item"><div class="item-sub">${p.a ? nome(p.a) : 'a definir'} × ${p.b ? nome(p.b) : 'a definir'}</div></div>`;
+        const agora = ch.proxima === p.id ? ' <span class="selo ok">agora</span>' : '';
+        if (p.vencedor) {
+          return `<div class="item"><div class="item-nome">${nome(p.vencedor)} ✓ <span class="fraco">venceu ${nome(p.vencedor === p.a ? p.b : p.a)}</span></div>
+            <div class="item-acoes"><button class="botao secundario pequeno" type="button" data-acao="bp-desfazer" data-id="${p.id}">Desfazer</button></div></div>`;
+        }
+        return `<div class="item"><div class="item-nome">${nome(p.a)} × ${nome(p.b)}${agora}</div>
+          <div class="item-sub">${membros(p.a)} × ${membros(p.b)}</div>
+          <div class="item-acoes" style="margin-top:8px">
+            <button class="botao pequeno" type="button" data-acao="bp-venceu" data-id="${p.id}" data-lado="a">✓ ${nome(p.a)} passou</button>
+            <button class="botao pequeno" type="button" data-acao="bp-venceu" data-id="${p.id}" data-lado="b">✓ ${nome(p.b)} passou</button></div></div>`;
+      }).join('')).join('');
+      corpo += `<div class="item-acoes" style="margin-top:12px"><button class="botao secundario pequeno" type="button" data-acao="bp-recomecar">Recomeçar (volta às inscrições)</button></div>`;
+    }
+    pintar('j-beerpong', `
+      ${b.liberada ? '' : '<p class="aviso-inline">O Beer Pong está bloqueado: libere (ou coloque "Em teste") em Atividades.</p>'}
+      ${b.emTeste ? '<p class="selo teste" style="display:inline-block">🧪 Em teste: só os testadores se inscrevem</p>' : ''}
+      <p><span class="selo ${b.estado === 'inscricao' ? 'fora' : 'ok'}">${{ inscricao: 'Inscrições', chave: 'Chave em andamento', fim: 'Terminou' }[b.estado]}</span></p>
+      ${corpo}
+      <div class="item-acoes" style="margin-top:8px"><button class="botao secundario pequeno" type="button" data-acao="tel-modo" data-modo="beerpong">Mostrar no telão</button></div>
+      <p class="fraco" style="margin-top:8px">Times de 3 (mínimo 2). Mata-mata: quem tem menos gente passa direto primeiro se faltar adversário. Você marca quem passou; o telão mostra o time avançando.
+        Campeões +${b.premios.campeao} cada, vice +${b.premios.vice} cada.</p>`);
+  }
+
+  // ---------------------------------------------------------------- corrida
+  const NOME_NAIPE = { espadas: 'Espadas', copas: 'Copas', ouros: 'Ouros', paus: 'Paus' };
+  function desenharCorridaAdmin(c) {
+    const apostas = c.apostas.map((a) => `<div class="item"><div class="item-nome">${a.simbolo} ${NOME_NAIPE[a.naipe]} <span class="selo">${a.pessoas.length}</span></div>
+      <div class="item-sub">${a.pessoas.length ? esc(a.pessoas.join(', ')) : 'ninguém'}</div></div>`).join('');
+    let acoes = '';
+    if (c.estado === 'fechada' || c.estado === 'fim') acoes = `<button class="botao" type="button" data-acao="cor-apostas">🎟️ Abrir apostas (corrida ${c.rodada + 1})</button>`;
+    if (c.estado === 'apostas') acoes = `<button class="botao" type="button" data-acao="cor-largar" ${c.total ? '' : 'disabled'}>🏁 Largar! (${c.total} ${c.total === 1 ? 'aposta' : 'apostas'})</button>
+      <button class="botao secundario pequeno" type="button" data-acao="cor-cancelar">Cancelar</button>`;
+    if (c.estado === 'correndo') acoes = '<p class="fraco">🏇 Correndo no telão… os pontos saem sozinhos no fim.</p><button class="botao secundario pequeno" type="button" data-acao="cor-cancelar">Cancelar (sem pontos)</button>';
+    const resultado = c.estado === 'fim' && c.ordem ? `<p><b>Corrida ${c.rodada}:</b> 1º ${NOME_NAIPE[c.ordem[0]]} (+${c.premios[0]}), 2º ${NOME_NAIPE[c.ordem[1]]} (+${c.premios[1]}),
+      último ${c.ultimos.map((n) => NOME_NAIPE[n]).join(' e ')} (shot).</p>` : '';
+    pintar('j-corrida', `
+      ${c.liberada ? '' : '<p class="aviso-inline">A Corrida está bloqueada: libere (ou coloque "Em teste") em Atividades.</p>'}
+      ${c.emTeste ? '<p class="selo teste" style="display:inline-block">🧪 Em teste: só os testadores apostam</p>' : ''}
+      <p><span class="selo ${c.estado === 'apostas' || c.estado === 'correndo' ? 'ok' : 'fora'}">${{ fechada: 'Fechada', apostas: 'Apostas abertas', correndo: 'Correndo', fim: 'Terminou' }[c.estado]}</span> · corrida ${c.rodada}</p>
+      ${resultado}
+      <div class="item-acoes" style="margin:8px 0">${acoes}
+        <button class="botao secundario pequeno" type="button" data-acao="tel-modo" data-modo="corrida">Mostrar no telão</button></div>
+      ${c.rodada && c.estado !== 'fechada' ? `<div class="lista">${apostas}</div>` : ''}
+      <p class="fraco" style="margin-top:8px">Abrir apostas → todos escolhem um naipe no celular → Largar (dura ~45 s no telão). Prêmios: 1º +${c.premios[0]}, 2º +${c.premios[1]}; quem apostou no último toma um shot.</p>`);
+  }
+
   // ---------------------------------------------------------------- monstro
   const ESTADO_MONSTRO = { aberta: 'Vila aberta (entre rodadas)', jogando: 'Rodada acontecendo', votacao: 'Votação aberta', revelada: 'Revelada' };
   function desenharMonstroAdmin(m) {
@@ -306,7 +368,9 @@
     desenharQuiz(j.quiz);
     desenharConcurso(j.concurso);
     desenharCorreio(j.correio);
-    if (j.monstro) desenharMonstroAdmin(j.monstro);
+    if (j.monstro && $('j-monstro')) desenharMonstroAdmin(j.monstro); // O Monstro saiu da festa (30/10)
+    if (j.corrida) desenharCorridaAdmin(j.corrida);
+    if (j.beerpong) desenharBeerpongAdmin(j.beerpong);
   }
 
   // ------------------------------------------------------------------ ações
@@ -364,6 +428,14 @@
       const t = $('mon-pista').value.trim();
       if (t.length >= 3) { await fazer(() => api('POST', '/monstro/pista', { texto: t }), 'Pista no telão.'); $('mon-pista').value = ''; }
     }
+    if (oque === 'bp-tirar') await fazer(() => api('DELETE', `/beerpong/inscritos/${encodeURIComponent(id)}`), 'Tirado das inscrições.');
+    if (oque === 'bp-sortear') { if (confirmarToque(b, 'Toque de novo: sortear os times')) await fazer(() => api('POST', '/beerpong/sortear'), 'Sorteando no telão!'); }
+    if (oque === 'bp-venceu') { if (confirmarToque(b, 'Toque de novo para confirmar')) await fazer(() => api('POST', `/beerpong/partida/${id}/${b.dataset.lado}`), 'Resultado no telão.'); }
+    if (oque === 'bp-desfazer') { if (confirmarToque(b)) await fazer(() => api('POST', `/beerpong/desfazer/${id}`), 'Desfeito.'); }
+    if (oque === 'bp-recomecar') { if (confirmarToque(b, 'Toque de novo: apagar a chave')) await fazer(() => api('POST', '/beerpong/recomecar'), 'Voltou às inscrições.'); }
+    if (oque === 'cor-apostas') await fazer(() => api('POST', '/corrida/apostas'), 'Apostas abertas! O telão já mostra.');
+    if (oque === 'cor-largar') { if (confirmarToque(b, 'Toque de novo: LARGAR!')) await fazer(() => api('POST', '/corrida/largar'), 'Largada! Olhe o telão.'); }
+    if (oque === 'cor-cancelar') { if (confirmarToque(b, 'Toque de novo: cancelar a corrida')) await fazer(() => api('POST', '/corrida/cancelar'), 'Corrida cancelada.'); }
     if (oque === 'cor-auto') await fazer(() => api('PUT', '/correio-auto', { auto: b.dataset.auto === '1' }), b.dataset.auto === '1' ? 'Destravado: entra direto no telão.' : 'Travado: você aprova cada envio.');
     if (oque === 'cor-apagar') { if (confirmarToque(b, 'Toque de novo: apagar')) await fazer(() => api('DELETE', `/correio/${id}`), 'Apagado.'); }
     if (oque === 'cor-apagar-fotos') { if (confirmarToque(b, 'Toque de novo: apagar TODAS (some das Fotos da festa)')) await fazer(() => api('POST', '/correio-fotos/apagar'), 'Fotos apagadas.'); }

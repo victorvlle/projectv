@@ -21,6 +21,8 @@ const quiz = require('../dados/quiz');
 const concurso = require('../dados/concurso');
 const correio = require('../dados/correio');
 const monstro = require('../dados/monstro');
+const corrida = require('../dados/corrida');
+const beerpong = require('../dados/beerpong');
 const teste = require('../dados/teste');
 const anunciar = require('../jogos/anunciar');
 const notificacoes = require('../notificacoes');
@@ -154,12 +156,14 @@ router.get('/telao', assincrono(async (req, res) => {
     festa.info(), atividades.paraConvidado(), convidados.confirmados(), festa.telao(), pontos.ranking(), maldicao.atual(),
     quiz.paraTelao(), concurso.paraTelao(), correio.paraTelao(), monstro.paraTelao(),
   ]);
+  const corr = await corrida.paraTelao();
+  const bp = await beerpong.paraTelao();
   const confirmados = lista.map((c) => ({ nome: c.nome, avatar: c.avatar }));
   res.json({
     ok: true, versao: require('./util').VERSAO, agora: Date.now(), festa: info, atividades: ativs, confirmados, telao, pos: await pos.resultado(),
     previsao: await previsoes.paraTelao(telao.previsao),
     ranking: rank.slice(0, 10).map((r) => ({ nome: r.nome, avatar: r.avatar, pontos: r.pontos, posicao: r.posicao })),
-    maldicao: mal, quiz: qz, concurso: conc, correio: cartas, monstro: mon,
+    maldicao: mal, quiz: qz, concurso: conc, correio: cartas, monstro: mon, corrida: corr, beerpong: bp,
   });
 }));
 
@@ -256,7 +260,9 @@ router.get('/jogos', assincrono(async (_req, res) => {
     previsoes.paraAdmin(), maldicao.paraAdmin(), enigmas.paraAdmin(), pontos.ranking(), colaboracao.bebidasParaAdmin(),
     quiz.paraAdmin(), concurso.paraAdmin(), correio.paraAdmin(), monstro.paraAdmin(),
   ]);
-  res.json({ ok: true, agora: Date.now(), previsoes: prev, maldicao: mal, enigmas: enig, ranking: rank, bebidas: beb, quiz: qz, concurso: conc, correio: cartas, monstro: mon });
+  const corr = await corrida.paraAdmin();
+  const bp = await beerpong.paraAdmin();
+  res.json({ ok: true, agora: Date.now(), previsoes: prev, maldicao: mal, enigmas: enig, ranking: rank, bebidas: beb, quiz: qz, concurso: conc, correio: cartas, monstro: mon, corrida: corr, beerpong: bp });
 }));
 const jogosMudou = (res, oque = 'jogos') => { avisar.atualizar(oque); res.json({ ok: true }); };
 
@@ -322,6 +328,18 @@ router.post('/concurso/:estado', assincrono(async (req, res) => {
   else return res.status(404).json({ ok: false, erro: 'Ação desconhecida.' });
   return jogosMudou(res, 'concurso');
 }));
+
+// --------------------------------------------------------------- corrida
+router.post('/corrida/apostas', assincrono(async (_req, res) => { await corrida.abrirApostas(); jogosMudou(res, 'corrida'); }));
+router.post('/corrida/largar', assincrono(async (_req, res) => { await corrida.largar(); jogosMudou(res, 'corrida'); }));
+router.post('/corrida/cancelar', assincrono(async (_req, res) => { await corrida.cancelar(); jogosMudou(res, 'corrida'); }));
+
+// -------------------------------------------------------------- beer pong
+router.post('/beerpong/sortear', assincrono(async (_req, res) => { const r = await beerpong.sortear(); avisar.atualizar('beerpong'); res.json({ ok: true, ...r }); }));
+router.post('/beerpong/partida/:id/:lado', assincrono(async (req, res) => { await beerpong.marcar(req.params.id, req.params.lado); avisar.atualizar('ranking'); jogosMudou(res, 'beerpong'); }));
+router.post('/beerpong/desfazer/:id', assincrono(async (req, res) => { await beerpong.desfazer(req.params.id); avisar.atualizar('ranking'); jogosMudou(res, 'beerpong'); }));
+router.post('/beerpong/recomecar', assincrono(async (_req, res) => { await beerpong.recomecar(); avisar.atualizar('ranking'); jogosMudou(res, 'beerpong'); }));
+router.delete('/beerpong/inscritos/:id', assincrono(async (req, res) => { await beerpong.tirarInscrito(req.params.id); jogosMudou(res, 'beerpong'); }));
 
 // --------------------------------------------------------------- monstro
 router.post('/monstro/iniciar', assincrono(async (req, res) => {

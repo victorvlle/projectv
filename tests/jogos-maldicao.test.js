@@ -131,10 +131,11 @@ test('aviso geral: quem não foi sorteado recebe "a Maldição despertou" (sem n
   assert.equal(r.status, 200);
   await espera();
   const nome = r.json.maldicao.nome;
+  const parceiro = r.json.maldicao.parceiro && r.json.maldicao.parceiro.nome; // castigo duplo: os dois são avisados
   for (const c of [a, b]) {
     const titulos = de(c).map((m) => m.titulo);
     assert.equal(titulos.length, 1, `${c.nome}: um aviso só`);
-    if (nome === c.nome) assert.equal(titulos[0], 'Project V: você foi amaldiçoado');
+    if (nome === c.nome || parceiro === c.nome) assert.equal(titulos[0], 'Project V: você foi amaldiçoado');
     else assert.equal(titulos[0], 'Project V: a Maldição despertou');
   }
   const geral = notif.caixa.find((m) => m.titulo === 'Project V: a Maldição despertou');

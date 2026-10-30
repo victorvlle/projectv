@@ -18,6 +18,8 @@ async function verificar(agora = Date.now()) {
   if (m) await require('./jogos/anunciar').maldicaoSorteada(m);
   // Quiz: pontos das perguntas cujo tempo acabou (mesmo se ninguém estiver olhando).
   if (await require('./dados/quiz').sincronizar(agora)) avisar.atualizar('ranking');
+  // Corrida: fecha e dá os pontos quando a animação termina.
+  if (await require('./dados/corrida').sincronizar(agora)) { avisar.atualizar('ranking'); avisar.atualizar('corrida'); }
   return abertas;
 }
 

@@ -14,7 +14,7 @@ const ORDEM = ['config', 'convidados', 'atividades', 'bebidas_itens', 'bebidas_c
   'playlist_musicas', 'playlist_votos', 'caronas', 'caronas_reservas', 'pos_opcoes', 'pos_votos',
   'push_inscricoes', 'push_enviados', 'push_fila', 'push_log', 'previsoes_perguntas', 'previsoes_palpites', 'maldicoes', 'enigmas', 'enigma_tentativas',
   'quiz_perguntas', 'quiz_respostas', 'concurso_votos', 'correio', 'previsoes_envios', 'quiz_sala', 'concurso_inscritos', 'correio_fotos',
-  'monstro_vila', 'monstro_papeis', 'monstro_brindes', 'monstro_votos', 'monstro_pistas'];
+  'monstro_vila', 'monstro_papeis', 'monstro_brindes', 'monstro_votos', 'monstro_pistas', 'corrida_apostas', 'beerpong_inscritos'];
 // Fotos do Mural não vão para o arquivo de backup (pesadas e são imagens das pessoas).
 const FORA_DO_BACKUP = new Set(['correio_fotos']);
 

@@ -407,6 +407,99 @@
     return null;
   }
 
+  // ============================================================ BEER PONG
+  let mexendoBp = false;
+  function desenharBeerpong(b) {
+    if (!b) return;
+    const premios = `Campeões +${pts(b.premios.campeao)} cada · vice +${pts(b.premios.vice)} cada.`;
+    let html;
+    if (b.estado === 'inscricao') {
+      html = `<section class="cartao"><b>🍺 Beer Pong em trios</b><p class="mudo">Inscreva-se: os times de 3 são sorteados no telão e o mata-mata decide.
+        Em cada jogo, um de cada time joga por vez, em sequência. ${premios}</p>
+        ${b.inscrito ? '<p class="quiz-veredito" style="margin-top:12px">✓ Você está inscrito</p><button class="botao-discreto" type="button" data-bp="0">Desistir</button>'
+          : '<button class="botao largo quiz-entrar" type="button" data-bp="1">🍺 Quero jogar!</button>'}
+        <p class="quiz-sala-conta">🍺 <b>${b.inscritos}</b> ${b.inscritos === 1 ? 'inscrito' : 'inscritos'}</p></section>`;
+    } else if (b.meuTime) {
+      const t = b.meuTime;
+      let sit = '';
+      if (b.resultado && (b.resultado.euCampeao || b.resultado.euVice)) sit = b.resultado.euCampeao ? `🏆 Vocês são os campeões! +${pts(b.premios.campeao)}` : `🥈 Vice-campeões! +${pts(b.premios.vice)}`;
+      else if (b.situacao === 'jogar') sit = `${b.agora ? '🔥 É AGORA! ' : 'Próximo jogo: '}contra ${b.adversario ? `${b.adversario.emoji} ${esc(b.adversario.nome)}` : '?'} (${esc(b.rodadaNome || '')})`;
+      else if (b.situacao === 'eliminado') sit = 'Vocês foram eliminados. Agora é torcer! 🍻';
+      else sit = 'Aguardando o adversário… fiquem por perto da mesa.';
+      html = `<section class="cartao prev-aviso aberta"><b>Seu time: ${t.emoji} ${esc(t.nome)}</b>
+        <p>${t.membros.map((m) => `<span class="avatar mini">${emoji(m.avatar)}</span>${esc(m.nome)}`).join(' · ')}</p>
+        <p class="quiz-veredito" style="margin-top:8px">${sit}</p></section>
+        ${b.resultado && !(b.resultado.euCampeao || b.resultado.euVice) ? `<section class="cartao"><p>🏆 Campeões: <b>${esc(b.resultado.campeao)}</b> · vice: ${esc(b.resultado.vice)}</p></section>` : ''}
+        <p class="fraco">A chave completa está no telão.</p>`;
+    } else {
+      html = `<section class="cartao"><b>🍺 Beer Pong</b><p class="mudo">Os times já foram sorteados. Acompanhe a chave no telão!</p>
+        ${b.resultado ? `<p>🏆 Campeões: <b>${esc(b.resultado.campeao)}</b> · vice: ${esc(b.resultado.vice)}</p>` : ''}</section>`;
+    }
+    pintar('beerpong', `${seloTeste(b)}${html}`);
+  }
+  $('beerpong').addEventListener('click', async (e) => {
+    const bt = e.target.closest('[data-bp]');
+    if (!bt || mexendoBp) return;
+    mexendoBp = true;
+    try {
+      const r = await C().api('PUT', '/api/beerpong/inscricao', { quero: bt.dataset.bp === '1' });
+      C().atualizarParte('beerpong', r.beerpong);
+      PV.avisar(bt.dataset.bp === '1' ? 'Inscrito! Fique de olho no sorteio no telão. 🍺' : 'Você saiu do Beer Pong.', 'ok');
+    } catch (erro) {
+      if (erro.status !== 401) PV.avisar(erro.message, 'erro');
+      if (erro.status === 409) C().recarregar();
+    } finally { mexendoBp = false; }
+  });
+
+  // ==================================================== CORRIDA DE CAVALOS
+  const NAIPES = [['espadas', '♠', 'Espadas'], ['copas', '♥', 'Copas'], ['ouros', '♦', 'Ouros'], ['paus', '♣', 'Paus']];
+  const nomeNaipe = (n) => (NAIPES.find((x) => x[0] === n) || [n, '', n])[2];
+  const simbNaipe = (n) => (NAIPES.find((x) => x[0] === n) || [n, '?'])[1];
+  let apostando = false;
+  let corridaTimerCel = null;
+  function desenharCorrida(c) {
+    clearTimeout(corridaTimerCel);
+    if (!c) return;
+    const premios = `1º lugar +${pts(c.premios[0])} · 2º +${pts(c.premios[1])} · quem apostar no último toma um shot`;
+    let html;
+    if (c.estado === 'apostas') {
+      html = `<section class="cartao prev-aviso aberta"><b>🎟️ Apostas abertas!</b><p class="mudo">Escolha seu cavalo. Dá para trocar até a largada. ${premios}.</p></section>
+        <div class="naipes-grade">${NAIPES.map(([n, s, nome]) => `<button type="button" class="naipe-botao ${n === 'copas' || n === 'ouros' ? 'vermelho' : ''} ${c.minha === n ? 'meu' : ''}" data-naipe="${n}">
+          <span class="naipe-carta"><small>A</small>${s}</span><b>${nome}</b><span class="fraco">${c.contagem[n]} ${c.contagem[n] === 1 ? 'aposta' : 'apostas'}</span>
+          ${c.minha === n ? '<span class="selo ok">seu cavalo ✓</span>' : ''}</button>`).join('')}</div>`;
+    } else if (c.estado === 'correndo') {
+      html = `<section class="cartao prev-aviso aberta"><b>🏁 Largaram! Olhe o telão.</b>
+        <p>${c.minha ? `Seu cavalo: <b class="naipe-texto ${c.minha === 'copas' || c.minha === 'ouros' ? 'vermelho' : ''}">${simbNaipe(c.minha)} ${nomeNaipe(c.minha)}</b>` : 'Você não apostou nesta corrida.'}</p></section>`;
+      if (c.fimEm && C().recarregar) corridaTimerCel = setTimeout(C().recarregar, Math.max(800, c.fimEm - PV.relogio.agora() + 1200));
+    } else if (c.estado === 'fim' && c.resultado) {
+      const r = c.resultado;
+      const meu = !c.minha ? 'Você não apostou nesta corrida.'
+        : r.shot ? `🥃 Seu cavalo (${simbNaipe(c.minha)}) chegou em último: shot!`
+          : r.pontos ? `🏆 Seu cavalo (${simbNaipe(c.minha)}) chegou em ${r.lugar}º: +${pts(r.pontos)}!` : `Seu cavalo (${simbNaipe(c.minha)}) chegou em ${r.lugar}º. Sem prêmio desta vez.`;
+      html = `<section class="cartao"><b>Corrida ${c.rodada}: resultado</b>
+        <div class="podio-celular">${r.ordem.map((n, i) => `<div class="podio-linha"><span class="podio-pos">${i + 1}º</span>
+          <span class="naipe-texto ${n === 'copas' || n === 'ouros' ? 'vermelho' : ''}" style="font-size:1.6rem">${simbNaipe(n)}</span>
+          <span class="podio-nome">${nomeNaipe(n)}</span><b>${i < c.premios.length ? `+${pts(c.premios[i])}` : r.ultimos.includes(n) ? '🥃' : ''}</b></div>`).join('')}</div>
+        <p class="quiz-veredito" style="margin-top:10px">${meu}</p><p class="fraco">A próxima corrida abre quando o organizador chamar.</p></section>`;
+    } else {
+      html = `<section class="cartao"><b>🏇 Corrida de Cavalos</b><p class="mudo">Quando as apostas abrirem, escolha um naipe (♠ ♥ ♦ ♣). Os Ases correm no telão e o baralho decide. ${premios}.</p></section>`;
+    }
+    pintar('corrida', `${seloTeste(c)}${html}`);
+  }
+  $('corrida').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-naipe]');
+    if (!b || apostando) return;
+    apostando = true;
+    try {
+      const r = await C().api('PUT', '/api/corrida/aposta', { naipe: b.dataset.naipe });
+      C().atualizarParte('corrida', r.corrida);
+      PV.avisar(`Aposta em ${nomeNaipe(b.dataset.naipe)} ${simbNaipe(b.dataset.naipe)}!`, 'ok');
+    } catch (erro) {
+      if (erro.status !== 401) PV.avisar(erro.message, 'erro');
+      if (erro.status === 409) C().recarregar();
+    } finally { apostando = false; }
+  });
+
   // ============================================================ O MONSTRO
   // O papel fica escondido atrás de um botão (todo mundo vê o mesmo botão), para ninguém
   // descobrir o monstro olhando a tela do celular dele.
@@ -616,6 +709,8 @@
     desenharCorreio(estado.correio);
     desenharFotos(estado.fotos);
     desenharMonstro(estado.monstro);
+    desenharCorrida(estado.corrida);
+    desenharBeerpong(estado.beerpong);
   }
 
   window.PVFesta = { desenhar };

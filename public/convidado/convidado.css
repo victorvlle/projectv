@@ -474,3 +474,14 @@ body.sem-rolar { overflow: hidden; }
 .monstro-papel { margin-top: 10px; }
 .monstro-papel.sou-monstro { border-color: rgba(179, 18, 46, .8); background: linear-gradient(160deg, rgba(179, 18, 46, .25), var(--cartao)); }
 .monstro-papel .pessoas-lista { margin-top: 10px; }
+
+/* Corrida de Cavalos */
+.naipes-grade { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.naipe-botao { appearance: none; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 8px; border-radius: 14px;
+  border: 1px solid var(--borda); background: var(--cartao); color: var(--texto); cursor: pointer; font: inherit; }
+.naipe-botao.meu { border-color: var(--laranja); box-shadow: 0 0 0 2px var(--laranja) inset; background: rgba(59, 31, 92, .6); }
+.naipe-carta { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 56px; height: 78px; border-radius: 8px;
+  background: #F5F0F7; color: #15101C; font-size: 2rem; line-height: 1; box-shadow: 0 4px 10px rgba(0, 0, 0, .4); }
+.naipe-carta small { font-size: .9rem; font-weight: 800; }
+.naipe-botao.vermelho .naipe-carta, .naipe-texto.vermelho { color: #D3122E; }
+.naipe-texto.vermelho { color: #ff5a73; }

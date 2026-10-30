@@ -614,4 +614,30 @@ module.exports = [
       INSERT OR IGNORE INTO atividades (id, estado, abre_em, atualizado_em) VALUES ('monstro', 'bloqueada', NULL, 0)
     `,
   },
+  {
+    nome: 'Corrida de Cavalos (apostas) e o Monstro sai da festa',
+    sql: `
+      CREATE TABLE IF NOT EXISTS corrida_apostas (
+        rodada INTEGER NOT NULL,
+        convidado_id TEXT NOT NULL REFERENCES convidados(id) ON DELETE CASCADE,
+        naipe TEXT NOT NULL CHECK (naipe IN ('espadas', 'copas', 'ouros', 'paus')),
+        em INTEGER NOT NULL,
+        teste INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (rodada, convidado_id)
+      );
+      INSERT OR IGNORE INTO atividades (id, estado, abre_em, atualizado_em) VALUES ('corrida', 'bloqueada', NULL, 0);
+      UPDATE atividades SET estado = 'bloqueada', abre_em = NULL WHERE id = 'monstro'
+    `,
+  },
+  {
+    nome: 'Beer Pong: inscrições (times e chave ficam na config)',
+    sql: `
+      CREATE TABLE IF NOT EXISTS beerpong_inscritos (
+        convidado_id TEXT PRIMARY KEY REFERENCES convidados(id) ON DELETE CASCADE,
+        em INTEGER NOT NULL,
+        teste INTEGER NOT NULL DEFAULT 0
+      );
+      INSERT OR IGNORE INTO atividades (id, estado, abre_em, atualizado_em) VALUES ('beerpong', 'bloqueada', NULL, 0)
+    `,
+  },
 ];

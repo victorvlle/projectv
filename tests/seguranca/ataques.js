@@ -453,6 +453,13 @@ async function main() {
     const monstroRevelar = await req('POST', '/api/admin/monstro/revelar', { token: tA });
     barrado(GJ, 'Descobrir o monstro ou comandar as rodadas pelo celular', monstroBloq.status === 403 && monstroAdm.status === 401 && monstroRevelar.status === 401,
       `HTTP ${monstroBloq.status} (jogo fechado para quem não testa), ${monstroAdm.status}, ${monstroRevelar.status}`);
+    const bpSorteio = await req('POST', '/api/admin/beerpong/sortear', { token: tA });
+    const bpResultado = await req('POST', '/api/admin/beerpong/partida/r1j1/a', { token: tA });
+    const corridaLargar = await req('POST', '/api/admin/corrida/largar', { token: tA });
+    barrado(GJ, 'Convidado sortear times, marcar quem passou no Beer Pong ou largar a Corrida', [bpSorteio, bpResultado, corridaLargar].every((r) => r.status === 401),
+      `HTTP ${bpSorteio.status}, ${bpResultado.status}, ${corridaLargar.status}`);
+    const apostaFechada = await req('PUT', '/api/corrida/aposta', { token: tA, corpo: { naipe: 'copas' } });
+    barrado(GJ, 'Apostar na Corrida sem ela estar aberta', apostaFechada.status === 403, `HTTP ${apostaFechada.status}`);
     const apagarConv = await req('POST', '/api/admin/teste/apagar', { token: tA });
     barrado(GJ, 'Convidado apagar dados de teste', apagarConv.status === 401, `HTTP ${apagarConv.status}`);
 

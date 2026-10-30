@@ -32,7 +32,7 @@ const { ErroValidacao } = require('./dados/convidados');
 
 const MAX_POR_CONVIDADO = 5;
 // Destinos que um toque na notificação pode abrir. Qualquer outro vira a página inicial.
-const DESTINOS = new Set(['/', '/#contribuicoes', '/#playlist', '/#caronas', '/#chegar', '/#pos', '/#avisos', '/#previsoes', '/#enigma', '/#ranking', '/#maldicao', '/#quiz', '/#concurso', '/#correio', '/#fotos', '/#monstro']);
+const DESTINOS = new Set(['/', '/#contribuicoes', '/#playlist', '/#caronas', '/#chegar', '/#pos', '/#avisos', '/#previsoes', '/#enigma', '/#ranking', '/#maldicao', '/#quiz', '/#concurso', '/#correio', '/#fotos', '/#monstro', '/#corrida', '/#beerpong']);
 const destinoSeguro = (u) => (DESTINOS.has(u) ? u : '/');
 const HOSTS_PERMITIDOS = [
   /^fcm\.googleapis\.com$/, /^android\.googleapis\.com$/,
@@ -472,9 +472,11 @@ const TEXTOS_LIBERADA = {
   concurso: ['Project V: Concurso de Fantasia', 'A votação da melhor fantasia está aberta no site da festa.'],
   correio: ['Project V: Mural das Trevas', 'Mande um recado ou uma foto da festa: aparece no telão na hora.'],
   monstro: ['Project V: O Monstro está entre nós', 'Entre na vila pelo site: monstros secretos vão atacar. Descubra quem são.'],
+  corrida: ['Project V: Corrida de Cavalos', 'As apostas estão abertas: escolha seu cavalo no site e torça no telão.'],
+  beerpong: ['Project V: Beer Pong', 'Inscrições abertas: entre pelo site e veja seu trio ser sorteado no telão.'],
   fotos: ['Project V: fotos da festa', 'As fotos do Mural das Trevas estão no site. Veja e baixe as suas favoritas.'],
 };
-const URL_LIBERADA = { pos: '/#pos', previsoes: '/#previsoes', quiz: '/#quiz', concurso: '/#concurso', correio: '/#correio', fotos: '/#fotos', monstro: '/#monstro' };
+const URL_LIBERADA = { pos: '/#pos', previsoes: '/#previsoes', quiz: '/#quiz', concurso: '/#concurso', correio: '/#correio', fotos: '/#fotos', monstro: '/#monstro', corrida: '/#corrida', beerpong: '/#beerpong' };
 // Liberada de madrugada (ex.: Previsões às 00:00 de sexta): o aviso espera até as 8h.
 async function atividadeLiberada(atividade, agora = relogio()) {
   const [titulo, corpo] = TEXTOS_LIBERADA[atividade.id]

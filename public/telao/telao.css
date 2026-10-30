@@ -365,3 +365,100 @@ body[data-cena="correio"] .ambiente { opacity: 0; }
 .lado-agenda li:not(.aberta) .lado-nome { color: #A99AAF; }
 .lado-icone { font-size: 2.6vh; text-align: center; }
 .lado-vazio { color: #A99AAF; font-size: 2vh; }
+
+/* Corrida de Cavalos */
+.corrida-telao { width: min(90vw, 170vh); display: flex; flex-direction: column; align-items: center; }
+.corrida-titulo { font-size: 8vh; color: var(--laranja); margin: 0 0 1.5vh; text-align: center; }
+.carta-jogo { width: 6.6vh; height: 9.4vh; border-radius: .9vh; background: #F5F0F7; color: #15101C; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; line-height: 1; box-shadow: 0 .6vh 1.6vh rgba(0, 0, 0, .45); border: .25vh solid rgba(0, 0, 0, .15); flex: none; }
+.carta-jogo span { font-size: 2.2vh; font-weight: 800; }
+.carta-jogo b { font-size: 4.2vh; }
+.carta-jogo.vermelha { color: #D3122E; }
+.carta-jogo.verso { background: repeating-linear-gradient(45deg, #3B1F5C 0 .8vh, #2A1645 .8vh 1.6vh); border-color: rgba(255, 118, 41, .5); }
+.carta-jogo.grande { width: 11vh; height: 15.5vh; border-radius: 1.4vh; }
+.carta-jogo.grande span { font-size: 3.6vh; } .carta-jogo.grande b { font-size: 7.5vh; }
+.apostas-grade { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3vw; margin-top: 3vh; width: 100%; }
+.aposta-coluna { display: flex; flex-direction: column; align-items: center; gap: 1vh; }
+.aposta-nome { font-size: 3.2vh; }
+.aposta-conta { font-size: 6vh; font-weight: 800; color: var(--laranja-claro); line-height: 1; font-variant-numeric: tabular-nums; }
+.aposta-bolhas { display: flex; flex-wrap: wrap; justify-content: center; gap: .8vh .8vw; max-width: 20vw; }
+.mini-bolha { display: inline-flex; align-items: center; gap: .3vw; font-size: 1.9vh; font-weight: 700; color: var(--texto-2); }
+.mini-bolha .avatar.mini { width: 3.4vh; height: 3.4vh; font-size: 2vh; margin: 0; }
+.corrida-topo { width: 100%; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2vw; }
+.corrida-topo .corrida-titulo { text-align: left; margin: 0; }
+.corrida-saiu { display: flex; align-items: center; gap: 1vw; min-height: 11vh; }
+.corrida-saiu small { font-size: 2.2vh; color: var(--texto-2); text-transform: uppercase; letter-spacing: .2em; }
+.saiu-carta { width: 8vh; height: 11.4vh; animation: entrar .35s ease both; }
+.saiu-carta.volta { box-shadow: 0 0 0 .4vh #FF3355, 0 0 4vh rgba(255, 30, 60, .6); }
+.pista { --col: calc(min(90vw, 170vh) / var(--casas)); width: 100%; display: grid; gap: 1.2vh; margin-top: 1.5vh; }
+.pista-linha { position: relative; display: grid; grid-template-columns: repeat(var(--casas), 1fr); align-items: center; height: 11vh; }
+.pista-laterais { height: 10.5vh; }
+.pista-lateral { display: grid; place-items: center; }
+.pista-lateral.virada .carta-jogo { animation: virar .5s ease both; box-shadow: 0 0 0 .3vh #FF3355; }
+@keyframes virar { from { transform: rotateY(90deg); } to { transform: none; } }
+.pista-chegada-rotulo { font-size: 5vh; text-align: center; }
+.raia-fundo { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(var(--casas), 1fr); }
+.raia-casa { border-right: 1px dashed rgba(255, 255, 255, .12); background: rgba(255, 255, 255, .03); }
+.raia-casa:first-child { background: rgba(255, 118, 41, .06); }
+.raia-casa.chegada { background: repeating-linear-gradient(45deg, rgba(255, 255, 255, .14) 0 1vh, rgba(0, 0, 0, .2) 1vh 2vh); }
+.cavalo { --pos: 0; position: absolute; left: 0; top: 50%; width: var(--col); display: flex; align-items: center; justify-content: center; gap: .4vw;
+  transform: translate(calc(var(--pos) * var(--col)), -50%); transition: transform .55s cubic-bezier(.3, 1.4, .5, 1); }
+.cavalo small { position: absolute; right: .6vw; bottom: -.6vh; font-size: 1.8vh; font-weight: 800; color: var(--laranja-claro); }
+.cavalo.pulo .carta-jogo { animation: pulo-cavalo .45s ease; }
+.cavalo.tombo .carta-jogo { animation: tombo-cavalo .6s ease; }
+@keyframes pulo-cavalo { 40% { transform: translateY(-1.8vh) rotate(-6deg); } }
+@keyframes tombo-cavalo { 30% { transform: rotate(-18deg); filter: drop-shadow(0 0 2vh #FF3355); } 60% { transform: rotate(10deg); } }
+.corrida-aviso { min-height: 4.6vh; font-size: 3.6vh; font-weight: 800; margin: 1.4vh 0 0; }
+.corrida-resultado { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 2.4vh; padding: 0 18%;
+  background: rgba(10, 6, 14, .94); border-radius: 2vh; animation: entrar .6s ease both; }
+.corrida-telao { position: relative; }
+.res-linha { display: flex; align-items: center; gap: 1.6vw; }
+.res-linha b { display: block; font-size: 4.4vh; }
+.res-linha small { display: block; font-size: 2.6vh; color: var(--texto-2); margin-top: .5vh; }
+.res-linha.primeiro .carta-jogo { width: 11vh; height: 15.5vh; box-shadow: 0 0 0 .4vh var(--lima), 0 0 6vh rgba(123, 199, 77, .5); }
+.res-linha.primeiro b { font-size: 6vh; color: var(--lima); }
+.res-linha.shot b { color: #FF3355; }
+@media (prefers-reduced-motion: reduce) { .cavalo { transition: none; } .cavalo.pulo .carta-jogo, .cavalo.tombo .carta-jogo, .pista-lateral.virada .carta-jogo { animation: none; } }
+
+/* Beer Pong */
+.bp-telao { width: min(90vw, 170vh); display: flex; flex-direction: column; align-items: center; }
+.bp-titulo { font-size: 8vh; color: var(--laranja); margin: 0 0 2vh; text-align: center; }
+.bp-times { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(24vh, 30%), 1fr)); gap: 2vh 1.6vw; width: 100%; }
+.bp-time-card { padding: 1.8vh 1.2vw; border-radius: 1.6vh; background: rgba(26, 16, 34, .7); box-shadow: 0 0 0 1px rgba(255, 118, 41, .3); transition: box-shadow .3s; }
+.bp-time-card.recebendo { box-shadow: 0 0 0 .3vh var(--laranja), 0 0 4vh rgba(255, 118, 41, .35); }
+.bp-time-nome { font-size: 3.2vh; font-weight: 800; margin-bottom: 1.2vh; }
+.bp-membros { display: grid; gap: .9vh; min-height: 13vh; }
+.bp-membro { display: flex; align-items: center; gap: .6vw; font-size: 2.7vh; font-weight: 600; }
+.bp-membro .avatar.mini { width: 4vh; height: 4vh; font-size: 2.4vh; margin: 0; }
+.bp-membro.caiu { animation: chegar .7s cubic-bezier(.2, 1.6, .4, 1) both; color: var(--laranja-claro); }
+.bp-vazio { color: var(--texto-3); font-size: 2.6vh; }
+.bp-chave { display: grid; grid-template-columns: repeat(var(--rodadas), minmax(0, 1fr)); gap: 2.4vw; width: 100%; align-items: stretch; }
+.bp-coluna { display: flex; flex-direction: column; }
+.bp-coluna h3 { margin: 0 0 1.4vh; text-align: center; font-size: 2vh; letter-spacing: .25em; text-transform: uppercase; color: #A99AAF; }
+.bp-jogos { flex: 1; display: flex; flex-direction: column; justify-content: space-around; gap: 1.6vh; }
+.bp-partida { position: relative; border-radius: 1.2vh; background: rgba(26, 16, 34, .75); box-shadow: 0 0 0 1px rgba(255, 255, 255, .1); overflow: hidden; }
+.bp-partida.agora { box-shadow: 0 0 0 .3vh var(--laranja), 0 0 4vh rgba(255, 118, 41, .35); }
+.bp-agora { position: absolute; top: .5vh; right: .6vw; font-size: 1.4vh; font-weight: 800; letter-spacing: .2em; color: var(--laranja-claro); }
+.bp-lado { padding: 1vh 1vw; display: flex; flex-direction: column; gap: .2vh; }
+.bp-lado + .bp-lado { border-top: 1px solid rgba(255, 255, 255, .08); }
+.bp-lado b { font-size: 2.5vh; }
+.bp-lado small { font-size: 1.6vh; color: var(--texto-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bp-lado.venceu { background: rgba(123, 199, 77, .16); }
+.bp-lado.venceu b::after { content: ' ✓'; color: var(--lima); }
+.bp-lado.perdeu { opacity: .4; }
+.bp-lado.vazio { color: var(--texto-3); font-size: 2vh; font-style: italic; }
+.bp-partida.bye { opacity: .85; }
+.bp-campeao { display: flex; align-items: center; gap: 2vw; margin-bottom: 3vh; padding: 2vh 3vw; border-radius: 2vh;
+  background: linear-gradient(160deg, rgba(123, 199, 77, .18), rgba(26, 16, 34, .8)); box-shadow: 0 0 0 .3vh var(--lima), 0 0 6vh rgba(123, 199, 77, .3); }
+.bp-trofeu { font-size: 12vh; animation: pulsar-monstro 1.4s ease-in-out infinite alternate; }
+.bp-campeao small { display: block; font-size: 2.2vh; letter-spacing: .3em; text-transform: uppercase; color: var(--lima); }
+.bp-campeao b { display: block; font-size: 7vh; line-height: 1.1; }
+.bp-campeao em { display: block; font-style: normal; font-size: 2.6vh; color: var(--texto-2); }
+.bp-avanca { position: fixed; left: 50%; top: 50%; z-index: 90; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 1vh;
+  max-width: 80vw; padding: 4vh 5vw; border-radius: 2.4vh; background: rgba(10, 6, 14, .95); box-shadow: 0 0 0 .4vh var(--laranja), 0 0 10vh rgba(255, 118, 41, .45);
+  animation: bp-entra .7s cubic-bezier(.2, 1.4, .4, 1) both; text-align: center; }
+@keyframes bp-entra { from { opacity: 0; transform: translate(-50%, -50%) scale(.6); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+.bp-avanca span { font-size: 13vh; line-height: 1; }
+.bp-avanca b { font-size: 8vh; line-height: 1.1; }
+.bp-avanca em { font-style: normal; font-size: 4.6vh; color: var(--laranja-claro); font-weight: 800; }
+@media (prefers-reduced-motion: reduce) { .bp-membro.caiu, .bp-avanca, .bp-trofeu { animation: none; } }

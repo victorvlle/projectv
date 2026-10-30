@@ -16,6 +16,8 @@ const quiz = require('../dados/quiz');
 const concurso = require('../dados/concurso');
 const correio = require('../dados/correio');
 const monstro = require('../dados/monstro');
+const corrida = require('../dados/corrida');
+const beerpong = require('../dados/beerpong');
 const notificacoes = require('../notificacoes');
 const seg = require('../seguranca');
 const { AVATARES } = require('../avatares');
@@ -130,14 +132,16 @@ async function seLiberado(id, req, montar) {
 }
 async function jogosDaFesta(req) {
   const eu = req.convidado.id;
-  const [q, c, k, f, mo] = await Promise.all([
+  const [q, c, k, f, mo, co, bp] = await Promise.all([
     seLiberado('quiz', req, () => quiz.paraConvidado(eu)),
     seLiberado('concurso', req, () => concurso.paraConvidado(eu)),
     seLiberado('correio', req, () => correio.paraConvidado(eu)),
     seLiberado('fotos', req, () => correio.galeria()),
     seLiberado('monstro', req, () => monstro.paraConvidado(eu)),
+    seLiberado('corrida', req, () => corrida.paraConvidado(eu)),
+    seLiberado('beerpong', req, () => beerpong.paraConvidado(eu)),
   ]);
-  return { quiz: q, concurso: c, correio: k, fotos: f, monstro: mo };
+  return { quiz: q, concurso: c, correio: k, fotos: f, monstro: mo, corrida: co, beerpong: bp };
 }
 
 router.get('/festa', soConvidado, assincrono(async (req, res) => {
@@ -359,6 +363,22 @@ router.put('/monstro/voto', soConvidado, freiarJogos, assincrono(async (req, res
   avisar.telao('atualizar', { oque: 'monstro' });
   avisar.admin('atualizar', { oque: 'monstro' });
   res.json({ ok: true, monstro: await jogoMonstro(req) });
+}));
+
+// Corrida de Cavalos: aposta num naipe.
+router.put('/corrida/aposta', soConvidado, freiarJogos, assincrono(async (req, res) => {
+  await corrida.apostar(req.convidado, (req.body || {}).naipe);
+  avisar.telao('atualizar', { oque: 'corrida' });
+  avisar.admin('atualizar', { oque: 'corrida' });
+  res.json({ ok: true, corrida: await seLiberado('corrida', req, () => corrida.paraConvidado(req.convidado.id)) });
+}));
+
+// Beer Pong: inscrição.
+router.put('/beerpong/inscricao', soConvidado, freiarJogos, assincrono(async (req, res) => {
+  await beerpong.inscrever(req.convidado, (req.body || {}).quero === true);
+  avisar.telao('atualizar', { oque: 'beerpong' });
+  avisar.admin('atualizar', { oque: 'beerpong' });
+  res.json({ ok: true, beerpong: await seLiberado('beerpong', req, () => beerpong.paraConvidado(req.convidado.id)) });
 }));
 
 // Fotos da festa: lista e todas num .zip.
