@@ -508,3 +508,15 @@ body[data-cena="correio"] .ambiente { opacity: 0; }
 .bp-vs-lista { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 14px; width: min(1600px, 92vw); margin: 0 auto; }
 .bp-vs-mini { font-size: 1.3rem; padding: 8px 16px; border-radius: 999px; background: rgba(255,255,255,.06); opacity: .85; }
 @keyframes bpEntra { 0% { opacity: 0; transform: translateY(30px) scale(.9); } 100% { opacity: 1; transform: none; } }
+
+/* Beer Pong: pote com todos os nomes e a luz que passa por eles */
+.bp-status { text-align: center; font-size: 2.6rem; font-weight: 700; min-height: 3.4rem; margin: 0 0 14px; color: #f4eefc; }
+.bp-status b { color: #fff; }
+.bp-pote { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 12px; width: min(1700px, 94vw); margin: 0 auto 22px; min-height: 52px; }
+.bp-bola { display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px 8px 10px; border-radius: 999px; font-size: 1.75rem; font-weight: 700;
+  background: rgba(255,255,255,.06); border: 2px solid rgba(255,255,255,.12); color: #d9d0e6; transition: transform .12s, background .12s, opacity .4s; }
+.bp-bola.luz { background: var(--laranja, #ff7a1a); border-color: #ffd0a8; color: #fff; transform: scale(1.12); box-shadow: 0 0 30px rgba(255,122,26,.75); }
+.bp-bola.escolhida { background: var(--laranja, #ff7a1a); border-color: #fff; color: #fff; transform: scale(1.35); box-shadow: 0 0 50px rgba(255,160,60,.95); z-index: 2; animation: bpPulo .5s ease-out; }
+.bp-bola.saiu { opacity: 0; transform: scale(.6); width: 0; padding: 0; margin: 0 -6px; border-width: 0; overflow: hidden; }
+.bp-time-card.luz { border-color: var(--laranja, #ff7a1a) !important; box-shadow: 0 0 34px rgba(255,122,26,.6); transform: scale(1.04); }
+.bp-time-card { transition: transform .12s, box-shadow .12s; }

@@ -21,7 +21,7 @@ const { ErroValidacao } = require('./convidados');
 const POR_TIME = 3;
 const MIN_INSCRITOS = 4; // dois times de 2
 const PREMIOS = { campeao: 1000, vice: 500 };
-const PASSO_SORTEIO_MS = 2200;   // cada nome: roleta girando e parando no sorteado
+const PASSO_SORTEIO_MS = 5000;   // cada pessoa: luz passa por todos, para no sorteado, depois escolhe o time
 const PASSO_CONFRONTO_MS = 2600; // cada confronto da 1ª rodada aparece no telão
 const FOLGA_SORTEIO_MS = 2500;
 const NOMES_TIMES = [
@@ -234,8 +234,8 @@ async function sortear(agora = Date.now()) {
   const ordem = embaralhar(lista.map((p) => p.id));
   const times = montarTimes(ordem);
   const { partidas, rodadas } = montarChave(times);
-  // Ordem em que os nomes aparecem no telão: a mesma do sorteio (time a time).
-  const revelacao = times.flatMap((t) => t.membros.map((id) => ({ id, time: t.id })));
+  // Ordem em que os nomes aparecem no telão: embaralhada (os times vão enchendo misturados, não um de cada vez).
+  const revelacao = embaralhar(times.flatMap((t) => t.membros.map((id) => ({ id, time: t.id }))));
   await festa.gravar('beerpong', { estado: 'chave', teste: uso.teste, fakes: cfg.fakes || 0, times, partidas, rodadas, sorteioEm: agora, revelacao, ultimo: null });
   await festa.definirTelao({ modo: 'beerpong' });
   return { times: times.length };

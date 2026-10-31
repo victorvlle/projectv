@@ -277,65 +277,103 @@
   //  2) confrontos da 1ª rodada, um por um (quem passa direto também aparece);
   //  3) a chave.
   let bpMontado = null; // assinatura do sorteio já montado na tela
-  let bpCaidos = 0;
   let bpConfrontos = -1;
-  const GIRO = 0.68; // fração do passo com a roleta girando; o resto, o nome parado
-  function bpNomeDoGiro(b, k, f) {
-    const resto = b.revelacao.slice(k);
-    if (resto.length <= 1) return resto[0];
-    const voltas = 22;
-    const i = Math.floor(voltas * Math.sqrt(Math.min(1, f / GIRO))); // desacelera
-    const nome = resto[(k * 7 + i * 5) % resto.length];
-    return nome === resto[0] && i < voltas - 1 ? resto[(k * 7 + i * 5 + 1) % resto.length] : nome;
+  // Cada pessoa (passo de 5 s):
+  //   0,0–2,9 s  a luz pula entre TODOS que ainda não saíram, desacelera e para em alguém;
+  //   2,9–3,6 s  "Sorteado!" — o nome cresce;
+  //   3,6–4,5 s  a luz pula entre os times que ainda têm vaga e para em um;
+  //   4,5–5,0 s  o nome entra no time e sai da lista de quem falta.
+  const F_NOME = 0.58; const F_DESTAQUE = 0.72; const F_TIME = 0.9;
+  function bpSaltos(semente, n, alvo, tamanho) {
+    // Sequência de posições (n saltos) que termina no alvo; sem repetir a mesma duas vezes seguidas.
+    let x = (semente % 2147483647) || 7;
+    const seq = [];
+    for (let i = 0; i < n - 1; i++) {
+      x = (x * 48271) % 2147483647;
+      let v = x % tamanho;
+      if (tamanho > 1 && seq.length && v === seq[seq.length - 1]) v = (v + 1) % tamanho;
+      seq.push(v);
+    }
+    if (tamanho > 1 && seq.length && seq[seq.length - 1] === alvo) seq[seq.length - 1] = (alvo + 1) % tamanho;
+    seq.push(alvo);
+    return seq;
   }
+  // O pote aparece em ordem alfabética: a posição de cada nome não diz nada sobre quando ele sai.
+  const bpOrdemPote = (b) => b.revelacao.map((_, i) => i).sort((x, y) => b.revelacao[x].nome.localeCompare(b.revelacao[y].nome, 'pt-BR'));
+  const saltoAgora = (f, n) => Math.min(n - 1, Math.floor(n * Math.sqrt(Math.max(0, Math.min(1, f))))); // desacelera
   function bpSorteio(b) {
     const t = PV.relogio.agora() - b.sorteioEm;
     const total = b.revelacao.length;
     const k = Math.min(total, Math.max(0, Math.floor(t / b.passoMs)));
     const f = k < total ? (t - k * b.passoMs) / b.passoMs : 1;
-    const caidos = k + (k < total && f >= GIRO ? 1 : 0);
-    const chaveSorteio = `${b.sorteioEm}`;
-    if (bpMontado !== chaveSorteio) {
-      bpMontado = chaveSorteio; bpCaidos = 0; bpConfrontos = -1;
+    const chave = `${b.sorteioEm}`;
+    if (bpMontado !== chave) {
+      bpMontado = chave; bpConfrontos = -1;
       $('bp-telao').innerHTML = `<h1 class="terror bp-titulo">Sorteio dos times 🍺</h1>
-        <div class="bp-roleta" id="bp-roleta"><span class="avatar" id="bp-roleta-av"></span><b id="bp-roleta-nome">…</b><em id="bp-roleta-time"></em></div>
+        <div class="bp-status" id="bp-status">&nbsp;</div>
+        <div class="bp-pote" id="bp-pote">${bpOrdemPote(b).map((i) => { const m = b.revelacao[i]; return `<span class="bp-bola" data-i="${i}"><span class="avatar mini">${emoji(m.avatar)}</span>${esc(m.nome)}</span>`; }).join('')}</div>
         <div class="bp-times">${b.chave.times.map((tm) => `<div class="bp-time-card" data-time="${tm.id}">
-          <div class="bp-time-nome">${tm.emoji} ${esc(tm.nome)}</div><div class="bp-membros"><span class="bp-vazio">…</span></div></div>`).join('')}</div>
+          <div class="bp-time-nome">${tm.emoji} ${esc(tm.nome)}</div><div class="bp-membros"></div></div>`).join('')}</div>
         <p class="prev-dica" id="bp-sorteio-dica"></p>`;
     }
-    // Nomes que já caíram nos times: só acrescenta os novos (a animação roda uma vez por nome).
-    for (; bpCaidos < caidos; bpCaidos++) {
-      const m = b.revelacao[bpCaidos];
-      const card = document.querySelector(`.bp-time-card[data-time="${m.time}"]`);
-      if (!card) continue;
-      document.querySelectorAll('.bp-time-card.recebendo').forEach((c) => c.classList.remove('recebendo'));
-      document.querySelectorAll('.bp-membro.caiu').forEach((x) => x.classList.remove('caiu'));
-      card.classList.add('recebendo');
+    // Quem já foi sorteado: dentro do time, fora do pote.
+    const dentro = k + (k < total && f >= F_TIME ? 1 : 0);
+    document.querySelectorAll('.bp-bola').forEach((el) => {
+      const i = Number(el.dataset.i);
+      el.classList.toggle('saiu', i < dentro);
+      el.classList.remove('luz', 'escolhida');
+    });
+    document.querySelectorAll('.bp-time-card').forEach((card) => {
       const lista = card.querySelector('.bp-membros');
-      const vazio = lista.querySelector('.bp-vazio');
-      if (vazio) vazio.remove();
-      const el = document.createElement('span');
-      el.className = 'bp-membro caiu';
-      el.innerHTML = `<span class="avatar mini">${emoji(m.avatar)}</span>${esc(m.nome)}`;
-      lista.appendChild(el);
-    }
-    const roleta = $('bp-roleta');
-    if (k < total) {
-      const parado = f >= GIRO;
-      const m = parado ? b.revelacao[k] : bpNomeDoGiro(b, k, f);
-      roleta.classList.toggle('parou', parado);
-      $('bp-roleta-av').innerHTML = emoji(m.avatar);
-      $('bp-roleta-nome').textContent = m.nome;
-      const tm = bpTime(b.chave, b.revelacao[k].time);
-      $('bp-roleta-time').textContent = parado && tm ? `→ ${tm.emoji} ${tm.nome}` : 'sorteando…';
-      $('bp-sorteio-dica').textContent = `${k + 1} de ${total}`;
-    } else {
-      roleta.classList.add('parou');
-      $('bp-roleta-av').innerHTML = '🍺';
-      $('bp-roleta-nome').textContent = 'Times formados!';
-      $('bp-roleta-time').textContent = 'agora, os confrontos…';
+      const quer = b.revelacao.slice(0, dentro).filter((m) => m.time === card.dataset.time);
+      if (lista.children.length !== quer.length) {
+        lista.innerHTML = quer.map((m, j) => `<span class="bp-membro ${j === quer.length - 1 && b.revelacao[dentro - 1] === m && f < 1 && k < total ? 'caiu' : ''}">
+          <span class="avatar mini">${emoji(m.avatar)}</span>${esc(m.nome)}</span>`).join('');
+      }
+      card.classList.remove('luz', 'recebendo');
+    });
+    const status = $('bp-status');
+    if (k >= total) {
+      status.innerHTML = '🍺 Times formados! Agora, os confrontos…';
       $('bp-sorteio-dica').textContent = '';
+      return;
     }
+    $('bp-sorteio-dica').textContent = `Sorteando ${k + 1} de ${total}`;
+    const atual = b.revelacao[k];
+    const pote = b.revelacao.map((_, i) => i).filter((i) => i >= k); // quem ainda está no pote
+    if (f < F_NOME) {
+      const seq = bpSaltos(b.sorteioEm + k * 977, 18, 0, pote.length); // alvo: pote[0] é o sorteado (índice k); na tela o pote está em ordem alfabética
+      const i = pote[seq[saltoAgora(f / F_NOME, seq.length)]];
+      const el = document.querySelector(`.bp-bola[data-i="${i}"]`);
+      if (el) el.classList.add('luz');
+      status.innerHTML = `🎲 Sorteando entre <b>${pote.length}</b> ${pote.length === 1 ? 'pessoa' : 'pessoas'}…`;
+      return;
+    }
+    const escolhida = document.querySelector(`.bp-bola[data-i="${k}"]`);
+    if (escolhida && f < F_TIME) escolhida.classList.add('escolhida');
+    if (f < F_DESTAQUE) {
+      status.innerHTML = `🎯 Saiu: <b>${emoji(atual.avatar)} ${esc(atual.nome)}</b>!`;
+      return;
+    }
+    // Para qual time? Só os que ainda têm vaga entram na roleta dos times.
+    const vagas = b.chave.times.filter((tm) => {
+      const final = b.revelacao.filter((m) => m.time === tm.id).length;
+      const ja = b.revelacao.slice(0, k).filter((m) => m.time === tm.id).length;
+      return ja < final;
+    }).map((tm) => tm.id);
+    const alvo = vagas.indexOf(atual.time);
+    const tm = bpTime(b.chave, atual.time);
+    if (f < F_TIME) {
+      const seq = bpSaltos(b.sorteioEm + k * 131, 9, Math.max(0, alvo), vagas.length);
+      const id = vagas[seq[saltoAgora((f - F_DESTAQUE) / (F_TIME - F_DESTAQUE), seq.length)]];
+      const card = document.querySelector(`.bp-time-card[data-time="${id}"]`);
+      if (card) card.classList.add('luz');
+      status.innerHTML = `<b>${emoji(atual.avatar)} ${esc(atual.nome)}</b> vai para qual time?`;
+      return;
+    }
+    const card = document.querySelector(`.bp-time-card[data-time="${atual.time}"]`);
+    if (card) card.classList.add('recebendo');
+    status.innerHTML = `<b>${emoji(atual.avatar)} ${esc(atual.nome)}</b> → ${tm ? `${tm.emoji} <b>${esc(tm.nome)}</b>` : ''}`;
   }
   // Ato 2: confrontos da 1ª rodada, um por vez (o atual grande; os anteriores numa lista).
   function bpConfrontosTela(b, inicio) {
