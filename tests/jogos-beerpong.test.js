@@ -92,3 +92,51 @@ test('fluxo: inscrição, sorteio (7 → 3+2+2, um bye), só o admin marca, tel�
   assert.equal(j.estado, 'inscricao');
   assert.equal(j.inscritos.length, 7);
 });
+
+test('fakes: só em teste, de 0 a 28, entram no sorteio, não ganham pontos e somem fora do teste', async () => {
+  const banco = require('../server/dados/banco');
+  const put = (quantos) => s.req('PUT', '/api/admin/beerpong/fakes', { token: admin, corpo: { quantos } });
+  assert.equal((await put(5)).status, 409, 'liberado (não teste): sem fakes');
+  await h.liberar('beerpong', 'teste');
+  assert.equal((await put(29)).status, 400);
+  assert.equal((await put(-1)).status, 400);
+  assert.equal((await put(28)).status, 200);
+  let j = await jogos();
+  assert.equal(j.fakes, 28);
+  const reais = j.inscritos.filter((p) => !p.fake).length;
+  assert.equal(j.inscritos.length, reais + 28);
+  assert.equal((await s.req('DELETE', `/api/admin/beerpong/inscritos/fake-01`, { token: admin })).status, 409);
+  // Diminui para 9 e sorteia
+  assert.equal((await put(9)).status, 200);
+  assert.equal((await adm('sortear')).status, 200);
+  assert.equal((await put(3)).status, 409, 'sorteado: não muda');
+  const tel = (await s.req('GET', '/api/admin/telao', { token: admin })).json.beerpong;
+  assert.equal(tel.revelacao.length, reais + 9);
+  assert.ok(tel.revelacao.some((r) => r.nome === 'Drácula'), 'fake aparece no telão');
+  // Marca tudo até o fim: fakes não ganham pontos (e nada quebra)
+  for (;;) {
+    const ch = (await jogos()).chave;
+    const p = ch.partidas.find((x) => x.a && x.b && !x.vencedor);
+    if (!p) break;
+    assert.equal((await adm(`partida/${p.id}/a`)).status, 200);
+  }
+  const fakesComPontos = await banco.um("SELECT COUNT(*) AS n FROM pontos_log WHERE convidado_id LIKE 'fake-%'");
+  assert.equal(Number(fakesComPontos.n), 0);
+  // Ranking e lista de convidados não têm fakes
+  const rank = (await s.req('GET', '/api/ranking', { token: gente[0].token })).json.ranking;
+  assert.ok(!JSON.stringify(rank).includes('Fake'));
+  // Recomeçar mantém a quantidade
+  assert.equal((await adm('recomecar')).status, 200);
+  assert.equal((await jogos()).fakes, 9);
+  // Fora do teste, os fakes não contam
+  await h.liberar('beerpong');
+  j = await jogos();
+  assert.equal(j.fakes, 0);
+  assert.ok(j.inscritos.every((p) => !p.fake));
+  // Apagar dados de teste zera
+  await h.liberar('beerpong', 'teste');
+  assert.equal((await jogos()).fakes, 9);
+  await s.req('POST', '/api/admin/teste/apagar', { token: admin });
+  await h.liberar('beerpong', 'teste');
+  assert.equal((await jogos()).fakes, 0);
+});

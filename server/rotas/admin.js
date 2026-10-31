@@ -339,6 +339,7 @@ router.post('/beerpong/sortear', assincrono(async (_req, res) => { const r = awa
 router.post('/beerpong/partida/:id/:lado', assincrono(async (req, res) => { await beerpong.marcar(req.params.id, req.params.lado); avisar.atualizar('ranking'); jogosMudou(res, 'beerpong'); }));
 router.post('/beerpong/desfazer/:id', assincrono(async (req, res) => { await beerpong.desfazer(req.params.id); avisar.atualizar('ranking'); jogosMudou(res, 'beerpong'); }));
 router.post('/beerpong/recomecar', assincrono(async (_req, res) => { await beerpong.recomecar(); avisar.atualizar('ranking'); jogosMudou(res, 'beerpong'); }));
+router.put('/beerpong/fakes', assincrono(async (req, res) => { await beerpong.definirFakes((req.body || {}).quantos); jogosMudou(res, 'beerpong'); }));
 router.delete('/beerpong/inscritos/:id', assincrono(async (req, res) => { await beerpong.tirarInscrito(req.params.id); jogosMudou(res, 'beerpong'); }));
 
 // --------------------------------------------------------------- monstro

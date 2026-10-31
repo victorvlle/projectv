@@ -82,6 +82,7 @@ Atualizado em 27/10/2026.
 - [x] Corrida (30/10): 10 casas; 1 minuto de apostas com contagem (celular, telão e admin); no celular escolhe e toca "Salvar" (confirmado, não troca); larga sozinha no fim do minuto (ou "Largar agora"); sem ninguém confirmado, não larga. Telão mais lento (~2,5 min): a carta sorteada aparece grande no centro, vira, voa para o canto "Última" e só então o cavalo anda; carta lateral sobe ao centro, desvira, volta ao lugar e o cavalo do naipe recua
 - [x] Beer Pong: inscrição no celular, sorteio animado dos trios no telão (mínimo 2 por time), mata-mata com bye (menores primeiro), organizador marca quem passou e o telão mostra o time avançando; campeões +1000 cada, vice +500
 
+- [x] Beer Pong (30/10): jogadores fakes só no modo teste (0 a 28, ajustável antes de cada sorteio) para ver os cenários de times e chave; não existem como convidados, não pontuam e somem fora do teste ou com "Apagar dados de teste"
 - [x] Regra geral (30/10): a Maldição pausa os jogos com relógio (Quiz e Corrida); quando ela termina (confirmada, cancelada ou fim do tempo), o jogo continua de onde parou com o mesmo tempo restante. Concurso, Beer Pong e Mural já esperam por natureza (só andam quando o organizador aperta)
 
 ## Pendente (Etapa C, em ordem)

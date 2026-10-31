@@ -7,6 +7,9 @@
 // RESULTADO: só o organizador marca quem passou; o telão mostra o time avançando.
 // PRÊMIOS: campeões +1000 cada; vice +500 cada (dados quando a final é marcada; desfazer tira).
 // MODO TESTE: com a atividade "Em teste", só testadores se inscrevem; tudo marcado e apagável.
+// FAKES (só em teste): o organizador escolhe de 0 a 28 jogadores de mentira para ver os cenários de times e
+// chave. Eles não existem na tabela de convidados: não aparecem em lista, ranking nem confirmados, e não
+// ganham pontos. Somem quando a atividade sai do modo teste ou com "Apagar dados de teste".
 
 const crypto = require('crypto');
 const banco = require('./banco');
@@ -23,6 +26,13 @@ const NOMES_TIMES = [
   ['Vampiros', '🧛'], ['Bruxas', '🧙'], ['Zumbis', '🧟'], ['Lobisomens', '🐺'], ['Fantasmas', '👻'], ['Abóboras', '🎃'],
   ['Caveiras', '💀'], ['Morcegos', '🦇'], ['Aranhas', '🕷️'], ['Palhaços', '🤡'], ['Demônios', '👹'], ['Aliens', '👽'],
 ];
+const MAX_FAKES = 28;
+const NOMES_FAKES = ['Drácula', 'Morticia', 'Freddy', 'Samara', 'Chucky', 'Annabelle', 'Jason', 'Carrie', 'Pennywise', 'Wandinha',
+  'Frankenstein', 'Medusa', 'Nosferatu', 'Regan', 'Ghostface', 'Elvira', 'Beetlejuice', 'Valak', 'Michael', 'Esther',
+  'Damien', 'Lilith', 'Hannibal', 'Coraline', 'Jack', 'Sadako', 'Leatherface', 'Bellatrix'];
+const AVATARES_FAKES = ['vampiro', 'bruxa', 'zumbi', 'lobisomem', 'fantasma', 'abobora', 'caveira', 'morcego', 'aranha', 'palhaco', 'demonio', 'alien'];
+const FAKES = NOMES_FAKES.map((n, i) => ({ id: `fake-${String(i + 1).padStart(2, '0')}`, nome: `${n} Fake`, avatar: AVATARES_FAKES[i % AVATARES_FAKES.length], fake: true }));
+const ehFake = (id) => typeof id === 'string' && id.startsWith('fake-');
 const iniciais = (nome) => nome.trim().split(/\s+/).slice(0, 2).map((x) => x[0].toUpperCase()).join('');
 const primeiroNome = (nome) => nome.trim().split(/\s+/)[0];
 
@@ -105,14 +115,25 @@ const NOME_RODADA = (r, total) => {
 async function config() {
   return { estado: 'inscricao', teste: false, ...((await festa.ler('beerpong')) || {}) };
 }
-async function inscritos() {
-  return banco.tudo(`SELECT c.id, c.nome, c.avatar FROM beerpong_inscritos i JOIN convidados c ON c.id = i.convidado_id AND c.ativo = 1
+// Quantos fakes valem agora: só com a atividade "Em teste".
+async function quantosFakes(cfg, agora = Date.now()) {
+  if (!cfg.fakes) return 0;
+  const uso = await atividades.emUso('beerpong', agora);
+  return uso.teste ? Math.min(MAX_FAKES, cfg.fakes) : 0;
+}
+async function inscritos(cfg = null) {
+  const c = cfg || await config();
+  const reais = await banco.tudo(`SELECT c.id, c.nome, c.avatar FROM beerpong_inscritos i JOIN convidados c ON c.id = i.convidado_id AND c.ativo = 1
     ORDER BY i.em`);
+  return [...reais, ...FAKES.slice(0, await quantosFakes(c))];
 }
 async function pessoas(ids) {
-  if (!ids.length) return new Map();
-  const l = await banco.tudo(`SELECT id, nome, avatar FROM convidados WHERE id IN (${ids.map(() => '?').join(',')})`, ids);
-  return new Map(l.map((p) => [p.id, p]));
+  const mapa = new Map(FAKES.filter((f) => ids.includes(f.id)).map((f) => [f.id, f]));
+  const reais = ids.filter((id) => !ehFake(id));
+  if (!reais.length) return mapa;
+  const l = await banco.tudo(`SELECT id, nome, avatar FROM convidados WHERE id IN (${reais.map(() => '?').join(',')})`, reais);
+  for (const p of l) mapa.set(p.id, p);
+  return mapa;
 }
 
 // Visão pública da chave (telão, celular): times com nomes e monstros, partidas, próxima partida.
@@ -134,7 +155,8 @@ function campeaoEVice(cfg) {
 
 // ------------------------------------------------------------------ convidado
 async function paraConvidado(eu) {
-  const [cfg, lista] = await Promise.all([config(), inscritos()]);
+  const cfg = await config();
+  const lista = await inscritos(cfg);
   const saida = { estado: cfg.estado, inscrito: lista.some((p) => p.id === eu), inscritos: lista.length, premios: PREMIOS };
   if (cfg.times) {
     const meu = cfg.times.find((t) => t.membros.includes(eu));
@@ -172,9 +194,11 @@ async function inscrever(eu, quer, agora = Date.now()) {
 
 // ------------------------------------------------------------------ admin
 async function paraAdmin(agora = Date.now()) {
-  const [cfg, uso, lista] = await Promise.all([config(), atividades.emUso('beerpong', agora), inscritos()]);
+  const [cfg, uso] = await Promise.all([config(), atividades.emUso('beerpong', agora)]);
+  const lista = await inscritos(cfg);
   return { estado: cfg.estado, liberada: uso.ativa, emTeste: uso.teste, minimo: MIN_INSCRITOS, premios: PREMIOS,
-    inscritos: lista.map((p) => ({ id: p.id, nome: p.nome, avatar: p.avatar })), chave: await chavePublica(cfg) };
+    fakes: uso.teste ? Math.min(MAX_FAKES, cfg.fakes || 0) : 0, maxFakes: MAX_FAKES,
+    inscritos: lista.map((p) => ({ id: p.id, nome: p.nome, avatar: p.avatar, ...(p.fake ? { fake: true } : {}) })), chave: await chavePublica(cfg) };
 }
 
 async function sortear(agora = Date.now()) {
@@ -182,14 +206,14 @@ async function sortear(agora = Date.now()) {
   if (!uso.ativa) throw new ErroValidacao('Libere o Beer Pong (ou coloque "Em teste") na aba Atividades antes.', 409);
   const cfg = await config();
   if (cfg.estado !== 'inscricao') throw new ErroValidacao('Os times já foram sorteados. Use "Recomeçar" para sortear de novo.', 409);
-  const lista = await inscritos();
+  const lista = await inscritos(cfg);
   if (lista.length < MIN_INSCRITOS) throw new ErroValidacao(`Precisa de pelo menos ${MIN_INSCRITOS} inscritos (dois times de 2).`, 409);
   const ordem = embaralhar(lista.map((p) => p.id));
   const times = montarTimes(ordem);
   const { partidas, rodadas } = montarChave(times);
   // Ordem em que os nomes aparecem no telão: a mesma do sorteio (time a time).
   const revelacao = times.flatMap((t) => t.membros.map((id) => ({ id, time: t.id })));
-  await festa.gravar('beerpong', { estado: 'chave', teste: uso.teste, times, partidas, rodadas, sorteioEm: agora, revelacao, ultimo: null });
+  await festa.gravar('beerpong', { estado: 'chave', teste: uso.teste, fakes: cfg.fakes || 0, times, partidas, rodadas, sorteioEm: agora, revelacao, ultimo: null });
   await festa.definirTelao({ modo: 'beerpong' });
   return { times: times.length };
 }
@@ -244,19 +268,34 @@ async function darPontos(cfg) {
 }
 
 async function recomecar() {
+  const cfg = await config();
   await banco.rodar("DELETE FROM pontos_log WHERE atividade = 'beerpong'");
-  await festa.gravar('beerpong', { estado: 'inscricao', teste: false });
+  // Os fakes ficam: dá para sortear de novo com outra quantidade.
+  await festa.gravar('beerpong', { estado: 'inscricao', teste: false, ...(cfg.fakes ? { fakes: cfg.fakes } : {}) });
+}
+
+// Quantos jogadores fakes entram (0 a 28). Só com o Beer Pong "Em teste" e antes do sorteio.
+async function definirFakes(n, agora = Date.now()) {
+  const uso = await atividades.emUso('beerpong', agora);
+  if (!uso.teste) throw new ErroValidacao('Fakes só no modo teste: coloque o Beer Pong "Em teste" na aba Atividades.', 409);
+  const qtd = Number(n);
+  if (!Number.isInteger(qtd) || qtd < 0 || qtd > MAX_FAKES) throw new ErroValidacao(`Escolha de 0 a ${MAX_FAKES} fakes.`);
+  const cfg = await config();
+  if (cfg.estado !== 'inscricao') throw new ErroValidacao('Os times já foram sorteados: toque em "Recomeçar" para mudar a quantidade.', 409);
+  await festa.gravar('beerpong', { ...cfg, fakes: qtd });
 }
 
 async function tirarInscrito(id) {
   const cfg = await config();
   if (cfg.estado !== 'inscricao') throw new ErroValidacao('Os times já foram sorteados.', 409);
+  if (ehFake(String(id))) throw new ErroValidacao('Para tirar fakes, mude a quantidade.', 409);
   await banco.rodar('DELETE FROM beerpong_inscritos WHERE convidado_id = ?', [String(id)]);
 }
 
 // ------------------------------------------------------------------ telão
 async function paraTelao() {
-  const [cfg, lista] = await Promise.all([config(), inscritos()]);
+  const cfg = await config();
+  const lista = await inscritos(cfg);
   const saida = { estado: cfg.estado, premios: PREMIOS, inscritos: lista.map((p) => ({ avatar: p.avatar, iniciais: iniciais(p.nome) })) };
   if (cfg.times) {
     saida.chave = await chavePublica(cfg);
@@ -271,4 +310,4 @@ async function paraTelao() {
 }
 
 module.exports = { montarTimes, montarChave, propagar, config, paraConvidado, inscrever, paraAdmin, sortear, marcar, desfazer, recomecar,
-  tirarInscrito, paraTelao, PREMIOS, MIN_INSCRITOS };
+  tirarInscrito, paraTelao, definirFakes, PREMIOS, MIN_INSCRITOS, MAX_FAKES };

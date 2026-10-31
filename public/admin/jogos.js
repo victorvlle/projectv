@@ -232,9 +232,20 @@
   function desenharBeerpongAdmin(b) {
     let corpo = '';
     if (b.estado === 'inscricao') {
-      const lista = b.inscritos.map((p) => `<span class="selo">${A().emojiDe(p.avatar)} ${esc(p.nome)}
+      const lista = b.inscritos.filter((p) => !p.fake).map((p) => `<span class="selo">${A().emojiDe(p.avatar)} ${esc(p.nome)}
         <button class="botao-x" type="button" data-acao="bp-tirar" data-id="${esc(p.id)}" aria-label="Tirar ${esc(p.nome)}">✕</button></span>`).join(' ');
-      corpo = `<p class="fraco">🍺 <b>${b.inscritos.length}</b> ${b.inscritos.length === 1 ? 'inscrito' : 'inscritos'}: ${lista || 'ninguém ainda'}</p>
+      const reais = b.inscritos.length - b.fakes;
+      const fakes = b.emTeste ? `<div class="cartao" style="margin:10px 0;padding:12px">
+          <b>🧪 Jogadores fakes (só no teste)</b>
+          <p class="fraco" style="margin:4px 0 8px">Somam com os inscritos de verdade para você ver como ficam os times e a chave. Não aparecem para ninguém, não entram no ranking e não ganham pontos.</p>
+          <div class="item-acoes" style="align-items:center">
+            <button class="botao secundario pequeno" type="button" data-acao="bp-fakes-passo" data-passo="-1" aria-label="Menos um fake">−</button>
+            <input id="bp-fakes" type="number" min="0" max="${b.maxFakes}" value="${b.fakes}" inputmode="numeric" style="width:70px;text-align:center">
+            <button class="botao secundario pequeno" type="button" data-acao="bp-fakes-passo" data-passo="1" aria-label="Mais um fake">+</button>
+            <button class="botao pequeno" type="button" data-acao="bp-fakes">Aplicar</button>
+          </div>
+          <p class="fraco" style="margin-top:6px">Total no sorteio: <b>${b.inscritos.length}</b> (${reais} de verdade + ${b.fakes} fakes)</p></div>` : '';
+      corpo = `<p class="fraco">🍺 <b>${reais}</b> ${reais === 1 ? 'inscrito' : 'inscritos'}: ${lista || 'ninguém ainda'}</p>${fakes}
         <div class="item-acoes" style="margin-top:8px"><button class="botao" type="button" data-acao="bp-sortear" ${b.inscritos.length >= b.minimo ? '' : 'disabled'}>🎲 Sortear os times no telão</button></div>
         ${b.inscritos.length >= b.minimo ? '' : `<p class="fraco">Precisa de pelo menos ${b.minimo} inscritos.</p>`}`;
     } else if (b.chave) {
@@ -446,6 +457,15 @@
     if (oque === 'mon-pista') {
       const t = $('mon-pista').value.trim();
       if (t.length >= 3) { await fazer(() => api('POST', '/monstro/pista', { texto: t }), 'Pista no telão.'); $('mon-pista').value = ''; }
+    }
+    if (oque === 'bp-fakes-passo') {
+      const campo = document.getElementById('bp-fakes');
+      if (campo) campo.value = Math.max(0, Math.min(Number(campo.max) || 28, (Number(campo.value) || 0) + Number(b.dataset.passo)));
+    }
+    if (oque === 'bp-fakes') {
+      const campo = document.getElementById('bp-fakes');
+      const n = Math.max(0, Math.min(Number(campo.max) || 28, Math.round(Number(campo.value) || 0)));
+      await fazer(() => api('PUT', '/beerpong/fakes', { quantos: n }), `${n} ${n === 1 ? 'fake' : 'fakes'} no sorteio.`);
     }
     if (oque === 'bp-tirar') await fazer(() => api('DELETE', `/beerpong/inscritos/${encodeURIComponent(id)}`), 'Tirado das inscrições.');
     if (oque === 'bp-sortear') { if (confirmarToque(b, 'Toque de novo: sortear os times')) await fazer(() => api('POST', '/beerpong/sortear'), 'Sorteando no telão!'); }
