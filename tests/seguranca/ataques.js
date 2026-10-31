@@ -151,7 +151,7 @@ async function main() {
       ['POST', '/api/admin/convidados'], ['POST', '/api/admin/restaurar'], ['PUT', '/api/admin/festa'], ['GET', '/api/admin/telao']];
     const abertas = [];
     for (const [m, p] of rotasAdmin) {
-      for (const tok of [undefined, tA, 'a.9999999999999.xxx', admin.replace(/.$/, 'A')]) {
+      for (const tok of [undefined, tA, 'a.9999999999999.xxx', admin.replace(/.$/, (c) => (c === 'A' ? 'B' : 'A'))]) { // forjado: sempre diferente do verdadeiro
         const r = await req(m, p, { token: tok, corpo: m === 'GET' ? undefined : {} });
         if (r.status !== 401) abertas.push(`${m} ${p} (${r.status})`);
       }

@@ -520,3 +520,21 @@ body[data-cena="correio"] .ambiente { opacity: 0; }
 .bp-bola.saiu { opacity: 0; transform: scale(.6); width: 0; padding: 0; margin: 0 -6px; border-width: 0; overflow: hidden; }
 .bp-time-card.luz { border-color: var(--laranja, #ff7a1a) !important; box-shadow: 0 0 34px rgba(255,122,26,.6); transform: scale(1.04); }
 .bp-time-card { transition: transform .12s, box-shadow .12s; }
+
+.maldicao-palco.falhou .cumprida-texto { color: #ff5a73; text-shadow: 0 0 40px rgba(255, 60, 90, .55); }
+
+/* Maldição: roleta de nomes (fita que passa pela mira e para em quem foi sorteado) */
+.maldicao-palco .suspense-texto { font-size: 7vh; margin-bottom: 3vh; }
+.roleta-nomes { width: min(1100px, 80vw); }
+.rn-janela { position: relative; height: 55vh; overflow: hidden; border-radius: 3vh; background: rgba(10, 6, 16, .75);
+  border: .5vh solid rgba(232, 98, 12, .55); box-shadow: 0 0 8vh rgba(232, 98, 12, .35), inset 0 0 6vh rgba(0, 0, 0, .7);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 22%, #000 78%, transparent 100%);
+          mask-image: linear-gradient(180deg, transparent 0, #000 22%, #000 78%, transparent 100%); }
+.rn-fita { position: absolute; left: 0; right: 0; top: 0; will-change: transform; }
+.rn-linha { height: 11vh; display: flex; align-items: center; justify-content: center; gap: 2.4vh; color: rgba(243, 236, 248, .55);
+  font-size: 6vh; font-weight: 800; white-space: nowrap; }
+.rn-linha .avatar { width: 7.5vh; height: 7.5vh; font-size: 5vh; flex-shrink: 0; }
+.rn-linha.na-mira { color: #fff; font-size: 7.4vh; text-shadow: 0 0 3vh rgba(255, 122, 26, .8); }
+.rn-mira { position: absolute; left: 0; right: 0; top: 22vh; height: 11vh; pointer-events: none;
+  border-top: .5vh solid var(--laranja, #E8620C); border-bottom: .5vh solid var(--laranja, #E8620C);
+  background: rgba(232, 98, 12, .12); box-shadow: 0 0 5vh rgba(232, 98, 12, .5); }

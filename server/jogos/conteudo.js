@@ -43,13 +43,23 @@ const CASTIGOS = [
   { id: 'fantasia', texto: 'Escolha a fantasia mais assustadora da festa: você e essa pessoa viram o copo juntos.' },
   { id: 'direita', texto: 'A pessoa à sua direita decide: você vira o copo ou toma um shot.' },
   { id: 'zumbi', texto: 'Ande como zumbi até o bar, tome um shot e volte do mesmo jeito.' },
+  // grupo: true = MALDIÇÃO COLETIVA. Quem foi sorteado só despertou a maldição; perde quem for o último
+  // e o penúltimo (o organizador marca no painel). Só sai com bastante gente disponível.
+  { id: 'grupo-bar', grupo: true, texto: 'Todo mundo encosta no bar agora! O último a chegar toma 2 shots e perde {u}; o penúltimo toma 1 shot e perde {p}.' },
+  { id: 'grupo-chao', grupo: true, texto: 'Todo mundo agachado, já! O último a agachar toma 2 shots e perde {u}; o penúltimo toma 1 shot e perde {p}.' },
+  { id: 'grupo-copo', grupo: true, texto: 'Copo para o alto, todo mundo! O último a levantar o copo toma 2 shots e perde {u}; o penúltimo toma 1 shot e perde {p}.' },
 ];
 const INTENSIDADES = {
   leve: { nome: 'Leve', minMin: 30, maxMin: 40 },
   moderado: { nome: 'Moderado', minMin: 20, maxMin: 30 },
   caos: { nome: 'Caos', minMin: 10, maxMin: 15 },
 };
-const PONTOS_MALDICAO = 500;
+// A Maldição PREJUDICA: quem é sorteado perde na hora e ainda cumpre o desafio; se não cumprir, perde de novo.
+const PONTOS_MALDICAO = -300;          // ao ser sorteado (cada um, na maldição dupla)
+const PONTOS_MALDICAO_FALHOU = -300;   // a mais, se não cumprir
+const PONTOS_GRUPO = { ultimo: -400, penultimo: -200 }; // maldição coletiva
+const MIN_GRUPO = 6;                   // pessoas disponíveis para sair maldição coletiva
+const AUSENTE_MIN = 30;                // quem foi marcado "não está presente" fica fora dos sorteios por esse tempo
 
 // Enigmas: 3 por dia (manhã 8h, tarde 13h, noite 19h) de terça a quinta. Cada um fecha quando o
 // próximo abre; o último fecha quinta às 23:59. Respostas aceitas comparadas sem acento, maiúsculas, artigos e pontuação.
@@ -151,6 +161,6 @@ const PONTOS_CONCURSO = [1000, 800, 500];
 const PONTOS_COLABORACAO = { carona: 5, musica: 5, bebida: 5 };
 
 module.exports = {
-  PERGUNTAS, PERGUNTAS_REMOVIDAS, PONTOS_PREVISAO, CASTIGOS, INTENSIDADES, PONTOS_MALDICAO, ENIGMAS, PONTOS_ENIGMA, BONUS_ENIGMA_PADRAO,
+  PERGUNTAS, PERGUNTAS_REMOVIDAS, PONTOS_PREVISAO, CASTIGOS, INTENSIDADES, PONTOS_MALDICAO, PONTOS_MALDICAO_FALHOU, PONTOS_GRUPO, MIN_GRUPO, AUSENTE_MIN, ENIGMAS, PONTOS_ENIGMA, BONUS_ENIGMA_PADRAO,
   PONTOS_COLABORACAO, QUIZ, PONTOS_QUIZ, QUIZ_TEMPO_PADRAO_S, PONTOS_CONCURSO,
 };

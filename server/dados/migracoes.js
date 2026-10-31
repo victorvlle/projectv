@@ -640,4 +640,19 @@ module.exports = [
       INSERT OR IGNORE INTO atividades (id, estado, abre_em, atualizado_em) VALUES ('beerpong', 'bloqueada', NULL, 0)
     `,
   },
+  {
+    nome: 'Maldição tira pontos (-300; não cumpriu -300 a mais), maldição coletiva (último e penúltimo) e "não está presente"',
+    sql: `
+      DELETE FROM pontos_log WHERE atividade = 'maldicao' AND pontos > 0
+    `,
+    async depois(c) {
+      const cols = new Set((await c.execute("SELECT name FROM pragma_table_info('maldicoes')")).rows.map((r) => r.name));
+      if (!cols.has('grupo')) await c.execute('ALTER TABLE maldicoes ADD COLUMN grupo INTEGER NOT NULL DEFAULT 0');
+      if (!cols.has('falhou')) await c.execute('ALTER TABLE maldicoes ADD COLUMN falhou INTEGER NOT NULL DEFAULT 0');
+      if (!cols.has('ultimo_id')) await c.execute('ALTER TABLE maldicoes ADD COLUMN ultimo_id TEXT');
+      if (!cols.has('penultimo_id')) await c.execute('ALTER TABLE maldicoes ADD COLUMN penultimo_id TEXT');
+      if (!cols.has('ausente')) await c.execute('ALTER TABLE maldicoes ADD COLUMN ausente INTEGER NOT NULL DEFAULT 0');
+      if (!cols.has('castigo_id')) await c.execute('ALTER TABLE maldicoes ADD COLUMN castigo_id TEXT');
+    },
+  },
 ];

@@ -87,6 +87,9 @@ Atualizado em 27/10/2026.
 - [x] Sem spoiler (30/10): o celular só mostra o resultado depois do telão — time do Beer Pong (fim da revelação), Maldição (depois do alerta + suspense, inclusive o push) e pódio do Concurso (~16 s)
 - [x] Corrida: a carta escolhida aparece grande no centro do celular (confirmado e durante a corrida)
 - [x] Painel da festa em /painel (link no topo do admin): uma tela só para o celular — "Agora" com o que pede ação (maldição para confirmar, quem passou no Beer Pong, corrida esperando largada, quiz rodando, votação, mural travado), 8 botões do telão e uma linha por jogo com o próximo passo; ações importantes pedem segundo toque
+- [x] Maldição prejudica (30/10 noite): sorteado (e parceiro) perde 300 na hora e cumpre o desafio; "Não cumpriu" tira mais 300; "Não está presente" devolve os pontos e sorteia outra pessoa na hora para o mesmo desafio (quem não estava fica 30 min fora dos sorteios); Anular devolve
+- [x] Maldição coletiva (com 6+ pessoas disponíveis): todos participam; o organizador marca no painel o último (−400, 2 shots) e o penúltimo (−200, 1 shot); quem despertou não perde
+- [x] Telão da Maldição: o suspense virou uma roleta de nomes (fita que passa pela mira, freia e para em quem foi sorteado); suspense de 7 s
 - [x] Regra geral (30/10): a Maldição pausa os jogos com relógio (Quiz e Corrida); quando ela termina (confirmada, cancelada ou fim do tempo), o jogo continua de onde parou com o mesmo tempo restante. Concurso, Beer Pong e Mural já esperam por natureza (só andam quando o organizador aperta)
 
 ## Pendente (Etapa C, em ordem)

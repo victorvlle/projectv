@@ -74,12 +74,27 @@
   function blocoAgora(d) {
     const cartoes = [];
     // Maldição esperando você confirmar
-    for (const m of d.maldicao.historico.filter((x) => x.estado === 'sorteada')) {
+    const md = d.maldicao;
+    const menos = (n) => `−${pts(Math.abs(n))}`;
+    for (const m of md.historico.filter((x) => x.estado === 'sorteada')) {
+      if (m.grupo) {
+        const opcoes = md.pessoas.map((p) => `<option value="${esc(p.id)}">${emojiDe(p.avatar)} ${esc(p.nome)}</option>`).join('');
+        cartoes.push(`<div class="pn-agora mal"><h3>👥 Maldição coletiva <span class="fraco">há <span data-desde="${m.sorteadaEm}"></span></span></h3>
+          <p class="mudo">${esc(m.castigo)}</p>
+          <label class="pn-rotulo">Último (${menos(md.pontosGrupo.ultimo)} e 2 shots)</label>
+          <select class="pn-select" data-grupo="ultimo" data-id="${m.id}"><option value="">— escolha —</option>${opcoes}</select>
+          <label class="pn-rotulo">Penúltimo (${menos(md.pontosGrupo.penultimo)} e 1 shot)</label>
+          <select class="pn-select" data-grupo="penultimo" data-id="${m.id}"><option value="">— escolha —</option>${opcoes}</select>
+          <div class="pn-acoes">${botao('mal-grupo', '✅ Confirmar', { id: m.id })}
+            ${botao('mal-cancelar', '✖ Anular', { classe: 'secundario', id: m.id, confirmar: 'Toque de novo: anular' })}</div></div>`);
+        continue;
+      }
       cartoes.push(`<div class="pn-agora mal"><h3>💀 Maldição em andamento <span class="fraco">há <span data-desde="${m.sorteadaEm}"></span></span></h3>
-        <p class="pn-grande">${emojiDe(m.avatar)} ${esc(m.nome)}${m.parceiro ? ` e ${esc(m.parceiro.nome)}` : ''}</p>
+        <p class="pn-grande">${emojiDe(m.avatar)} ${esc(m.nome)}${m.parceiro ? ` e ${esc(m.parceiro.nome)}` : ''} <span class="pn-perdeu">${menos(md.pontos)}</span></p>
         <p class="mudo">${esc(m.castigo)}</p>
-        <div class="pn-acoes">${botao('mal-cumprida', `✅ Cumpriu (+${pts(d.maldicao.pontos)})`, { id: m.id })}
-          ${botao('mal-cancelar', '✖ Não cumpriu', { classe: 'secundario', id: m.id, confirmar: 'Toque de novo: cancelar' })}</div></div>`);
+        <div class="pn-acoes">${botao('mal-cumprida', '✅ Cumpriu', { id: m.id })}
+          ${botao('mal-falhou', `✖ Não cumpriu (${menos(md.falhouPontos)})`, { classe: 'secundario', id: m.id, confirmar: 'Toque de novo: não cumpriu' })}</div>
+        <div class="pn-acoes um">${botao('mal-ausente', '🚶 Não está presente: sortear outra pessoa', { classe: 'secundario', id: m.id, confirmar: 'Toque de novo: sortear outra' })}</div></div>`);
     }
     // Beer Pong: o próximo jogo
     const bp = d.beerpong;
@@ -204,6 +219,15 @@
   const assinaturas = {};
   function pintar(id, html) {
     if (assinaturas[id] === html) return;
+    const foco = document.activeElement;
+    if (foco && foco.tagName === 'SELECT' && $(id).contains(foco)) return;
+    if ($(id).querySelector('select.pn-select') && [...$(id).querySelectorAll('select.pn-select')].some((x) => x.value)) {
+      // Já escolheu alguém e ainda não confirmou: guarda a escolha ao redesenhar.
+      const escolhas = [...$(id).querySelectorAll('select.pn-select')].map((x) => [x.dataset.grupo + x.dataset.id, x.value]);
+      assinaturas[id] = html; $(id).innerHTML = html; reArmar($(id));
+      for (const [k, v] of escolhas) { const el = [...$(id).querySelectorAll('select.pn-select')].find((x) => x.dataset.grupo + x.dataset.id === k); if (el) el.value = v; }
+      return;
+    }
     assinaturas[id] = html;
     $(id).innerHTML = html;
     reArmar($(id));
@@ -239,8 +263,14 @@
   const ACOES = {
     tel: (b) => [api('PUT', '/telao', { modo: b.dataset.modo }), 'Telão trocado.'],
     liberar: (b) => [api('PUT', `/atividades/${b.dataset.id}`, { estado: 'liberada' }), 'Liberado para todos.'],
-    'mal-cumprida': (b) => [api('POST', `/maldicao/${b.dataset.id}/resolver`, { estado: 'cumprida' }), 'Cumprida: pontos dados.'],
-    'mal-cancelar': (b) => [api('POST', `/maldicao/${b.dataset.id}/resolver`, { estado: 'cancelada' }), 'Maldição cancelada.'],
+    'mal-cumprida': (b) => [api('POST', `/maldicao/${b.dataset.id}/resolver`, { estado: 'cumprida' }), 'Cumprida.'],
+    'mal-falhou': (b) => [api('POST', `/maldicao/${b.dataset.id}/resolver`, { estado: 'falhou' }), 'Não cumpriu: perdeu mais pontos.'],
+    'mal-cancelar': (b) => [api('POST', `/maldicao/${b.dataset.id}/resolver`, { estado: 'cancelada' }), 'Sorteio anulado: pontos devolvidos.'],
+    'mal-ausente': (b) => [api('POST', `/maldicao/${b.dataset.id}/resolver`, { estado: 'ausente' }), 'Ninguém perde ponto. Sorteando outra pessoa!'],
+    'mal-grupo': (b) => {
+      const val = (qual) => (document.querySelector(`select[data-grupo="${qual}"][data-id="${b.dataset.id}"]`) || {}).value || null;
+      return [api('POST', `/maldicao/${b.dataset.id}/resolver`, { estado: 'cumprida', ultimo: val('ultimo'), penultimo: val('penultimo') }), 'Pontos tirados do último e do penúltimo.'];
+    },
     'mal-ligar': (b) => [api('PUT', '/maldicao', { ligada: b.dataset.id === '1' }), b.dataset.id === '1' ? 'Sorteios ligados.' : 'Sorteios pausados.'],
     'mal-sortear': () => [api('POST', '/maldicao/sortear', { id: novoId() }), 'Maldição sorteada! Olhe o telão.'],
     'bp-venceu': (b) => [api('POST', `/beerpong/partida/${b.dataset.id}/${b.dataset.lado}`), 'Resultado no telão.'],

@@ -75,11 +75,21 @@
     const hist = m.historico.slice(0, 12).map((x) => `<div class="item">
         <div class="item-topo"><span class="avatar">${A().emojiDe(x.avatar)}</span><div>
           <div class="item-nome">${esc(x.nome)}${x.parceiro ? ` e ${esc(x.parceiro.nome)}` : ''}${x.teste ? ' <span class="selo teste">teste</span>' : ''}
-            <span class="selo ${x.estado === 'cumprida' ? 'ok' : x.estado === 'cancelada' ? 'off' : 'pendente'}">${x.estado}</span></div>
-          <div class="item-sub">${esc(PV.dataCurta(x.sorteadaEm))} · ${x.origem === 'auto' ? 'automático' : 'manual'} · ${esc(x.castigo)}</div></div></div>
-        ${x.estado === 'sorteada' ? `<div class="item-acoes">
-          <button class="botao pequeno" type="button" data-acao="mal-cumprida" data-id="${x.id}">Cumpriu (+${m.pontos})</button>
-          <button class="botao secundario pequeno" type="button" data-acao="mal-cancelar" data-id="${x.id}">Cancelar</button></div>` : ''}</div>`).join('');
+            ${x.grupo ? '<span class="selo">coletiva</span>' : ''}
+            <span class="selo ${x.estado === 'cumprida' && !x.falhou ? 'ok' : x.estado === 'cancelada' ? 'off' : 'pendente'}">${x.falhou ? 'não cumpriu' : x.ausente ? 'não estava' : x.estado}</span></div>
+          <div class="item-sub">${esc(PV.dataCurta(x.sorteadaEm))} · ${x.origem === 'auto' ? 'automático' : 'manual'} · ${esc(x.castigo)}</div>
+          ${x.grupo && (x.ultimo || x.penultimo) ? `<div class="item-sub">Último: ${x.ultimo ? esc(x.ultimo.nome) : '—'} · Penúltimo: ${x.penultimo ? esc(x.penultimo.nome) : '—'}</div>` : ''}</div></div>
+        ${x.estado !== 'sorteada' ? '' : x.grupo ? `<div class="linha-teste" style="margin-top:8px">
+          ${['ultimo', 'penultimo'].map((qual) => `<select data-grupo="${qual}" data-id="${x.id}" aria-label="${qual === 'ultimo' ? 'Último' : 'Penúltimo'}">
+            <option value="">${qual === 'ultimo' ? 'Último (−400, 2 shots)' : 'Penúltimo (−200, 1 shot)'}</option>
+            ${m.pessoas.map((p) => `<option value="${esc(p.id)}">${esc(p.nome)}</option>`).join('')}</select>`).join('')}
+          <button class="botao pequeno" type="button" data-acao="mal-grupo" data-id="${x.id}">Confirmar</button>
+          <button class="botao secundario pequeno" type="button" data-acao="mal-cancelar" data-id="${x.id}">Cancelar</button></div>`
+        : `<div class="item-acoes">
+          <button class="botao pequeno" type="button" data-acao="mal-cumprida" data-id="${x.id}">Cumpriu</button>
+          <button class="botao secundario pequeno" type="button" data-acao="mal-falhou" data-id="${x.id}">Não cumpriu (${m.falhouPontos} a mais)</button>
+          <button class="botao secundario pequeno" type="button" data-acao="mal-ausente" data-id="${x.id}">🚶 Não está presente (sorteia outra)</button>
+          <button class="botao secundario pequeno" type="button" data-acao="mal-cancelar" data-id="${x.id}">Anular (devolve)</button></div>`}</div>`).join('');
     pintar('j-maldicao', `
       ${m.liberada ? '' : '<p class="aviso-inline">A atividade está bloqueada: libere (ou coloque "Em teste") em Atividades para os sorteios acontecerem.</p>'}
       ${m.emTeste ? '<p class="selo teste" style="display:inline-block">🧪 Em teste: só os testadores são sorteados</p>' : ''}
@@ -96,7 +106,7 @@
         <input id="mal-max" type="number" min="2" max="180" value="${c.maxMin}" style="width:80px">
         <button class="botao secundario pequeno" type="button" data-acao="mal-intervalo">Salvar</button></div>
       <p class="fraco" style="margin:10px 0">Quem está marcado como "fora" não é sorteado. A mesma pessoa não sai duas vezes seguidas.
-        Pontos só quando você confirma que cumpriu.${m.maisAmaldicoados.length ? ` Mais sorteados: ${m.maisAmaldicoados.map((x) => `${esc(x.nome)} (${x.n})`).join(', ')}.` : ''}</p>
+        Quem é sorteado perde ${Math.abs(m.pontos)} na hora (e cumpre o desafio); se não cumprir, perde mais ${Math.abs(m.falhouPontos)}. Na coletiva, o último perde ${Math.abs(m.pontosGrupo.ultimo)} e o penúltimo ${Math.abs(m.pontosGrupo.penultimo)}. Cancelar devolve.${m.maisAmaldicoados.length ? ` Mais sorteados: ${m.maisAmaldicoados.map((x) => `${esc(x.nome)} (${x.n})`).join(', ')}.` : ''}</p>
       <div class="lista">${hist || '<p class="fraco">Nenhum sorteio ainda.</p>'}</div>`);
   }
 
@@ -428,7 +438,13 @@
       await fazer(() => api('PUT', '/maldicao', { minMin: Number($('mal-min').value), maxMin: Number($('mal-max').value) }), 'Intervalo salvo.');
     }
     if (oque === 'mal-sortear') { if (confirmarToque(b, 'Toque de novo: sortear agora')) await fazer(() => api('POST', '/maldicao/sortear', { id: novoId() }), 'Maldição sorteada! Olhe o telão.'); }
-    if (oque === 'mal-cumprida') await fazer(() => api('POST', `/maldicao/${id}/resolver`, { estado: 'cumprida' }), 'Cumprida. Pontos dados.');
+    if (oque === 'mal-cumprida') await fazer(() => api('POST', `/maldicao/${id}/resolver`, { estado: 'cumprida' }), 'Cumprida.');
+    if (oque === 'mal-falhou') { if (confirmarToque(b, 'Toque de novo: não cumpriu')) await fazer(() => api('POST', `/maldicao/${id}/resolver`, { estado: 'falhou' }), 'Não cumpriu: perdeu mais pontos.'); }
+    if (oque === 'mal-ausente') { if (confirmarToque(b, 'Toque de novo: sortear outra pessoa')) await fazer(() => api('POST', `/maldicao/${id}/resolver`, { estado: 'ausente' }), 'Ninguém perde ponto. Sorteando outra pessoa!'); }
+    if (oque === 'mal-grupo') {
+      const val = (qual) => (painel.querySelector(`select[data-grupo="${qual}"][data-id="${id}"]`) || {}).value || null;
+      await fazer(() => api('POST', `/maldicao/${id}/resolver`, { estado: 'cumprida', ultimo: val('ultimo'), penultimo: val('penultimo') }), 'Pontos tirados do último e do penúltimo.');
+    }
     if (oque === 'mal-cancelar') { if (confirmarToque(b)) await fazer(() => api('POST', `/maldicao/${id}/resolver`, { estado: 'cancelada' }), 'Maldição cancelada.'); }
     if (oque === 'bonus-salvar') {
       const bonus = [...painel.querySelectorAll('[data-bonus]')].map((x) => Number(x.value));

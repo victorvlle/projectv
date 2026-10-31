@@ -384,7 +384,7 @@
       ${r.top.every((x) => x.pontos === 0) ? '<p class="fraco">Ninguém pontuou ainda. Resolva o enigma do dia, ofereça carona ou sugira músicas.</p>' : ''}
       <section class="cartao pref-bloco"><h2 class="titulo-secao" style="margin-top:0">De onde vêm seus pontos</h2>
         ${ex.porAtividade.length ? `<ul class="rank-extrato">${ex.porAtividade.map((a) => `<li><span>${esc(a.nome)}</span><b>${a.pontos.toLocaleString('pt-BR')}</b></li>`).join('')}</ul>` : '<p class="fraco">Nada ainda.</p>'}
-        <p class="fraco">Os pontos grandes são na festa: Previsões +1000 por acerto · Quiz Relâmpago até +500 por acerto (mais rápido, mais pontos) · Concurso de Fantasia 1º +1000, 2º +800, 3º +500 · Maldição cumprida +500.
+        <p class="fraco">Os pontos grandes são na festa: Previsões +1000 por acerto · Quiz Relâmpago até +500 por acerto (mais rápido, mais pontos) · Concurso de Fantasia 1º +1000, 2º +800, 3º +500 · cuidado: a Maldição tira pontos (−300 para quem é sorteado).
           Pré-festa (bônus): Enigma +10 e bônus · Carona +5 · Música +5 · Bebida levada +5 (confirmada na festa).</p>
       </section>`);
   }
@@ -423,7 +423,9 @@
     el.innerHTML = `<div class="maldicao-caixa">
       <div class="maldicao-icone" aria-hidden="true">💀</div>
       <h2>Você foi amaldiçoado!</h2>
+      <p class="maldicao-perda">−300 pontos</p>
       <p class="maldicao-castigo">${esc(d.castigo)}</p>
+      <p class="fraco">Se não cumprir, perde mais 300.</p>
       <p class="maldicao-tempo"></p>
       ${d.foto ? '<button class="botao largo" type="button" data-maldicao-foto>📸 Tirar a foto agora</button><p class="fraco">A sua foto aparece no telão na hora.</p>' : ''}
       <button class="botao ${d.foto ? 'secundario ' : ''}largo" type="button" data-fechar-maldicao>${d.foto ? 'Fechar' : 'Entendi'}</button></div>`;
@@ -443,7 +445,7 @@
       pintar('maldicao-minha', m
         ? `<section class="cartao maldicao-cartao"><b>💀 A maldição está sobre você</b><p>${esc(m.castigo)}</p>
             ${m.foto ? '<a class="botao largo" href="#correio">📸 Tirar a foto agora</a>' : ''}
-            <p class="fraco">Cumpra no telão. O organizador confirma e você ganha +500 pontos.</p></section>`
+            <p class="fraco">A maldição já tirou 300 pontos seus. Cumpra no telão: se não cumprir, perde mais 300.</p></section>`
         : `<section class="cartao"><b>Nenhuma maldição sobre você agora.</b>
             <p class="mudo">Durante a festa, de tempos em tempos alguém é sorteado no telão para um castigo de bebida. Se for você, o celular avisa.</p></section>`);
       // Abriu o celular depois do sorteio (ex.: tocou na notificação): mostra o aviso também.

@@ -42,3 +42,7 @@ body { padding-bottom: 28px; }
 .pn-selo { display: inline-block; font-size: .7rem; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: rgba(255,255,255,.08); color: var(--texto-2); vertical-align: middle; }
 .pn-selo.on { background: rgba(80, 200, 120, .2); color: #8fe3a0; }
 .pn-selo.teste { background: rgba(120, 140, 255, .2); color: #b8c2ff; }
+
+.pn-rotulo { display: block; font-size: .85rem; color: var(--texto-2); margin: 10px 0 4px; }
+.pn-select { width: 100%; min-height: 48px; font-size: 1rem; }
+.pn-perdeu { font-size: 1rem; color: #ff6b81; font-weight: 800; margin-left: 6px; }

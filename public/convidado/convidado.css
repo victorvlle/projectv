@@ -498,3 +498,4 @@ body.sem-rolar { overflow: hidden; }
 .ccg-legenda { font-size: 1.15rem; margin: 6px 0 4px; }
 @keyframes ccgEntra { 0% { opacity: 0; transform: rotateY(90deg) scale(.8); } 100% { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .carta-cel-grande { animation: none; } }
+.maldicao-perda { font-size: 1.6rem; font-weight: 800; color: #ff6b81; margin: 2px 0 6px; }

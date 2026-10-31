@@ -40,8 +40,8 @@ test('sorteio manual: telões e celular recebem uma vez; push sai uma vez; cliqu
   const p = await ev2;
   assert.equal(p.nome, 'Única Bruxa');
   assert.ok(p.castigo.length > 5);
-  assert.deepEqual(p.fases, { alerta: 4000, suspense: 5000, cumprir: 60000 });
-  assert.ok(Array.isArray(p.roleta) && p.roleta.length >= 1);
+  assert.deepEqual(p.fases, { alerta: 4000, suspense: 7000, cumprir: 60000 });
+  assert.ok(Array.isArray(p.roleta) && p.roleta.every((x) => x.nome && x.nome !== p.nome), 'roleta de nomes (sem o sorteado, que é onde ela para)');
   assert.equal((await evCel).id, p.id);
   await esperar(150);
   assert.equal(recebidos, 1, 'cada telão recebe uma vez');
@@ -55,23 +55,89 @@ test('sorteio manual: telões e celular recebem uma vez; push sai uma vez; cliqu
   assert.equal(t.maldicao.id, p.id);
   // Antes do telão revelar (alerta + suspense), o celular não sabe de nada
   assert.equal((await s.req('GET', '/api/maldicao/minha', { token: unica.token })).json.maldicao, null, 'sem spoiler antes do telão');
-  await banco.rodar('UPDATE maldicoes SET sorteada_em = sorteada_em - 10000 WHERE id = ?', [p.id]);
+  await banco.rodar('UPDATE maldicoes SET sorteada_em = sorteada_em - 20000 WHERE id = ?', [p.id]);
   const minha = (await s.req('GET', '/api/maldicao/minha', { token: unica.token })).json.maldicao;
   assert.equal(minha.id, p.id);
   telao1.close(); telao2.close(); cel.close();
 });
 
-test('confirmar cumprida: +500 uma vez só (cliques simultâneos); cancelada não dá ponto', async () => {
+test('a Maldição tira pontos: −300 no sorteio; cumpriu não muda; não cumpriu −300 a mais; anular devolve; uma vez só', async () => {
   const atual = (await s.req('GET', '/api/admin/jogos', { token: admin })).json.maldicao.historico[0];
+  const antes = await h.pontosDe(unica.token);
   const rs = await Promise.all([1, 2, 3].map(() => s.req('POST', `/api/admin/maldicao/${atual.id}/resolver`, { token: admin, corpo: { estado: 'cumprida' } })));
   assert.ok(rs.every((r) => r.status === 200));
   assert.equal(rs.filter((r) => !r.json.jaResolvida).length, 1);
-  assert.equal(await h.pontosDe(unica.token), 500);
-  const outra = await s.req('POST', '/api/admin/maldicao/sortear', { token: admin, corpo: { id: h.idClique() } });
-  await s.req('POST', `/api/admin/maldicao/${outra.json.maldicao.id}/resolver`, { token: admin, corpo: { estado: 'cancelada' } });
-  await s.req('POST', `/api/admin/maldicao/${outra.json.maldicao.id}/resolver`, { token: admin, corpo: { estado: 'cumprida' } });
-  assert.equal(await h.pontosDe(unica.token), 500, 'cancelada não vira cumprida depois');
+  assert.equal(await h.pontosDe(unica.token), antes, 'cumpriu: fica com os −300 do sorteio');
+  assert.equal(antes, -300, 'sorteada: −300 na hora');
+  // Não cumpriu: −300 a mais (cliques duplos não dobram)
+  const b = await s.req('POST', '/api/admin/maldicao/sortear', { token: admin, corpo: { id: h.idClique() } });
+  const quem = b.json.maldicao.convidadoId === unica.id;
+  await Promise.all([1, 2].map(() => s.req('POST', `/api/admin/maldicao/${b.json.maldicao.id}/resolver`, { token: admin, corpo: { estado: 'falhou' } })));
+  const log = await banco.tudo("SELECT pontos FROM pontos_log WHERE chave LIKE ?", [`maldicao:${b.json.maldicao.id}:%`]);
+  assert.equal(log.reduce((t, x) => t + Number(x.pontos), 0), (b.json.maldicao.parceiro ? 2 : 1) * -600, 'não cumpriu: −600 no total');
+  if (quem) assert.equal(await h.pontosDe(unica.token), -900);
+  // Anular devolve tudo
+  const c = await s.req('POST', '/api/admin/maldicao/sortear', { token: admin, corpo: { id: h.idClique() } });
+  await s.req('POST', `/api/admin/maldicao/${c.json.maldicao.id}/resolver`, { token: admin, corpo: { estado: 'cancelada' } });
+  await s.req('POST', `/api/admin/maldicao/${c.json.maldicao.id}/resolver`, { token: admin, corpo: { estado: 'cumprida' } });
+  assert.equal(Number((await banco.um("SELECT COUNT(*) AS n FROM pontos_log WHERE chave LIKE ?", [`maldicao:${c.json.maldicao.id}:%`])).n), 0, 'anulada devolve e não vira cumprida');
+  const h2 = (await s.req('GET', '/api/admin/jogos', { token: admin })).json.maldicao.historico.find((x) => x.id === b.json.maldicao.id);
+  assert.equal(h2.falhou, true);
   assert.equal((await s.req('POST', `/api/admin/maldicao/${atual.id}/resolver`, { token: unica.token, corpo: { estado: 'cumprida' } })).status, 401);
+});
+
+test('não está presente: ninguém perde, outra pessoa é sorteada na hora (mesmo desafio) e o ausente fica fora por um tempo', async () => {
+  await banco.rodar("UPDATE maldicoes SET estado = 'cancelada' WHERE estado = 'sorteada'");
+  const p1 = await h.convidado('Presente Um'); const p2 = await h.convidado('Presente Dois');
+  const ins = await banco.rodar("INSERT INTO maldicoes (convidado_id, castigo, estado, origem, chave, sorteada_em, castigo_id) VALUES (?, 'Tome um shot.', 'sorteada', 'manual', ?, ?, 'shot')",
+    [p1.id, `aus-${Date.now()}`, Date.now() - 20000]);
+  const id = Number(ins.lastInsertRowid);
+  await banco.rodar("INSERT INTO pontos_log (convidado_id, atividade, pontos, motivo, chave, criado_em, teste) VALUES (?, 'maldicao', -300, 'Amaldiçoado', ?, ?, 0)", [p1.id, `maldicao:${id}:${p1.id}`, Date.now()]);
+  const telao = await s.conectar({ tipo: 'telao', token: admin });
+  const ev = proximoEvento(telao, 'maldicao');
+  const r = await s.req('POST', `/api/admin/maldicao/${id}/resolver`, { token: admin, corpo: { estado: 'ausente' } });
+  assert.equal(r.status, 200);
+  assert.equal(await h.pontosDe(p1.token), 0, 'não estava: devolve os pontos');
+  assert.ok(r.json.nova, 'sorteou outra pessoa na hora');
+  assert.notEqual(r.json.nova.convidadoId, p1.id);
+  assert.equal(r.json.nova.castigo, 'Tome um shot.', 'mesmo desafio');
+  assert.equal((await ev).id, r.json.nova.id, 'o telão já recebe o novo sorteio');
+  const hist = (await s.req('GET', '/api/admin/jogos', { token: admin })).json.maldicao.historico.find((x) => x.id === id);
+  assert.equal(hist.ausente, true);
+  // Por um tempo, quem não estava não é sorteado
+  const maldicao = require('../server/dados/maldicao');
+  assert.ok(!(await maldicao.elegiveis()).some((x) => x.id === p1.id));
+  await s.req('POST', `/api/admin/maldicao/${r.json.nova.id}/resolver`, { token: admin, corpo: { estado: 'cancelada' } });
+  for (const c of [p1, p2]) await banco.rodar('UPDATE convidados SET fora = 1 WHERE id = ?', [c.id]);
+  telao.close();
+});
+
+test('maldição coletiva: só com bastante gente; sorteado não perde; último −400 e penúltimo −200', async () => {
+  const gente = [];
+  for (let i = 0; i < 6; i++) gente.push(await h.convidado(`Coletivo ${i}`));
+  const { CASTIGOS } = require('../server/jogos/conteudo');
+  const grupo = CASTIGOS.find((c) => c.grupo);
+  await banco.rodar("UPDATE maldicoes SET estado = 'cancelada' WHERE estado = 'sorteada'");
+  const ins = await banco.rodar("INSERT INTO maldicoes (convidado_id, castigo, estado, origem, chave, sorteada_em, grupo) VALUES (?, ?, 'sorteada', 'manual', ?, ?, 1)",
+    [gente[0].id, grupo.texto, `coletiva-${Date.now()}`, Date.now() - 20000]);
+  const id = Number(ins.lastInsertRowid);
+  const j = (await s.req('GET', '/api/admin/jogos', { token: admin })).json.maldicao;
+  assert.ok(j.pessoas.length >= 6, 'admin recebe a lista para marcar');
+  const resolver = (corpo) => s.req('POST', `/api/admin/maldicao/${id}/resolver`, { token: admin, corpo: { estado: 'cumprida', ...corpo } });
+  assert.equal((await resolver({})).status, 400, 'precisa marcar o último');
+  assert.equal((await resolver({ ultimo: gente[1].id, penultimo: gente[1].id })).status, 400);
+  assert.equal((await resolver({ ultimo: gente[1].id, penultimo: gente[2].id })).status, 200);
+  assert.equal(await h.pontosDe(gente[1].token), -400);
+  assert.equal(await h.pontosDe(gente[2].token), -200);
+  assert.equal(await h.pontosDe(gente[0].token), 0, 'quem despertou a coletiva não perde');
+  const m = (await s.req('GET', '/api/admin/jogos', { token: admin })).json.maldicao.historico.find((x) => x.id === id);
+  assert.equal(m.ultimo.nome, 'Coletivo 1');
+  // Com menos de 6 disponíveis, a coletiva não sai (sorteio real)
+  const maldicao = require('../server/dados/maldicao');
+  assert.ok(require('../server/jogos/conteudo').MIN_GRUPO >= 6);
+  assert.equal(typeof maldicao.sortear, 'function');
+  // não atrapalha os próximos testes (que contam com poucas pessoas disponíveis)
+  for (const c of gente) await banco.rodar('UPDATE convidados SET fora = 1 WHERE id = ?', [c.id]);
 });
 
 test('push que falha não trava o sorteio nem o telão', async () => {

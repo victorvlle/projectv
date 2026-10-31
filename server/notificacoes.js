@@ -512,13 +512,14 @@ async function despacharAdiados(agora = relogio()) {
 // todo o resto ("alguém foi amaldiçoado"), sem nome: quem foi aparece só no telão.
 // Em teste, o aviso geral vai só para os testadores. Uma vez por sorteio (chaves próprias).
 async function amaldicoado(m) {
-  const ids = [m.convidadoId, m.parceiro && m.parceiro.id].filter(Boolean);
-  const pessoal = await enviar({ titulo: 'Project V: você foi amaldiçoado', corpo: 'Olhe o telão: o seu castigo de bebida está esperando por você.',
-    url: '/#maldicao', tag: `maldicao-${m.id}`, para: { ids }, chave: `maldicao:${m.id}` });
+  const ids = m.grupo ? [] : [m.convidadoId, m.parceiro && m.parceiro.id].filter(Boolean);
+  const pessoal = ids.length ? await enviar({ titulo: 'Project V: você foi amaldiçoado', corpo: 'Olhe o telão: o seu castigo de bebida está esperando por você.',
+    url: '/#maldicao', tag: `maldicao-${m.id}`, para: { ids }, chave: `maldicao:${m.id}` }) : null;
   const para = m.teste
     ? { ids: (await banco.tudo('SELECT id FROM convidados WHERE testador = 1 AND ativo = 1')).map((x) => x.id) }
     : 'todos';
-  const geral = await enviar({ titulo: 'Project V: a Maldição despertou', corpo: 'Alguém foi amaldiçoado. Olhe o telão para ver quem e qual é o castigo.',
+  const geral = await enviar({ titulo: m.grupo ? 'Project V: MALDIÇÃO COLETIVA' : 'Project V: a Maldição despertou',
+    corpo: m.grupo ? 'Todo mundo está amaldiçoado! Olhe o telão agora: o último e o penúltimo perdem pontos e bebem.' : 'Alguém foi amaldiçoado. Olhe o telão para ver quem e qual é o castigo.',
     url: '/#maldicao', tag: `maldicao-${m.id}`, para, exceto: ids, chave: `maldicao-todos:${m.id}` });
   return { pessoal, geral };
 }

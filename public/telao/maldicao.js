@@ -122,8 +122,6 @@
   let timer = null;
   let ultimaFase = null;
   let ultimoSeg = null;
-  let roletaI = 0;
-  let proximaTroca = 0;
 
   function mostrarFase(f) {
     palco.querySelectorAll('.fase').forEach((el) => el.classList.toggle('ativa', el.classList.contains(`fase-${f}`)));
@@ -195,18 +193,7 @@
       mostrarFase(fase);
       if (fase === 'mural' && m.fotoId) mostrarFotoDaMaldicao(m);
     }
-    if (fase === 'suspense') {
-      // Roleta: começa rápida e vai freando até a revelação.
-      const resta = m.sorteadaEm + m.fases.alerta + m.fases.suspense - agora;
-      if (agora >= proximaTroca) {
-        roletaI = (roletaI + 1) % Math.max(1, m.roleta.length);
-        $('roleta-atual').textContent = emojiDe(m.roleta[roletaI] || m.avatar);
-        $('roleta-atual').classList.remove('pula'); void $('roleta-atual').offsetWidth; $('roleta-atual').classList.add('pula');
-        const passo = resta > 2500 ? 90 : resta > 1200 ? 170 : 320;
-        proximaTroca = agora + passo;
-        if (resta < 1500) tique(false);
-      }
-    }
+    if (fase === 'suspense' && !girando) { girando = true; requestAnimationFrame(girarFita); }
     if (fase === 'mural') {
       if (palco.dataset.fase === 'mural' && m.fotoId) mostrarFotoDaMaldicao(m);
       const fim = m.sorteadaEm + m.fases.alerta + m.fases.suspense + m.fases.cumprir;
@@ -235,6 +222,49 @@
     }
   }
 
+  // ------------------------------------------------ roleta de nomes (suspense)
+  // Uma fita com os nomes de quem está na festa passa pela mira, rápida no começo e freando até parar,
+  // no fim do suspense, exatamente em quem foi sorteado (o último da fita). Mesmo relógio em todo telão.
+  const LINHA_VH = 11;
+  let fita = 0; // quantos nomes na fita
+  let girando = false;
+  let ultimaLinha = -1;
+  function montarFita(m) {
+    const base = (m.roleta && m.roleta.length ? m.roleta : []).slice();
+    const linhas = [];
+    if (base.length) while (linhas.length < 34) linhas.push(...base);
+    const final = m.grupo ? { nome: 'TODO MUNDO', emoji: '👥' } : { nome: m.nome, avatar: m.avatar };
+    linhas.push(final);
+    fita = linhas.length;
+    $('rn-fita').innerHTML = linhas.map((p, i) => `<div class="rn-linha ${i === fita - 1 ? 'alvo' : ''}"><span class="avatar">${p.emoji || emojiDe(p.avatar)}</span><b>${PV.esc(p.nome)}</b></div>`).join('');
+    ultimaLinha = -1;
+    posicionar(0);
+  }
+  function posicionar(pos) {
+    // A mira fica na 3ª linha visível (de 5).
+    $('rn-fita').style.transform = `translateY(${(2 - pos) * LINHA_VH}vh)`;
+    const linha = Math.round(pos);
+    if (linha !== ultimaLinha) {
+      const el = $('rn-fita').children;
+      if (el[ultimaLinha]) el[ultimaLinha].classList.remove('na-mira');
+      if (el[linha]) el[linha].classList.add('na-mira');
+      ultimaLinha = linha;
+    }
+  }
+  function girarFita() {
+    if (!atual) { girando = false; return; }
+    const m = atual;
+    const inicio = m.sorteadaEm + m.fases.alerta;
+    const f = Math.max(0, Math.min(1, (PV.relogio.agora() - inicio) / m.fases.suspense));
+    const facil = 1 - Math.pow(1 - f, 3.2); // rápido no começo, freando no fim
+    const pos = facil * (fita - 1);
+    const antes = ultimaLinha;
+    posicionar(pos);
+    if (ultimaLinha !== antes && f > 0.55) tique(false);
+    if (f < 1 && faseDe(m, PV.relogio.agora()) === 'suspense') requestAnimationFrame(girarFita);
+    else { posicionar(fita - 1); girando = false; }
+  }
+
   function iniciar(m) {
     if (!m) return;
     if (atual && atual.id === m.id) { // mesmo sorteio (reconexão): não reinicia, mas pega a foto se chegou
@@ -242,9 +272,11 @@
       return;
     }
     atual = m;
-    ultimaFase = null; ultimoSeg = null; roletaI = 0; proximaTroca = 0;
+    ultimaFase = null; ultimoSeg = null; girando = false;
     $('revela-avatar').textContent = emojiDe(m.avatar);
-    $('revela-nome').textContent = m.parceiro ? `${m.nome} e ${m.parceiro.nome}` : m.nome;
+    $('revela-nome').textContent = m.grupo ? 'Maldição coletiva!' : m.parceiro ? `${m.nome} e ${m.parceiro.nome}` : m.nome;
+    palco.classList.toggle('coletiva', Boolean(m.grupo));
+    if (m.grupo) $('revela-avatar').textContent = '👥';
     $('revela-parceiro').classList.toggle('oculto', !m.parceiro);
     if (m.parceiro) $('revela-parceiro').textContent = emojiDe(m.parceiro.avatar);
     $('revela-castigo').textContent = m.castigo;
@@ -252,7 +284,7 @@
     $('mm-nome').textContent = m.nome;
     $('mm-castigo').textContent = m.castigo;
     fotoMostrada = null; resolvidaPendente = null; clearTimeout(fimFoto); fimFoto = null;
-    $('roleta-atual').textContent = emojiDe(m.roleta[0] || m.avatar);
+    montarFita(m);
     palco.classList.remove('oculto', 'acabando');
     clearInterval(timer);
     timer = setInterval(quadro, 50);
@@ -267,17 +299,37 @@
     palco.classList.remove('acabando');
   }
 
-  function resolvida({ id, estado }) {
+  let saidaResultado = null;
+  const menos = (n) => `−${Math.abs(Number(n)).toLocaleString('pt-BR')}`;
+  function resolvida(d) {
+    const { id, estado } = d;
     if (!atual || atual.id !== id) return;
-    // A foto do desafio está na tela: deixa terminar e só depois mostra "cumprida".
-    if (fimFoto) { resolvidaPendente = { id, estado }; return; }
+    // A foto do desafio está na tela: deixa terminar e só depois mostra o resultado.
+    if (fimFoto) { resolvidaPendente = d; return; }
     clearInterval(timer); timer = null;
     if (estado === 'cumprida') {
       mostrarFase('cumprida');
-      const p = Number(atual.pontos || 500).toLocaleString('pt-BR');
-      $('cumprida-pontos').textContent = atual.parceiro ? `+${p} pontos para cada um` : `+${p} pontos`;
+      palco.classList.toggle('falhou', Boolean(d.falhou) || Boolean(atual.grupo));
+      const titulo = palco.querySelector('.cumprida-texto');
+      let linha;
+      if (atual.grupo) {
+        titulo.textContent = 'Maldição coletiva';
+        const pg = atual.pontosGrupo || { ultimo: -400, penultimo: -200 };
+        linha = [d.ultimo ? `Último: ${emojiDe(d.ultimo.avatar)} ${d.ultimo.nome} (${menos(pg.ultimo)} e 2 shots)` : '',
+          d.penultimo ? `Penúltimo: ${emojiDe(d.penultimo.avatar)} ${d.penultimo.nome} (${menos(pg.penultimo)} e 1 shot)` : ''].filter(Boolean).join(' · ');
+      } else if (d.falhou) {
+        titulo.textContent = 'Não cumpriu!';
+        const total = Number(atual.pontos || -300) + Number(atual.falhouPontos || -300);
+        linha = atual.parceiro ? `${menos(total)} pontos para cada um` : `${menos(total)} pontos`;
+      } else {
+        titulo.textContent = 'Maldição cumprida';
+        linha = atual.parceiro ? `${menos(atual.pontos || -300)} pontos para cada um` : `${menos(atual.pontos || -300)} pontos`;
+      }
+      $('cumprida-pontos').textContent = linha;
       sino(0.4);
-      setTimeout(esconder, 4500);
+      const quem = atual.id;
+      clearTimeout(saidaResultado);
+      saidaResultado = setTimeout(() => { if (atual && atual.id === quem) esconder(); }, atual.grupo ? 7000 : 4500);
     } else {
       esconder();
     }

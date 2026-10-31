@@ -295,8 +295,10 @@ router.post('/maldicao/sortear', assincrono(async (req, res) => {
   return res.json({ ok: true, repetido: r.repetido, maldicao: r.maldicao });
 }));
 router.post('/maldicao/:id/resolver', assincrono(async (req, res) => {
-  const r = await maldicao.resolver(req.params.id, (req.body || {}).estado);
+  const b = req.body || {};
+  const r = await maldicao.resolver(req.params.id, b.estado, { ultimo: b.ultimo ? String(b.ultimo) : null, penultimo: b.penultimo ? String(b.penultimo) : null });
   if (!r.jaResolvida) anunciar.maldicaoResolvida(r.maldicao);
+  if (r.nova) await anunciar.maldicaoSorteada(r.nova); // "não está presente": já sorteou outra pessoa
   res.json({ ok: true, ...r });
 }));
 

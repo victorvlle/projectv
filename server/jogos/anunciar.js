@@ -15,7 +15,8 @@ async function maldicaoSorteada(m) {
   } catch (e) { console.error('[pausa]', e.message); }
   avisar.telao('maldicao', payload);
   avisar.admin('atualizar', { oque: 'maldicao' });
-  for (const id of [m.convidadoId, m.parceiro && m.parceiro.id].filter(Boolean)) {
+  // Coletiva: ninguém em especial foi amaldiçoado (o celular de todos recebe o push geral).
+  for (const id of m.grupo ? [] : [m.convidadoId, m.parceiro && m.parceiro.id].filter(Boolean)) {
     avisar.convidado(id, 'maldicao:voce', { id: m.id, castigo: m.castigo, sorteadaEm: m.sorteadaEm, fases: payload.fases, foto: m.foto && id === m.convidadoId });
   }
   // O push só sai quando o telão revela quem foi (alerta + suspense): nada de spoiler no celular.
@@ -27,7 +28,9 @@ async function maldicaoSorteada(m) {
 
 function maldicaoResolvida(m) {
   require('../dados/pausa').maldicaoTerminou(m.id).catch((e) => console.error('[pausa]', e.message));
-  avisar.telao('maldicao:resolvida', { id: m.id, estado: m.estado });
+  avisar.telao('maldicao:resolvida', { id: m.id, estado: m.estado, falhou: m.falhou,
+    ultimo: m.ultimo ? { nome: m.ultimo.nome, avatar: m.ultimo.avatar } : null,
+    penultimo: m.penultimo ? { nome: m.penultimo.nome, avatar: m.penultimo.avatar } : null });
   avisar.admin('atualizar', { oque: 'maldicao' });
   avisar.atualizar('ranking');
 }
