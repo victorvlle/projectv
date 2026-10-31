@@ -391,7 +391,7 @@ test('previsões em teste: só testador palpita; +1000 por acerto marcado como t
   await perto(victor.token, 2500);
 });
 
-test('maldição em teste: só testadores são sorteados; sorteado perde 300 (de teste); anulada devolve', async () => {
+test('maldição em teste: só testadores são sorteados; cumprida dá saldo +1000 (de teste); anulada devolve', async () => {
   await h.liberar('maldicao', 'teste');
   await banco.rodar("UPDATE maldicoes SET estado = 'cancelada' WHERE estado = 'sorteada'");
   const antes = (await h.pontosDe(victor.token)) + (await h.pontosDe(lucas.token));
@@ -402,7 +402,7 @@ test('maldição em teste: só testadores são sorteados; sorteado perde 300 (de
     await s.req('POST', `/api/admin/maldicao/${r.json.maldicao.id}/resolver`, { token: admin, corpo: { estado: i === 0 ? 'cumprida' : 'cancelada' } });
   }
   const total = (await h.pontosDe(victor.token)) + (await h.pontosDe(lucas.token));
-  assert.ok([-300, -600].includes(total - antes), `perdeu ${total - antes} (só a 1ª valeu; as anuladas devolvem)`);
+  assert.ok([1000, 2000].includes(total - antes), `saldo ${total - antes} (só a 1ª valeu, cumprida: +1000; as anuladas devolvem)`);
 });
 
 test('apagar dados de teste: some tudo que foi teste, nada real muda, atividades saem do teste', async () => {

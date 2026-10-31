@@ -92,7 +92,7 @@
       cartoes.push(`<div class="pn-agora mal"><h3>💀 Maldição em andamento <span class="fraco">há <span data-desde="${m.sorteadaEm}"></span></span></h3>
         <p class="pn-grande">${emojiDe(m.avatar)} ${esc(m.nome)}${m.parceiro ? ` e ${esc(m.parceiro.nome)}` : ''} <span class="pn-perdeu">${menos(md.pontos)}</span></p>
         <p class="mudo">${esc(m.castigo)}</p>
-        <div class="pn-acoes">${botao('mal-cumprida', '✅ Cumpriu', { id: m.id })}
+        <div class="pn-acoes">${botao('mal-cumprida', `✅ Cumpriu (+${pts(md.cumpriuPontos)})`, { id: m.id })}
           ${botao('mal-falhou', `✖ Não cumpriu (${menos(md.falhouPontos)})`, { classe: 'secundario', id: m.id, confirmar: 'Toque de novo: não cumpriu' })}</div>
         <div class="pn-acoes um">${botao('mal-ausente', '🚶 Não está presente: sortear outra pessoa', { classe: 'secundario', id: m.id, confirmar: 'Toque de novo: sortear outra' })}</div></div>`);
     }

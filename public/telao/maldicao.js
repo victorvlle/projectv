@@ -323,7 +323,9 @@
         linha = atual.parceiro ? `${menos(total)} pontos para cada um` : `${menos(total)} pontos`;
       } else {
         titulo.textContent = 'Maldição cumprida';
-        linha = atual.parceiro ? `${menos(atual.pontos || -300)} pontos para cada um` : `${menos(atual.pontos || -300)} pontos`;
+        const saldo = Number(atual.pontos || -300) + Number(atual.cumpriuPontos || 1300);
+        const mais = `+${saldo.toLocaleString('pt-BR')} pontos`;
+        linha = atual.parceiro ? `${mais} para cada um` : mais;
       }
       $('cumprida-pontos').textContent = linha;
       sino(0.4);

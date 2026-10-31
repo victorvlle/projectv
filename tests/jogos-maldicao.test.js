@@ -61,21 +61,21 @@ test('sorteio manual: telões e celular recebem uma vez; push sai uma vez; cliqu
   telao1.close(); telao2.close(); cel.close();
 });
 
-test('a Maldição tira pontos: −300 no sorteio; cumpriu não muda; não cumpriu −300 a mais; anular devolve; uma vez só', async () => {
+test('a Maldição: −300 no sorteio; cumpriu +1300 (saldo +1000); não cumpriu −300 a mais; anular devolve; uma vez só', async () => {
   const atual = (await s.req('GET', '/api/admin/jogos', { token: admin })).json.maldicao.historico[0];
   const antes = await h.pontosDe(unica.token);
   const rs = await Promise.all([1, 2, 3].map(() => s.req('POST', `/api/admin/maldicao/${atual.id}/resolver`, { token: admin, corpo: { estado: 'cumprida' } })));
   assert.ok(rs.every((r) => r.status === 200));
   assert.equal(rs.filter((r) => !r.json.jaResolvida).length, 1);
-  assert.equal(await h.pontosDe(unica.token), antes, 'cumpriu: fica com os −300 do sorteio');
   assert.equal(antes, -300, 'sorteada: −300 na hora');
+  assert.equal(await h.pontosDe(unica.token), 1000, 'cumpriu: +1300 (saldo +1000), uma vez só');
   // Não cumpriu: −300 a mais (cliques duplos não dobram)
   const b = await s.req('POST', '/api/admin/maldicao/sortear', { token: admin, corpo: { id: h.idClique() } });
   const quem = b.json.maldicao.convidadoId === unica.id;
   await Promise.all([1, 2].map(() => s.req('POST', `/api/admin/maldicao/${b.json.maldicao.id}/resolver`, { token: admin, corpo: { estado: 'falhou' } })));
   const log = await banco.tudo("SELECT pontos FROM pontos_log WHERE chave LIKE ?", [`maldicao:${b.json.maldicao.id}:%`]);
   assert.equal(log.reduce((t, x) => t + Number(x.pontos), 0), (b.json.maldicao.parceiro ? 2 : 1) * -600, 'não cumpriu: −600 no total');
-  if (quem) assert.equal(await h.pontosDe(unica.token), -900);
+  if (quem) assert.equal(await h.pontosDe(unica.token), 400);
   // Anular devolve tudo
   const c = await s.req('POST', '/api/admin/maldicao/sortear', { token: admin, corpo: { id: h.idClique() } });
   await s.req('POST', `/api/admin/maldicao/${c.json.maldicao.id}/resolver`, { token: admin, corpo: { estado: 'cancelada' } });

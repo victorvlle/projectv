@@ -70,10 +70,13 @@ function paraManaus(ms) {
 
 async function telao() {
   return { modo: (await ler('telaoModo')) || 'contagem', mensagem: (await ler('telaoMensagem')) || '', previsao: Number((await ler('telaoPrevisao')) || 0),
-    programacao: (await ler('programacao')) || {} };
+    programacao: (await ler('programacao')) || PROGRAMACAO_PADRAO };
 }
 
 // Programação da noite (só para mostrar no telão do Mural): { idDaAtividade: 'HH:MM' }.
+// Horários combinados para a noite de 31/10 (o admin pode mudar; vale até alguém salvar outra programação).
+const PROGRAMACAO_PADRAO = { correio: '17:00', maldicao: '18:30', corrida: '19:00', quiz: '19:45', beerpong: '20:30', concurso: '22:15' };
+
 function validarProgramacao(p) {
   const { IDS } = require('../atividades/catalogo');
   if (!p || typeof p !== 'object' || Array.isArray(p)) throw new ErroValidacao('Programação inválida.');

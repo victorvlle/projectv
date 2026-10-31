@@ -86,7 +86,7 @@
           <button class="botao pequeno" type="button" data-acao="mal-grupo" data-id="${x.id}">Confirmar</button>
           <button class="botao secundario pequeno" type="button" data-acao="mal-cancelar" data-id="${x.id}">Cancelar</button></div>`
         : `<div class="item-acoes">
-          <button class="botao pequeno" type="button" data-acao="mal-cumprida" data-id="${x.id}">Cumpriu</button>
+          <button class="botao pequeno" type="button" data-acao="mal-cumprida" data-id="${x.id}">Cumpriu (+${m.cumpriuPontos})</button>
           <button class="botao secundario pequeno" type="button" data-acao="mal-falhou" data-id="${x.id}">Não cumpriu (${m.falhouPontos} a mais)</button>
           <button class="botao secundario pequeno" type="button" data-acao="mal-ausente" data-id="${x.id}">🚶 Não está presente (sorteia outra)</button>
           <button class="botao secundario pequeno" type="button" data-acao="mal-cancelar" data-id="${x.id}">Anular (devolve)</button></div>`}</div>`).join('');
@@ -106,7 +106,7 @@
         <input id="mal-max" type="number" min="2" max="180" value="${c.maxMin}" style="width:80px">
         <button class="botao secundario pequeno" type="button" data-acao="mal-intervalo">Salvar</button></div>
       <p class="fraco" style="margin:10px 0">Quem está marcado como "fora" não é sorteado. A mesma pessoa não sai duas vezes seguidas.
-        Quem é sorteado perde ${Math.abs(m.pontos)} na hora (e cumpre o desafio); se não cumprir, perde mais ${Math.abs(m.falhouPontos)}. Na coletiva, o último perde ${Math.abs(m.pontosGrupo.ultimo)} e o penúltimo ${Math.abs(m.pontosGrupo.penultimo)}. Cancelar devolve.${m.maisAmaldicoados.length ? ` Mais sorteados: ${m.maisAmaldicoados.map((x) => `${esc(x.nome)} (${x.n})`).join(', ')}.` : ''}</p>
+        Quem é sorteado perde ${Math.abs(m.pontos)} na hora; se cumprir, ganha +${m.cumpriuPontos} (saldo +${m.cumpriuPontos + m.pontos}); se não cumprir, perde mais ${Math.abs(m.falhouPontos)}. Na coletiva, o último perde ${Math.abs(m.pontosGrupo.ultimo)} e o penúltimo ${Math.abs(m.pontosGrupo.penultimo)}. Cancelar devolve.${m.maisAmaldicoados.length ? ` Mais sorteados: ${m.maisAmaldicoados.map((x) => `${esc(x.nome)} (${x.n})`).join(', ')}.` : ''}</p>
       <div class="lista">${hist || '<p class="fraco">Nenhum sorteio ainda.</p>'}</div>`);
   }
 

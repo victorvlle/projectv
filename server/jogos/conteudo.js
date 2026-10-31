@@ -57,6 +57,7 @@ const INTENSIDADES = {
 // A Maldição PREJUDICA: quem é sorteado perde na hora e ainda cumpre o desafio; se não cumprir, perde de novo.
 const PONTOS_MALDICAO = -300;          // ao ser sorteado (cada um, na maldição dupla)
 const PONTOS_MALDICAO_FALHOU = -300;   // a mais, se não cumprir
+const PONTOS_MALDICAO_CUMPRIU = 1300;  // cumpriu: recupera os 300 e ganha +1000 (saldo +1000)
 const PONTOS_GRUPO = { ultimo: -400, penultimo: -200 }; // maldição coletiva
 const MIN_GRUPO = 6;                   // pessoas disponíveis para sair maldição coletiva
 const AUSENTE_MIN = 30;                // quem foi marcado "não está presente" fica fora dos sorteios por esse tempo
@@ -161,6 +162,6 @@ const PONTOS_CONCURSO = [1000, 800, 500];
 const PONTOS_COLABORACAO = { carona: 5, musica: 5, bebida: 5 };
 
 module.exports = {
-  PERGUNTAS, PERGUNTAS_REMOVIDAS, PONTOS_PREVISAO, CASTIGOS, INTENSIDADES, PONTOS_MALDICAO, PONTOS_MALDICAO_FALHOU, PONTOS_GRUPO, MIN_GRUPO, AUSENTE_MIN, ENIGMAS, PONTOS_ENIGMA, BONUS_ENIGMA_PADRAO,
+  PERGUNTAS, PERGUNTAS_REMOVIDAS, PONTOS_PREVISAO, CASTIGOS, INTENSIDADES, PONTOS_MALDICAO, PONTOS_MALDICAO_FALHOU, PONTOS_MALDICAO_CUMPRIU, PONTOS_GRUPO, MIN_GRUPO, AUSENTE_MIN, ENIGMAS, PONTOS_ENIGMA, BONUS_ENIGMA_PADRAO,
   PONTOS_COLABORACAO, QUIZ, PONTOS_QUIZ, QUIZ_TEMPO_PADRAO_S, PONTOS_CONCURSO,
 };

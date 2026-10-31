@@ -11,7 +11,8 @@
 //   esperando a foto da pessoa (a foto que ela mandar fica ligada à maldição em foto_id).
 // Um telão que reconecta no meio pega a fase certa sem tocar o som de novo.
 //
-// PONTOS: a Maldição prejudica. Sorteado (e parceiro) perde 300 na hora; não cumpriu, perde mais 300; anular devolve.
+// PONTOS: sorteado (e parceiro) perde 300 na hora. Cumpriu: +1300 (saldo +1000). Não cumpriu: −300 a mais (saldo −600).
+// Não está presente / anular: devolve tudo.
 // COLETIVA: todos participam; o organizador marca o último (−400, 2 shots) e o penúltimo (−200, 1 shot).
 //
 // MODO TESTE: com a atividade "Em teste", só os testadores são sorteados e tudo fica marcado
@@ -23,7 +24,7 @@ const festa = require('./festa');
 const atividades = require('./atividades');
 const pontos = require('./pontos');
 const { ErroValidacao } = require('./convidados');
-const { CASTIGOS, INTENSIDADES, PONTOS_MALDICAO, PONTOS_MALDICAO_FALHOU, PONTOS_GRUPO, MIN_GRUPO, AUSENTE_MIN } = require('../jogos/conteudo');
+const { CASTIGOS, INTENSIDADES, PONTOS_MALDICAO, PONTOS_MALDICAO_FALHOU, PONTOS_MALDICAO_CUMPRIU, PONTOS_GRUPO, MIN_GRUPO, AUSENTE_MIN } = require('../jogos/conteudo');
 const numero = (n) => Math.abs(n).toLocaleString('pt-BR');
 
 const FASES = { alerta: 4000, suspense: 7000, cumprir: 60000 }; // suspense: a roleta de nomes no telão
@@ -144,7 +145,7 @@ async function paraTelao(m) {
   return {
     id: m.id, sorteadaEm: m.sorteadaEm, fases: fasesDe(m), foto: m.foto, fotoId: m.fotoId, nome: m.nome, avatar: m.avatar, castigo: m.castigo,
     parceiro: m.parceiro ? { nome: m.parceiro.nome, avatar: m.parceiro.avatar } : null,
-    estado: m.estado, roleta: roleta.slice(0, 30), pontos: PONTOS_MALDICAO, falhouPontos: PONTOS_MALDICAO_FALHOU,
+    estado: m.estado, roleta: roleta.slice(0, 30), pontos: PONTOS_MALDICAO, falhouPontos: PONTOS_MALDICAO_FALHOU, cumpriuPontos: PONTOS_MALDICAO_CUMPRIU,
     grupo: m.grupo, pontosGrupo: PONTOS_GRUPO, falhou: m.falhou,
     ultimo: m.ultimo ? { nome: m.ultimo.nome, avatar: m.ultimo.avatar } : null,
     penultimo: m.penultimo ? { nome: m.penultimo.nome, avatar: m.penultimo.avatar } : null,
@@ -159,7 +160,7 @@ async function atual(agora = Date.now()) {
 }
 
 // Resolver:
-//   'cumprida'  → cumpriu (já perdeu os 300 no sorteio; nada muda)
+//   'cumprida'  → cumpriu: +1300 (recupera os 300 do sorteio e ganha +1000)
 //   'falhou'    → não cumpriu: perde mais 300
 //   'cancelada' → sorteio anulado: devolve o que perdeu
 //   coletiva    → 'cumprida' com { ultimo, penultimo }: eles perdem 400 e 200
@@ -182,6 +183,12 @@ async function resolver(id, estado, { ultimo = null, penultimo = null } = {}, ag
     [final, agora, estado === 'falhou' ? 1 : 0, estado === 'ausente' ? 1 : 0, m.grupo ? ultimo : null, m.grupo ? penultimo : null, m.id]);
   if (r.rowsAffected) {
     if (final === 'cancelada') await banco.rodar("DELETE FROM pontos_log WHERE chave LIKE ?", [`maldicao:${m.id}:%`]);
+    if (estado === 'cumprida' && !m.grupo) {
+      for (const pessoa of [m.convidadoId, m.parceiro && m.parceiro.id].filter(Boolean)) {
+        await pontos.conceder({ convidadoId: pessoa, atividade: 'maldicao', pontos: PONTOS_MALDICAO_CUMPRIU,
+          motivo: 'Cumpriu a maldição', chave: `maldicao:${m.id}:${pessoa}:cumpriu`, teste: m.teste });
+      }
+    }
     if (estado === 'falhou') {
       for (const pessoa of [m.convidadoId, m.parceiro && m.parceiro.id].filter(Boolean)) {
         await pontos.conceder({ convidadoId: pessoa, atividade: 'maldicao', pontos: PONTOS_MALDICAO_FALHOU,
@@ -217,7 +224,7 @@ async function paraAdmin(agora = Date.now()) {
   ]);
   return {
     config: cfg, liberada: uso.ativa, emTeste: uso.teste, intensidades: INTENSIDADES, pontos: PONTOS_MALDICAO, fases: FASES,
-    falhouPontos: PONTOS_MALDICAO_FALHOU, pontosGrupo: PONTOS_GRUPO,
+    falhouPontos: PONTOS_MALDICAO_FALHOU, cumpriuPontos: PONTOS_MALDICAO_CUMPRIU, pontosGrupo: PONTOS_GRUPO,
     historico: lista, maisAmaldicoados: contagem.map((l) => ({ nome: l.nome, n: Number(l.n) })),
     // Para marcar último/penúltimo da maldição coletiva.
     pessoas: lista.some((x) => x.grupo && x.estado === 'sorteada')
