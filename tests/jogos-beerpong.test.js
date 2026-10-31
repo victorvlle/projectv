@@ -22,6 +22,15 @@ test('times: de 3 em 3; quem sobra sozinho ganha companhia; ninguém fica de for
     if (byes.length && menores) assert.ok(byes.filter((x) => x === 2).length === Math.min(byes.length, menores), `${n}: bye para os times menores`);
     // Nenhuma partida da 1ª rodada sem ninguém
     assert.ok(r1.every((p) => p.a || p.b));
+    // Confrontos de verdade em cima; bye ao lado de um confronto sempre que der (enfrenta um vencedor)
+    const tipos = r1.map((p) => (p.bye ? 'B' : 'R'));
+    const primeiroBye = tipos.indexOf('B');
+    if (primeiroBye >= 0) {
+      const nR = tipos.filter((x) => x === 'R').length; const nB = tipos.length - nR;
+      const mistos = r1.length === 1 ? 0 : Array.from({ length: r1.length / 2 }, (_, i) => tipos[2 * i] !== tipos[2 * i + 1]).filter(Boolean).length;
+      if (r1.length > 1) assert.equal(mistos, Math.min(nR, nB), `${n}: byes contra vencedores (${tipos.join('')})`);
+      assert.ok(tipos.slice(0, Math.max(0, nR - Math.min(nR, nB))).every((x) => x === 'R'), `${n}: confrontos em cima (${tipos.join('')})`);
+    }
   }
 });
 
@@ -46,6 +55,13 @@ test('fluxo: inscrição, sorteio (7 → 3+2+2, um bye), só o admin marca, tel�
   assert.equal((await jogos()).inscritos.length, 7);
   assert.equal((await adm('sortear')).status, 200);
   assert.equal((await inscrever(gente[0], false)).status, 409, 'sorteado: inscrição fechada');
+  // Enquanto o telão mostra o sorteio, o celular não conta o time (sem spoiler)
+  const durante = (await s.req('GET', '/api/festa', { token: gente[0].token })).json.beerpong;
+  assert.equal(durante.estado, 'sorteando');
+  assert.equal(durante.meuTime, undefined);
+  const cfgBp = await bp.config();
+  await require('../server/dados/festa').gravar('beerpong', { ...cfgBp, sorteioEm: cfgBp.sorteioEm - 10 * 60 * 1000 });
+  assert.ok((await s.req('GET', '/api/festa', { token: gente[0].token })).json.beerpong.meuTime, 'depois do telão, o celular mostra o time');
   const tel = (await s.req('GET', '/api/admin/telao', { token: admin })).json;
   assert.equal(tel.telao.modo, 'beerpong', 'telão troca sozinho para o sorteio');
   assert.equal(tel.beerpong.revelacao.length, 7);

@@ -262,7 +262,8 @@ router.get('/jogos', assincrono(async (_req, res) => {
   ]);
   const corr = await corrida.paraAdmin();
   const bp = await beerpong.paraAdmin();
-  res.json({ ok: true, agora: Date.now(), previsoes: prev, maldicao: mal, enigmas: enig, ranking: rank, bebidas: beb, quiz: qz, concurso: conc, correio: cartas, monstro: mon, corrida: corr, beerpong: bp });
+  const telao = await festa.telao();
+  res.json({ ok: true, agora: Date.now(), telao, previsoes: prev, maldicao: mal, enigmas: enig, ranking: rank, bebidas: beb, quiz: qz, concurso: conc, correio: cartas, monstro: mon, corrida: corr, beerpong: bp });
 }));
 const jogosMudou = (res, oque = 'jogos') => { avisar.atualizar(oque); res.json({ ok: true }); };
 

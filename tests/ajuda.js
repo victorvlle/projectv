@@ -3,6 +3,7 @@ process.env.BANCO_CAMINHO = process.env.BANCO_CAMINHO || ':memory:';
 process.env.ADMIN_SEGREDO = process.env.ADMIN_SEGREDO ?? 'senha-de-teste-123';
 process.env.SESSAO_SEGREDO = 'segredo-de-teste';
 process.env.PUSH_FALSO = '1';
+process.env.AVISO_SEM_ATRASO = process.env.AVISO_SEM_ATRASO ?? '1'; // push da Maldição sem esperar o telão revelar
 
 const banco = require('../server/dados/banco');
 const { criarApp } = require('../server/app');

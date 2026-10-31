@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#120D17">
+  <meta name="robots" content="noindex">
+  <title>Project V — Painel da festa</title>
+  <link rel="stylesheet" href="/comum/base.css">
+  <link rel="stylesheet" href="/painel/painel.css">
+</head>
+<body>
+  <div class="ambiente"></div>
+
+  <main id="tela-login" class="bloqueio oculto">
+    <form id="form-login" class="cartao" style="width:100%;max-width:360px;text-align:left">
+      <h1 class="marca" style="font-size:2.2rem;text-align:center">Project V</h1>
+      <p class="mudo" style="text-align:center;margin:4px 0 0">Painel da festa</p>
+      <label for="senha">Senha do organizador</label>
+      <input id="senha" type="password" autocomplete="current-password" required>
+      <button class="botao largo" style="margin-top:16px">Entrar</button>
+    </form>
+  </main>
+
+  <div id="tela-painel" class="oculto">
+    <header class="pn-topo">
+      <span class="marca">Project V</span>
+      <span class="pn-hora" id="pn-hora"></span>
+      <a class="pn-link" href="/admin">Admin completo</a>
+    </header>
+    <section id="pn-agora" aria-live="polite"></section>
+    <section class="pn-bloco">
+      <h2>📺 Telão</h2>
+      <div class="pn-telao" id="pn-telao"></div>
+    </section>
+    <section class="pn-bloco">
+      <h2>🎮 Jogos</h2>
+      <div id="pn-jogos"></div>
+    </section>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/comum/api.js"></script>
+  <script src="/painel/painel.js"></script>
+</body>
+</html>

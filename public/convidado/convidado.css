@@ -488,3 +488,13 @@ body.sem-rolar { overflow: hidden; }
 .corrida-relogio-cel { font-size: 1.1rem; margin: 6px 0 0; }
 .corrida-relogio-cel b { font-size: 1.6rem; font-variant-numeric: tabular-nums; color: var(--laranja-claro); }
 .corrida-relogio-cel b.acabando { color: #ff5a73; }
+.carta-cel-grande { position: relative; width: min(56vw, 230px); aspect-ratio: 5 / 7; margin: 16px auto 8px; border-radius: 18px;
+  background: #fbf8ff; color: #16121f; box-shadow: 0 18px 50px rgba(0,0,0,.5), 0 0 0 3px rgba(255,140,40,.55);
+  display: flex; align-items: center; justify-content: center; animation: ccgEntra .6s cubic-bezier(.2,1.4,.4,1) both; }
+.carta-cel-grande.vermelho { color: #d0142f; }
+.ccg-naipe { font-size: min(34vw, 140px); line-height: 1; }
+.ccg-canto { position: absolute; top: 10px; left: 14px; font-weight: 800; font-size: 1.5rem; line-height: 1.05; text-align: center; }
+.ccg-canto.baixo { top: auto; left: auto; bottom: 10px; right: 14px; transform: rotate(180deg); }
+.ccg-legenda { font-size: 1.15rem; margin: 6px 0 4px; }
+@keyframes ccgEntra { 0% { opacity: 0; transform: rotateY(90deg) scale(.8); } 100% { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .carta-cel-grande { animation: none; } }

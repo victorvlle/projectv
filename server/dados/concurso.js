@@ -47,6 +47,8 @@ const iniciais = (nome) => nome.trim().split(/\s+/).slice(0, 2).map((x) => x[0].
 
 const podio = (lista) => lista.filter((x) => x.pontos > 0).map((x) => ({ nome: x.nome, avatar: x.avatar, votos: x.votos, posicao: x.posicao, pontos: x.pontos }));
 
+const REVELA_PODIO_MS = 16000; // pódio do telão: 3 revelações de ~4,4 s + folga
+
 async function paraConvidado(euId) {
   const [cfg, pessoas, meu] = await Promise.all([
     config(), inscritos(), banco.um('SELECT candidato_id FROM concurso_votos WHERE eleitor_id = ?', [euId]),
@@ -58,7 +60,11 @@ async function paraConvidado(euId) {
     desfilantes: pessoas.length,
     candidatos: pessoas.map((c) => ({ id: apelido(c.id), nome: c.nome, avatar: c.avatar, souEu: c.id === euId })),
   };
-  if (cfg.estado === 'publicado') saida.podio = podio(await contagem());
+  // O pódio só chega ao celular depois que o telão revela (3º, 2º e 1º com suspense).
+  if (cfg.estado === 'publicado' && cfg.publicadoEm && Date.now() < cfg.publicadoEm + REVELA_PODIO_MS) {
+    saida.estado = 'encerrado';
+    saida.revelaEm = cfg.publicadoEm + REVELA_PODIO_MS;
+  } else if (cfg.estado === 'publicado') saida.podio = podio(await contagem());
   return saida;
 }
 
@@ -132,7 +138,7 @@ async function publicar() {
         motivo: `Concurso de Fantasia: ${x.posicao}º lugar (${x.votos} ${x.votos === 1 ? 'voto' : 'votos'})`, chave: `concurso:${x.id}`, teste }, tx);
     }
   });
-  await festa.gravar('concurso', { ...cfg, estado: 'publicado', teste });
+  await festa.gravar('concurso', { ...cfg, estado: 'publicado', teste, publicadoEm: Date.now() });
   await festa.definirTelao({ modo: 'concurso' });
   return { premiados: lista.filter((y) => y.pontos > 0).length };
 }

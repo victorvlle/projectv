@@ -53,6 +53,9 @@ test('sorteio manual: telões e celular recebem uma vez; push sai uma vez; cliqu
   // Telão que reconecta pega a maldição em cena
   const t = (await s.req('GET', '/api/admin/telao', { token: admin })).json;
   assert.equal(t.maldicao.id, p.id);
+  // Antes do telão revelar (alerta + suspense), o celular não sabe de nada
+  assert.equal((await s.req('GET', '/api/maldicao/minha', { token: unica.token })).json.maldicao, null, 'sem spoiler antes do telão');
+  await banco.rodar('UPDATE maldicoes SET sorteada_em = sorteada_em - 10000 WHERE id = ?', [p.id]);
   const minha = (await s.req('GET', '/api/maldicao/minha', { token: unica.token })).json.maldicao;
   assert.equal(minha.id, p.id);
   telao1.close(); telao2.close(); cel.close();

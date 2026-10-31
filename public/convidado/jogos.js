@@ -391,7 +391,12 @@
 
   // ------------------------------------------------- maldição no celular
   let timerMaldicao = null;
+  let esperaMaldicao = null;
   function avisoMaldicao(d) {
+    // Só aparece quando o telão revela quem foi (sem spoiler no celular antes do suspense).
+    const revelaEm = d.sorteadaEm + d.fases.alerta + d.fases.suspense;
+    clearTimeout(esperaMaldicao);
+    if (PV.relogio.agora() < revelaEm) { esperaMaldicao = setTimeout(() => avisoMaldicao(d), revelaEm - PV.relogio.agora() + 50); return; }
     let el = $('alerta-maldicao');
     if (!el) {
       el = document.createElement('div');

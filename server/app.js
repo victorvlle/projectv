@@ -118,6 +118,7 @@ function criarApp() {
   app.get('/c/:codigo', pagina('convidado/entrar.html'));
   app.get('/telao', pagina('telao/index.html'));
   app.get('/admin', pagina('admin/index.html'));
+  app.get('/painel', pagina('painel/index.html'));
   // Sem cache longo: a cada deploy o celular precisa pegar o HTML e o JS da MESMA
   // versão. Com "no-cache" o navegador revalida (ETag) e só baixa de novo o que mudou.
   app.use(express.static(PUBLICO, {

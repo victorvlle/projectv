@@ -181,6 +181,7 @@
   let concurso = null;
   let votando = false;
 
+  let concursoRevela = null;
   function desenharConcurso(c) {
     concurso = c;
     if (!c) return;
@@ -203,7 +204,9 @@
         Dá para trocar o voto até fechar. Ninguém vê em quem você votou. Prêmios: ${premios}.</p>
         ${meu ? `<p>Seu voto: <span class="avatar mini">${emoji(meu.avatar)}</span> <b>${esc(meu.nome)}</b></p>` : '<p><b>Você ainda não votou.</b></p>'}</section>`;
     } else if (c.estado === 'encerrado') {
-      topo = `<section class="cartao"><b>🔒 Votação encerrada</b><p class="mudo">O resultado sai no telão.${meu ? ` Você votou em ${esc(meu.nome)}.` : ''}</p></section>`;
+      topo = `<section class="cartao"><b>${c.revelaEm ? '🥁 Olhe o telão!' : '🔒 Votação encerrada'}</b><p class="mudo">${c.revelaEm ? 'O resultado está sendo revelado agora.' : 'O resultado sai no telão.'}${meu ? ` Você votou em ${esc(meu.nome)}.` : ''}</p></section>`;
+      clearTimeout(concursoRevela);
+      if (c.revelaEm && C().recarregar) concursoRevela = setTimeout(C().recarregar, Math.max(800, c.revelaEm - PV.relogio.agora() + 800));
     } else {
       topo = `<section class="cartao"><b>🏆 Resultado</b><div class="podio-celular">${(c.podio || []).map((p) => `
         <div class="podio-linha"><span class="podio-pos">${['🥇', '🥈', '🥉'][p.posicao - 1] || `${p.posicao}º`}</span><span class="avatar">${emoji(p.avatar)}</span>
@@ -415,7 +418,9 @@
 
   // ============================================================ BEER PONG
   let mexendoBp = false;
+  let bpRevela = null;
   function desenharBeerpong(b) {
+    clearTimeout(bpRevela);
     if (!b) return;
     const premios = `Campeões +${pts(b.premios.campeao)} cada · vice +${pts(b.premios.vice)} cada.`;
     let html;
@@ -425,6 +430,10 @@
         ${b.inscrito ? '<p class="quiz-veredito" style="margin-top:12px">✓ Você está inscrito</p><button class="botao-discreto" type="button" data-bp="0">Desistir</button>'
           : '<button class="botao largo quiz-entrar" type="button" data-bp="1">🍺 Quero jogar!</button>'}
         <p class="quiz-sala-conta">🍺 <b>${b.inscritos}</b> ${b.inscritos === 1 ? 'inscrito' : 'inscritos'}</p></section>`;
+    } else if (b.estado === 'sorteando') {
+      html = `<section class="cartao prev-aviso aberta"><b>🎲 Sorteio no telão!</b>
+        <p>${b.inscrito ? 'Olhe o telão para descobrir o seu time e o seu adversário.' : 'Os times estão sendo sorteados no telão.'}</p></section>`;
+      if (b.revelaEm && C().recarregar) bpRevela = setTimeout(C().recarregar, Math.max(800, b.revelaEm - PV.relogio.agora() + 800));
     } else if (b.meuTime) {
       const t = b.meuTime;
       let sit = '';
@@ -478,6 +487,10 @@
     tique();
     corridaRelogioCel = setInterval(tique, 250);
   }
+  // A carta do cavalo escolhido, grande no centro (o Ás do naipe).
+  const cartaGrande = (n, legenda) => `<div class="carta-cel-grande ${n === 'copas' || n === 'ouros' ? 'vermelho' : ''}" role="img" aria-label="Ás de ${nomeNaipe(n)}">
+      <span class="ccg-canto">A<br>${simbNaipe(n)}</span><span class="ccg-naipe">${simbNaipe(n)}</span><span class="ccg-canto baixo">A<br>${simbNaipe(n)}</span></div>
+    <p class="ccg-legenda">${legenda}</p>`;
   function desenharCorrida(c) {
     clearTimeout(corridaTimerCel);
     clearInterval(corridaRelogioCel);
@@ -487,8 +500,8 @@
     if (c.estado === 'apostas') {
       if (c.minha) {
         naipeEscolhido = null;
-        html = `<section class="cartao prev-aviso aberta"><b>✅ Você está confirmado!</b>
-          <p>Seu cavalo: <b class="naipe-texto ${c.minha === 'copas' || c.minha === 'ouros' ? 'vermelho' : ''}">${simbNaipe(c.minha)} ${nomeNaipe(c.minha)}</b></p>
+        html = `<section class="cartao prev-aviso aberta" style="text-align:center"><b>✅ Você está confirmado!</b>
+          ${cartaGrande(c.minha, `Seu cavalo: <b>${nomeNaipe(c.minha)}</b>`)}
           <p class="mudo">A corrida larga quando o tempo acabar. Olhe o telão!</p>
           <p class="corrida-relogio-cel">⏱️ <b id="corrida-seg">1:00</b></p></section>`;
       } else {
@@ -501,8 +514,8 @@
           <p class="fraco">Depois de salvar, não dá para trocar.</p>`;
       }
     } else if (c.estado === 'correndo') {
-      html = `<section class="cartao prev-aviso aberta"><b>🏁 Largaram! Olhe o telão.</b>
-        <p>${c.minha ? `Seu cavalo: <b class="naipe-texto ${c.minha === 'copas' || c.minha === 'ouros' ? 'vermelho' : ''}">${simbNaipe(c.minha)} ${nomeNaipe(c.minha)}</b>` : 'Você não apostou nesta corrida.'}</p></section>`;
+      html = `<section class="cartao prev-aviso aberta" style="text-align:center"><b>🏁 Largaram! Olhe o telão.</b>
+        ${c.minha ? cartaGrande(c.minha, `Torça pelo <b>${nomeNaipe(c.minha)}</b>!`) : '<p>Você não apostou nesta corrida.</p>'}</section>`;
       if (c.fimEm && C().recarregar) corridaTimerCel = setTimeout(C().recarregar, Math.max(800, c.fimEm - PV.relogio.agora() + 1200));
     } else if (c.estado === 'fim' && c.resultado) {
       const r = c.resultado;

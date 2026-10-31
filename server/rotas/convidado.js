@@ -399,7 +399,9 @@ router.get('/maldicao/minha', soConvidado, assincrono(async (req, res) => {
   const a = await maldicao.atual();
   if (!a) return res.json({ ok: true, maldicao: null });
   const m = await maldicao.buscar(a.id);
-  const minha = m.convidadoId === req.convidado.id || (m.parceiro && m.parceiro.id === req.convidado.id);
+  const f = maldicao.fasesDe(m);
+  const revelada = Date.now() >= m.sorteadaEm + f.alerta + f.suspense;
+  const minha = revelada && (m.convidadoId === req.convidado.id || (m.parceiro && m.parceiro.id === req.convidado.id));
   return res.json({ ok: true, maldicao: minha ? { id: m.id, castigo: m.castigo, sorteadaEm: m.sorteadaEm, fases: maldicao.fasesDe(m), foto: m.foto && !m.fotoId && m.convidadoId === req.convidado.id } : null });
 }));
 

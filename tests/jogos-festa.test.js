@@ -233,6 +233,12 @@ test('concurso: não vota em si, troca o voto, contagem escondida; empate divide
   await s.req('POST', '/api/admin/concurso/encerrar', { token: admin });
   assert.equal((await votar(lucas, id('Victor Teste'))).status, 409, 'encerrada não aceita voto');
   assert.equal((await s.req('POST', '/api/admin/concurso/publicar', { token: admin })).status, 200);
+  // Enquanto o telão revela (3º, 2º, 1º), o celular ainda não mostra o pódio
+  const revelando = (await festa(lucas)).concurso;
+  assert.equal(revelando.podio, undefined, 'sem spoiler antes do telão');
+  assert.ok(revelando.revelaEm > Date.now());
+  const fCfg = require('../server/dados/festa');
+  await fCfg.gravar('concurso', { ...(await fCfg.ler('concurso')), publicadoEm: Date.now() - 60000 });
   const podio = (await festa(lucas)).concurso.podio;
   assert.deepEqual(podio.map((p) => [p.nome, p.posicao, p.pontos]).sort(), [['Lucas Teste', 1, 1000], ['Victor Teste', 1, 1000]]);
   await perto(lucas.token, 1375);

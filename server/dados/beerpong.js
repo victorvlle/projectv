@@ -21,7 +21,9 @@ const { ErroValidacao } = require('./convidados');
 const POR_TIME = 3;
 const MIN_INSCRITOS = 4; // dois times de 2
 const PREMIOS = { campeao: 1000, vice: 500 };
-const PASSO_SORTEIO_MS = 1300;
+const PASSO_SORTEIO_MS = 2200;   // cada nome: roleta girando e parando no sorteado
+const PASSO_CONFRONTO_MS = 2600; // cada confronto da 1ª rodada aparece no telão
+const FOLGA_SORTEIO_MS = 2500;
 const NOMES_TIMES = [
   ['Vampiros', '🧛'], ['Bruxas', '🧙'], ['Zumbis', '🧟'], ['Lobisomens', '🐺'], ['Fantasmas', '👻'], ['Abóboras', '🎃'],
   ['Caveiras', '💀'], ['Morcegos', '🦇'], ['Aranhas', '🕷️'], ['Palhaços', '🤡'], ['Demônios', '👹'], ['Aliens', '👽'],
@@ -68,16 +70,23 @@ function montarChave(times) {
   const comBye = ordem.slice(0, byes);
   const resto = embaralhar(ordem.slice(byes));
   const jogos1 = tamanho / 2;
+  // Ordem da 1ª rodada (de cima para baixo): primeiro os confrontos de verdade; e, sempre que der, quem
+  // passou direto (bye) fica ao lado de um confronto, para enfrentar um vencedor (não outro "sortudo").
+  //   [real, real] … depois [real, bye] … depois [bye, bye]
+  const reais = jogos1 - byes;
+  const tipos = [];
+  if (jogos1 === 1) tipos.push('R');
+  else {
+    const mistos = Math.min(reais, byes);
+    for (let i = 0; i < (reais - mistos) / 2; i++) tipos.push('R', 'R');
+    for (let i = 0; i < mistos; i++) tipos.push('R', 'B');
+    for (let i = 0; i < (byes - mistos) / 2; i++) tipos.push('B', 'B');
+  }
   const slots = Array.from({ length: jogos1 }, () => [null, null]);
-  // Espalha os byes pela chave (alternando metades) para não juntar todos de um lado.
-  const posicoes = [];
-  for (let i = 0; i < jogos1; i += 2) posicoes.push(i);
-  for (let i = 1; i < jogos1; i += 2) posicoes.push(i);
-  const posBye = posicoes.slice(0, byes);
-  comBye.forEach((t, k) => { slots[posBye[k]][0] = t.id; });
-  // Os outros times, de dois em dois, nas partidas sem bye (sobram exatamente 2 por partida).
-  const livres = slots.filter((_, i) => !posBye.includes(i));
-  livres.forEach((slot, k) => { slot[0] = resto[2 * k].id; slot[1] = resto[2 * k + 1].id; });
+  let kb = 0; let kr = 0;
+  tipos.forEach((tipo, i) => {
+    if (tipo === 'B') { slots[i][0] = comBye[kb].id; kb += 1; } else { slots[i][0] = resto[2 * kr].id; slots[i][1] = resto[2 * kr + 1].id; kr += 1; }
+  });
   const rodadas = Math.log2(tamanho);
   const partidas = [];
   for (let r = 1; r <= rodadas; r++) {
@@ -147,6 +156,13 @@ async function chavePublica(cfg) {
     proxima: proxima ? proxima.id : null, ultimo: cfg.ultimo || null };
 }
 
+// Quando o telão termina de mostrar o sorteio (nomes + confrontos). Antes disso o celular não conta nada.
+function fimDaRevelacao(cfg) {
+  if (!cfg.sorteioEm || !cfg.revelacao) return 0;
+  const confrontos = cfg.partidas.filter((p) => p.rodada === 1).length;
+  return cfg.sorteioEm + cfg.revelacao.length * PASSO_SORTEIO_MS + FOLGA_SORTEIO_MS + confrontos * PASSO_CONFRONTO_MS + FOLGA_SORTEIO_MS;
+}
+
 function campeaoEVice(cfg) {
   const final = cfg.partidas.find((p) => p.rodada === cfg.rodadas);
   if (!final || !final.vencedor) return null;
@@ -154,10 +170,17 @@ function campeaoEVice(cfg) {
 }
 
 // ------------------------------------------------------------------ convidado
-async function paraConvidado(eu) {
+async function paraConvidado(eu, agora = Date.now()) {
   const cfg = await config();
   const lista = await inscritos(cfg);
   const saida = { estado: cfg.estado, inscrito: lista.some((p) => p.id === eu), inscritos: lista.length, premios: PREMIOS };
+  // Sorteio ainda passando no telão: o celular só diz "olhe o telão" (sem spoiler do time).
+  if (cfg.times && agora < fimDaRevelacao(cfg)) {
+    saida.estado = 'sorteando';
+    saida.revelaEm = fimDaRevelacao(cfg);
+    saida.inscrito = Boolean(cfg.times.some((t) => t.membros.includes(eu)));
+    return saida;
+  }
   if (cfg.times) {
     const meu = cfg.times.find((t) => t.membros.includes(eu));
     const chave = await chavePublica(cfg);
@@ -301,6 +324,9 @@ async function paraTelao() {
     saida.chave = await chavePublica(cfg);
     saida.sorteioEm = cfg.sorteioEm;
     saida.passoMs = PASSO_SORTEIO_MS;
+    saida.passoConfrontoMs = PASSO_CONFRONTO_MS;
+    saida.folgaMs = FOLGA_SORTEIO_MS;
+    saida.fimRevelacao = fimDaRevelacao(cfg);
     const mapa = await pessoas(cfg.revelacao.map((r) => r.id));
     saida.revelacao = cfg.revelacao.map((r) => { const p = mapa.get(r.id) || { nome: '?' }; return { nome: primeiroNome(p.nome), avatar: p.avatar, time: r.time }; });
     const cv = campeaoEVice(cfg);
@@ -310,4 +336,4 @@ async function paraTelao() {
 }
 
 module.exports = { montarTimes, montarChave, propagar, config, paraConvidado, inscrever, paraAdmin, sortear, marcar, desfazer, recomecar,
-  tirarInscrito, paraTelao, definirFakes, PREMIOS, MIN_INSCRITOS, MAX_FAKES };
+  tirarInscrito, paraTelao, definirFakes, fimDaRevelacao, PREMIOS, MIN_INSCRITOS, MAX_FAKES };

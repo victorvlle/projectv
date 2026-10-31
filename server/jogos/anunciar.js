@@ -18,7 +18,10 @@ async function maldicaoSorteada(m) {
   for (const id of [m.convidadoId, m.parceiro && m.parceiro.id].filter(Boolean)) {
     avisar.convidado(id, 'maldicao:voce', { id: m.id, castigo: m.castigo, sorteadaEm: m.sorteadaEm, fases: payload.fases, foto: m.foto && id === m.convidadoId });
   }
-  require('../notificacoes').amaldicoado(m).catch((e) => console.error('[push] maldição:', e.message));
+  // O push só sai quando o telão revela quem foi (alerta + suspense): nada de spoiler no celular.
+  const enviarPush = () => require('../notificacoes').amaldicoado(m).catch((e) => console.error('[push] maldição:', e.message));
+  const atraso = process.env.AVISO_SEM_ATRASO === '1' ? 0 : Math.max(0, m.sorteadaEm + payload.fases.alerta + payload.fases.suspense - Date.now());
+  if (atraso) setTimeout(enviarPush, atraso).unref(); else enviarPush();
   return payload;
 }
 

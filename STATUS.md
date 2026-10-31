@@ -83,6 +83,10 @@ Atualizado em 27/10/2026.
 - [x] Beer Pong: inscrição no celular, sorteio animado dos trios no telão (mínimo 2 por time), mata-mata com bye (menores primeiro), organizador marca quem passou e o telão mostra o time avançando; campeões +1000 cada, vice +500
 
 - [x] Beer Pong (30/10): jogadores fakes só no modo teste (0 a 28, ajustável antes de cada sorteio) para ver os cenários de times e chave; não existem como convidados, não pontuam e somem fora do teste ou com "Apagar dados de teste"
+- [x] Beer Pong (30/10 noite): roleta no telão (nomes girando entre quem falta, desacelera e para no sorteado); depois cada confronto da 1ª rodada aparece um por um (quem passa direto também); chave com os confrontos de verdade em cima e quem passou direto enfrentando um vencedor sempre que possível
+- [x] Sem spoiler (30/10): o celular só mostra o resultado depois do telão — time do Beer Pong (fim da revelação), Maldição (depois do alerta + suspense, inclusive o push) e pódio do Concurso (~16 s)
+- [x] Corrida: a carta escolhida aparece grande no centro do celular (confirmado e durante a corrida)
+- [x] Painel da festa em /painel (link no topo do admin): uma tela só para o celular — "Agora" com o que pede ação (maldição para confirmar, quem passou no Beer Pong, corrida esperando largada, quiz rodando, votação, mural travado), 8 botões do telão e uma linha por jogo com o próximo passo; ações importantes pedem segundo toque
 - [x] Regra geral (30/10): a Maldição pausa os jogos com relógio (Quiz e Corrida); quando ela termina (confirmada, cancelada ou fim do tempo), o jogo continua de onde parou com o mesmo tempo restante. Concurso, Beer Pong e Mural já esperam por natureza (só andam quando o organizador aperta)
 
 ## Pendente (Etapa C, em ordem)
